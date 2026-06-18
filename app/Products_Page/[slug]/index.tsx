@@ -1,0 +1,349 @@
+import { Feather, Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
+import { Image } from "expo-image";
+import { Stack, useLocalSearchParams, useRouter } from "expo-router";
+import React from "react";
+import {
+  Linking,
+  Platform,
+  SafeAreaView,
+  ScrollView,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
+import { productCache } from "@/utils/productCache";
+
+export default function ProductDetailPage() {
+  const router = useRouter();
+  const { productId, slug } = useLocalSearchParams<{ productId?: string; slug?: string }>();
+
+  // Use state initialized with cached product
+  const [product, setProduct] = React.useState<any>(() => {
+    return productId ? productCache[productId as string] : null;
+  });
+
+  // Fetch full details from backend to ensure we have all specifications
+  React.useEffect(() => {
+    if (!productId && !slug) return;
+
+    const fetchFullDetails = async () => {
+      const urls = [
+        `https://backend.inquirybazaar.com/api/products/${productId}`,
+        `https://backend.inquirybazaar.com/api/products/single/${productId}`,
+        `https://backend.inquirybazaar.com/api/product/${productId}`,
+        `https://backend.inquirybazaar.com/api/products/details/${productId}`,
+        `https://backend.inquirybazaar.com/api/products/get/${productId}`,
+        `https://backend.inquirybazaar.com/api/products/slug/${slug}`,
+        `https://backend.inquirybazaar.com/api/product/slug/${slug}`,
+        `https://backend.inquirybazaar.com/api/products/${slug}`,
+      ];
+
+      for (const url of urls) {
+        try {
+          const res = await fetch(url);
+          const text = await res.text();
+          if (text.startsWith("{")) {
+            const json = JSON.parse(text);
+            // Check success and if data actually contains specifications (or product object)
+            if (json.success && json.data) {
+              const fullProduct = json.data;
+              setProduct(fullProduct);
+              if (productId) {
+                productCache[productId] = fullProduct;
+              }
+              break;
+            }
+          }
+        } catch (e) {
+          // Continue to next URL
+        }
+      }
+    };
+
+    fetchFullDetails();
+  }, [productId, slug]);
+
+  // ── Helpers ──────────────────────────────────────────────────────────────
+  const getPrimaryImage = (media: any[]) => {
+    if (!media || media.length === 0) return null;
+    return (media.find((m: any) => m.isPrimary) || media[0])?.url || null;
+  };
+
+  if (!product) {
+    return (
+      <SafeAreaView style={{ flex: 1, backgroundColor: "#fff", alignItems: "center", justifyContent: "center", paddingHorizontal: 32 }}>
+        <Stack.Screen options={{ headerShown: false }} />
+        <Ionicons name="alert-circle-outline" size={56} color="#cbd5e1" />
+        <Text style={{ color: "#334155", fontWeight: "bold", fontSize: 18, marginTop: 16, textAlign: "center" }}>
+          Product not found
+        </Text>
+        <TouchableOpacity
+          onPress={() => router.back()}
+          style={{ marginTop: 24, paddingHorizontal: 24, paddingVertical: 12, backgroundColor: "#4f46e5", borderRadius: 12 }}
+        >
+          <Text style={{ color: "#fff", fontWeight: "bold", fontSize: 14 }}>Go Back</Text>
+        </TouchableOpacity>
+      </SafeAreaView>
+    );
+  }
+
+  const imageUri = getPrimaryImage(product.media);
+  const company = product.supplier?.business?.companyName || product.supplier?.name || "Supplier";
+  const city = product.supplier?.business?.city || "";
+  const state = product.supplier?.business?.state || "";
+  const address = product.supplier?.business?.address || "";
+  const businessType = product.supplier?.business?.businessType || "";
+  const phone = product.supplier?.phone;
+  const isOnRequest = product.priceType === "on_request";
+
+  // Build spec rows (2 per row) BEFORE the return so all of them render
+  const specs: any[] = product.specifications || [];
+  const specRows: [any, any | null][] = [];
+  for (let i = 0; i < specs.length; i += 2) {
+    specRows.push([specs[i], specs[i + 1] ?? null]);
+  }
+
+  return (
+    <SafeAreaView style={{ flex: 1, backgroundColor: "#fff" }}>
+      <Stack.Screen options={{ headerShown: false }} />
+
+      {/* ── HEADER ── */}
+      <View style={{ backgroundColor: "#fff", paddingHorizontal: 20, paddingVertical: 12, flexDirection: "row", alignItems: "center", justifyContent: "space-between", borderBottomWidth: 1, borderBottomColor: "#f1f5f9" }}>
+        <TouchableOpacity onPress={() => router.back()} style={{ padding: 4, marginLeft: -4 }}>
+          <Ionicons name="arrow-back" size={24} color="#0f172a" />
+        </TouchableOpacity>
+        <Text style={{ flex: 1, fontSize: 17, fontWeight: "700", color: "#0f172a", marginLeft: 8 }} numberOfLines={1}>
+          {product.name}
+        </Text>
+        <TouchableOpacity style={{ padding: 4 }}>
+          <Ionicons name="share-social-outline" size={22} color="#64748b" />
+        </TouchableOpacity>
+      </View>
+
+      <ScrollView
+        style={{ flex: 1, backgroundColor: "#f8fafc" }}
+        contentContainerStyle={{ paddingBottom: 120 }}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* ── HERO IMAGE ── */}
+        <View style={{ width: "100%", height: 280, backgroundColor: "#e2e8f0" }}>
+          {imageUri ? (
+            <Image
+              source={{ uri: imageUri }}
+              style={{ width: "100%", height: "100%" }}
+              contentFit="cover"
+              transition={300}
+            />
+          ) : (
+            <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
+              <Ionicons name="image-outline" size={64} color="#cbd5e1" />
+            </View>
+          )}
+        </View>
+
+        {/* ── PRODUCT INFO CARD ── */}
+        <View style={{ marginTop: -24, backgroundColor: "#fff", borderTopLeftRadius: 32, borderTopRightRadius: 32, paddingTop: 32, paddingHorizontal: 24, paddingBottom: 24 }}>
+          {/* Supplier + city */}
+          <View style={{ flexDirection: "row", alignItems: "center", flexWrap: "wrap", marginBottom: 12, gap: 6 }}>
+            <MaterialCommunityIcons name="domain" size={15} color="#64748b" />
+            <Text style={{ color: "#475569", fontWeight: "600", fontSize: 13 }} numberOfLines={1}>{company}</Text>
+            {(city || state) ? (
+              <View style={{ flexDirection: "row", alignItems: "center", backgroundColor: "#f1f5f9", paddingHorizontal: 8, paddingVertical: 2, borderRadius: 8 }}>
+                <Ionicons name="location-outline" size={11} color="#64748b" />
+                <Text style={{ color: "#64748b", fontSize: 11, marginLeft: 2 }}>{[city, state].filter(Boolean).join(", ")}</Text>
+              </View>
+            ) : null}
+          </View>
+
+          {/* Product name */}
+          <Text style={{ fontSize: 24, fontWeight: "800", color: "#0f172a", marginBottom: 16, lineHeight: 30 }}>
+            {product.name}
+          </Text>
+
+          {/* Price */}
+          {isOnRequest ? (
+            <View style={{ backgroundColor: "#fffbeb", borderWidth: 1, borderColor: "#fde68a", paddingHorizontal: 16, paddingVertical: 10, borderRadius: 12, alignSelf: "flex-start", marginBottom: 16 }}>
+              <Text style={{ color: "#92400e", fontWeight: "700", fontSize: 15 }}>Price on Request</Text>
+            </View>
+          ) : (
+            <View style={{ flexDirection: "row", alignItems: "flex-end", marginBottom: 16, flexWrap: "wrap" }}>
+              <Text style={{ fontSize: 30, fontWeight: "900", color: "#4f46e5" }}>
+                ₹{product.price?.toLocaleString()}
+              </Text>
+              <Text style={{ color: "#64748b", fontSize: 14, marginLeft: 6, marginBottom: 4 }}>/ {product.unit}</Text>
+              {product.oldPrice ? (
+                <Text style={{ color: "#94a3b8", fontSize: 14, marginLeft: 8, marginBottom: 4, textDecorationLine: "line-through" }}>
+                  ₹{product.oldPrice?.toLocaleString()}
+                </Text>
+              ) : null}
+            </View>
+          )}
+
+          {/* Quick pills */}
+          <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+            {product.minOrderQty ? (
+              <View style={{ flexDirection: "row", alignItems: "center", backgroundColor: "#f1f5f9", paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8 }}>
+                <MaterialCommunityIcons name="package-variant" size={13} color="#475569" />
+                <Text style={{ color: "#475569", fontWeight: "600", fontSize: 12, marginLeft: 6 }}>
+                  MOQ: {product.minOrderQty} {product.unit}
+                </Text>
+              </View>
+            ) : null}
+            {product.deliveryTime ? (
+              <View style={{ flexDirection: "row", alignItems: "center", backgroundColor: "#f1f5f9", paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8 }}>
+                <Ionicons name="time-outline" size={13} color="#475569" />
+                <Text style={{ color: "#475569", fontWeight: "600", fontSize: 12, marginLeft: 6 }}>{product.deliveryTime}</Text>
+              </View>
+            ) : null}
+            {product.supplyAbility ? (
+              <View style={{ flexDirection: "row", alignItems: "center", backgroundColor: "#f0fdf4", borderWidth: 1, borderColor: "#bbf7d0", paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8 }}>
+                <MaterialCommunityIcons name="check-circle-outline" size={13} color="#16a34a" />
+                <Text style={{ color: "#15803d", fontWeight: "600", fontSize: 12, marginLeft: 6 }}>{product.supplyAbility}</Text>
+              </View>
+            ) : null}
+          </View>
+        </View>
+
+        {/* ── DESCRIPTION ── */}
+        {product.description ? (() => {
+          // Strip HTML tags to get plain text
+          const plainText = (product.description as string)
+            .replace(/<[^>]*>/g, " ")
+            .replace(/&nbsp;/g, " ")
+            .replace(/&amp;/g, "&")
+            .replace(/&lt;/g, "<")
+            .replace(/&gt;/g, ">")
+            .replace(/\s+/g, " ")
+            .trim();
+          return plainText.length > 0 ? (
+            <View style={{ marginTop: 12, backgroundColor: "#fff", paddingHorizontal: 24, paddingVertical: 28 }}>
+              <Text style={{ fontSize: 17, fontWeight: "800", color: "#0f172a", marginBottom: 16 }}>
+                Product Description
+              </Text>
+              <Text style={{ color: "#475569", fontSize: 14, lineHeight: 24, fontWeight: "400" }}>
+                {plainText}
+              </Text>
+            </View>
+          ) : null;
+        })() : null}
+
+        {/* ── SPECIFICATIONS ── */}
+        {specs.length > 0 ? (
+          <View style={{ marginTop: 12, backgroundColor: "#fff", paddingHorizontal: 24, paddingVertical: 32 }}>
+            <Text style={{ fontSize: 17, fontWeight: "800", color: "#0f172a", marginBottom: 20 }}>
+              Specifications & Details
+            </Text>
+
+            <View style={{ borderWidth: 1, borderColor: "#e2e8f0", borderRadius: 16, overflow: "hidden", marginBottom: 16 }}>
+              {specs.map((spec, idx) => (
+                <View
+                  key={idx}
+                  style={{
+                    flexDirection: "row",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                    paddingHorizontal: 16,
+                    paddingVertical: 14,
+                    backgroundColor: idx % 2 === 0 ? "#fff" : "#f8fafc",
+                    borderBottomWidth: idx === specs.length - 1 ? 0 : 1,
+                    borderBottomColor: "#e2e8f0",
+                  }}
+                >
+                  <Text style={{ color: "#64748b", fontWeight: "600", fontSize: 13, flex: 1, marginRight: 8 }}>
+                    {spec.key}
+                  </Text>
+                  <Text style={{ color: "#0f172a", fontWeight: "600", fontSize: 13, flex: 1.5, textAlign: "right" }}>
+                    {spec.value}
+                  </Text>
+                </View>
+              ))}
+            </View>
+
+            {product.packagingDetails ? (
+              <View style={{ flexDirection: "row", alignItems: "center", backgroundColor: "#f8fafc", borderWidth: 1, borderColor: "#e2e8f0", paddingHorizontal: 16, paddingVertical: 12, borderRadius: 12 }}>
+                <MaterialCommunityIcons name="package-variant-closed" size={18} color="#64748b" />
+                <View style={{ marginLeft: 12 }}>
+                  <Text style={{ color: "#94a3b8", fontWeight: "700", fontSize: 10, textTransform: "uppercase", letterSpacing: 1 }}>Packaging</Text>
+                  <Text style={{ color: "#334155", fontWeight: "600", fontSize: 13, marginTop: 2 }}>{product.packagingDetails}</Text>
+                </View>
+              </View>
+            ) : null}
+          </View>
+        ) : null}
+
+
+        {/* ── SUPPLIER ── */}
+        <View style={{ marginTop: 12, backgroundColor: "#fff", paddingHorizontal: 24, paddingVertical: 32, marginBottom: 24 }}>
+          <Text style={{ fontSize: 17, fontWeight: "800", color: "#0f172a", marginBottom: 20 }}>Supplier Details</Text>
+          <View style={{ backgroundColor: "#f8fafc", borderWidth: 1, borderColor: "#e2e8f0", borderRadius: 20, padding: 20 }}>
+            {/* Company row */}
+            <View style={{ flexDirection: "row", alignItems: "center", paddingBottom: 16, marginBottom: 16, borderBottomWidth: 1, borderBottomColor: "#e2e8f0" }}>
+              {product.supplier?.profileImage ? (
+                <Image
+                  source={{ uri: product.supplier.profileImage }}
+                  style={{ width: 48, height: 48, borderRadius: 24, marginRight: 14 }}
+                  contentFit="cover"
+                />
+              ) : (
+                <View style={{ width: 48, height: 48, borderRadius: 24, backgroundColor: "#e0e7ff", alignItems: "center", justifyContent: "center", marginRight: 14 }}>
+                  <MaterialCommunityIcons name="domain" size={22} color="#4f46e5" />
+                </View>
+              )}
+              <View style={{ flex: 1 }}>
+                <Text style={{ color: "#0f172a", fontWeight: "700", fontSize: 15 }} numberOfLines={2}>{company}</Text>
+                {businessType ? <Text style={{ color: "#64748b", fontWeight: "500", fontSize: 12, marginTop: 2 }}>{businessType}</Text> : null}
+              </View>
+            </View>
+
+            {address ? (
+              <View style={{ flexDirection: "row", alignItems: "flex-start", marginBottom: 16 }}>
+                <Feather name="map-pin" size={15} color="#64748b" style={{ marginTop: 2, marginRight: 10 }} />
+                <Text style={{ color: "#334155", fontWeight: "500", fontSize: 13, lineHeight: 20, flex: 1 }}>{address}</Text>
+              </View>
+            ) : null}
+
+            {phone ? (
+              <TouchableOpacity
+                onPress={() => Linking.openURL(`tel:${phone}`)}
+                style={{ flexDirection: "row", alignItems: "center", marginBottom: 20 }}
+              >
+                <Feather name="phone" size={15} color="#64748b" style={{ marginRight: 10 }} />
+                <Text style={{ color: "#4f46e5", fontWeight: "600", fontSize: 13 }}>{phone}</Text>
+              </TouchableOpacity>
+            ) : null}
+
+            <TouchableOpacity style={{ width: "100%", paddingVertical: 14, backgroundColor: "#fff", borderWidth: 1, borderColor: "#c7d2fe", borderRadius: 12, alignItems: "center" }}>
+              <Text style={{ color: "#4f46e5", fontWeight: "700", fontSize: 14 }}>View Full Profile</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </ScrollView>
+
+      {/* ── FIXED BOTTOM BAR ── */}
+      <View style={{
+        position: "absolute", bottom: 0, left: 0, right: 0,
+        backgroundColor: "#fff",
+        borderTopWidth: 1, borderTopColor: "#f1f5f9",
+        paddingHorizontal: 20, paddingTop: 16,
+        paddingBottom: Platform.OS === "ios" ? 32 : 20
+      }}>
+        <View style={{ flexDirection: "row", gap: 12 }}>
+          <TouchableOpacity
+            onPress={() => phone && Linking.openURL(`tel:${phone}`)}
+            style={{ flex: 1, flexDirection: "row", justifyContent: "center", alignItems: "center", paddingVertical: 16, borderRadius: 16, borderWidth: 2, borderColor: "#e2e8f0", backgroundColor: "#fff" }}
+          >
+            <Ionicons name="call" size={18} color="#475569" />
+            <Text style={{ color: "#475569", fontWeight: "700", fontSize: 15, marginLeft: 8 }}>Call</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={{ flex: 2, flexDirection: "row", justifyContent: "center", alignItems: "center", paddingVertical: 16, borderRadius: 16, backgroundColor: "#4f46e5" }}
+          >
+            <Ionicons name="paper-plane-outline" size={18} color="white" />
+            <Text style={{ color: "#fff", fontWeight: "700", fontSize: 15, marginLeft: 8 }}>Send Inquiry</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    </SafeAreaView>
+  );
+}

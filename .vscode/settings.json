@@ -3,5 +3,10 @@
     "source.fixAll": "explicit",
     "source.organizeImports": "explicit",
     "source.sortMembers": "explicit"
-  }
+  },
+  "tailwindCSS.includeLanguages": {
+    "typescriptreact": "javascriptreact",
+    "javascriptreact": "javascriptreact"
+  },
+  "tailwindCSS.emmetCompletions": true
 }
