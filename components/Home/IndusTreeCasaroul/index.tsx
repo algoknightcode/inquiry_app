@@ -1,5 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
 import { Image } from "expo-image";
+import { useRouter } from "expo-router";
 import React, { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
@@ -48,6 +49,7 @@ interface ApiResponse {
 // 2. Component — uses plain horizontal FlatList (no gesture conflicts)
 // ------------------------------------------------------------------
 export default function IndustryTreeCarousel() {
+  const router = useRouter();
   const [data, setData] = useState<Industry[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -95,27 +97,43 @@ export default function IndustryTreeCarousel() {
   const renderItem = ({ item }: { item: Industry }) => {
     const cats = item.categories?.slice(0, 4) ?? [];
 
+    const handleIndustryPress = () => {
+      router.push({
+        pathname: "/GrId_MainCategory",
+        params: { id: item._id, name: item.name }
+      });
+    };
+
     return (
       <View style={s.slide}>
         {/* Industry title */}
-        <Text style={s.industryName} numberOfLines={1}>
-          {item.name}
-        </Text>
+        <Pressable onPress={handleIndustryPress}>
+          <Text style={s.industryName} numberOfLines={1}>
+            {item.name}
+          </Text>
+        </Pressable>
 
         {/* Hero image */}
-        <View style={s.heroWrap}>
+        <Pressable style={s.heroWrap} onPress={handleIndustryPress}>
           <Image
             source={{ uri: item.imageUrl }}
             style={StyleSheet.absoluteFillObject}
             contentFit="cover"
             transition={300}
           />
-        </View>
+        </Pressable>
 
         {/* 2×2 grid */}
         <View style={s.grid}>
           {cats.map((cat) => (
-            <View key={cat._id} style={s.catCard}>
+            <Pressable 
+              key={cat._id} 
+              style={s.catCard}
+              onPress={() => router.push({
+                pathname: "/SubCategory",
+                params: { categoryId: cat._id, categoryName: cat.name, industryId: item._id }
+              })}
+            >
               {/* Fixed-height header keeps all 4 cards aligned */}
               <View style={s.catHeader}>
                 <View style={s.catThumb}>
@@ -138,7 +156,19 @@ export default function IndustryTreeCarousel() {
                 {Array.from({ length: 3 }).map((_, i) => {
                   const sub = cat.subCategories?.[i];
                   return (
-                    <View key={i} style={s.subRow}>
+                    <Pressable 
+                      key={i} 
+                      style={s.subRow}
+                      disabled={!sub}
+                      onPress={() => sub && router.push({
+                        pathname: "/Products_Page",
+                        params: {
+                          subCategoryId: sub._id,
+                          subCategoryName: sub.name,
+                          subCategorySlug: sub.slug,
+                        }
+                      })}
+                    >
                       <View style={s.dot} />
                       <Text
                         style={sub ? s.subName : s.subEmpty}
@@ -147,16 +177,19 @@ export default function IndustryTreeCarousel() {
                       >
                         {sub?.name ?? ""}
                       </Text>
-                    </View>
+                    </Pressable>
                   );
                 })}
               </View>
-            </View>
+            </Pressable>
           ))}
         </View>
 
         {/* CTA */}
-        <Pressable style={({ pressed }) => [s.cta, pressed && s.ctaPressed]}>
+        <Pressable 
+          style={({ pressed }) => [s.cta, pressed && s.ctaPressed]}
+          onPress={handleIndustryPress}
+        >
           <Text style={s.ctaText}>View All Categories</Text>
           <Ionicons name="arrow-forward" size={16} color="#fff" />
         </Pressable>
@@ -186,17 +219,14 @@ export default function IndustryTreeCarousel() {
               setActiveIndex(idx);
             }}
           />
-
-          {/* Dot indicators */}
           <View style={s.dotsRow}>
             {data.map((_, i) => (
-              <Pressable
+              <View
                 key={i}
-                style={[s.dotIndicator, i === activeIndex && s.dotActive]}
-                onPress={() => {
-                  flatRef.current?.scrollToIndex({ index: i, animated: true });
-                  setActiveIndex(i);
-                }}
+                style={[
+                  s.dotIndicator,
+                  activeIndex === i && s.dotActive,
+                ]}
               />
             ))}
           </View>
@@ -242,7 +272,6 @@ const s = StyleSheet.create({
     backgroundColor: WHITE,
     paddingHorizontal: 16,
     paddingTop: 20,
-    paddingBottom: 16,
   },
 
   industryName: {

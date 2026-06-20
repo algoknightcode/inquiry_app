@@ -1,41 +1,38 @@
 import { Image } from "expo-image";
-import React from "react";
-import { Pressable, ScrollView, Text, View } from "react-native";
+import { useRouter } from "expo-router";
+import React, { useEffect, useState } from "react";
+import { ActivityIndicator, Pressable, ScrollView, Text, View } from "react-native";
 import { CategoryImage } from "../../../assets/images";
 
 type Category = {
-  id: number;
+  _id: string;
   name: string;
+  imageUrl?: string;
 };
 
-const categories: Category[] = [
-  {
-    id: 1,
-    name: "Health & Beauty",
-  },
-  {
-    id: 2,
-    name: "Apparel & Fashion",
-  },
-  {
-    id: 3,
-    name: "Chemicals",
-  },
-  {
-    id: 4,
-    name: "Nothing",
-  },
-    {
-    id: 5,
-    name: "Chemicals",
-  },
-  {
-    id: 6,
-    name: "Nothing",
-  },
-];
-
 const Main_Category = () => {
+  const router = useRouter();
+  const [category, setCategory] = useState<Category[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchCategories = async () => {
+      try {
+        const response = await fetch("https://backend.inquirybazaar.com/api/categories/main");
+        const json = await response.json();
+        if (json.success && json.data) {
+          setCategory(json.data);
+        }
+      } catch (error) {
+        console.log("Error in fetching categories", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchCategories();
+  }, []);
+
   return (
     <View className={styles.container}>
       
@@ -50,6 +47,7 @@ const Main_Category = () => {
         <Pressable 
           className={styles.viewAllBtn}
           hitSlop={8}
+          onPress={() => router.push("/Industries")}
         >
           <Text className={styles.viewAllText}>
             View all
@@ -57,38 +55,47 @@ const Main_Category = () => {
         </Pressable>
       </View>
 
-      {/* Horizontal Carousel */}
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        className={styles.cardsContainer}
-        contentContainerStyle={styles.scrollContent}
-      >
-        {categories.map((item) => (
-          <Pressable
-            key={item.id}
-            className={styles.card}
-          >
-            <View className={styles.imageWrapper}>
-              <Image
-                source={CategoryImage}
-                style={styles.image}
-                contentFit="cover"
-              />
-            </View>
-
-            {/* Typography Polish: Better contrast, tight letter spacing, crisp layout */}
-            <Text 
-              className={styles.cardText}
-              numberOfLines={1}
-              ellipsizeMode="tail"
+      {/* Loading Spinner or Horizontal Carousel */}
+      {isLoading ? (
+        <View className="py-10 justify-center items-center">
+          <ActivityIndicator size="small" color="#2563eb" />
+        </View>
+      ) : (
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          className={styles.cardsContainer}
+          contentContainerStyle={styles.scrollContent}
+        >
+          {category.map((item) => (
+            <Pressable
+              key={item._id}
+              className={styles.card}
+              onPress={() => router.push({
+                pathname: "/SubCategory",
+                params: { categoryId: item._id }
+              })}
             >
-              {item.name}
-            </Text>
-          </Pressable>
-        ))}
-      </ScrollView>
+              <View className={styles.imageWrapper}>
+                <Image
+                  source={item.imageUrl ? { uri: item.imageUrl } : CategoryImage}
+                  style={styles.image}
+                  contentFit="cover"
+                />
+              </View>
 
+              {/* Typography Polish: Better contrast, tight letter spacing, crisp layout */}
+              <Text 
+                className={styles.cardText}
+                numberOfLines={1}
+                ellipsizeMode="tail"
+              >
+                {item.name}
+              </Text>
+            </Pressable>
+          ))}
+        </ScrollView>
+      )}
     </View>
   );
 };

@@ -1,50 +1,74 @@
 import { Image } from "expo-image";
-import React from "react";
-import { Pressable, ScrollView, Text, View } from "react-native";
+import { useRouter } from "expo-router";
+import React, { useEffect, useState } from "react";
+import { ActivityIndicator, Pressable, ScrollView, Text, View } from "react-native";
+import { productCache } from "@/utils/productCache";
 
-type TrustedProduct = {
-  id: string;
-  name: string;
-  brand: string;
-  price: string;
-  image: string;
-  isVerified?: boolean; // Changed from isHot to isVerified
+// ── TypeScript Types matching B2B response payload ─────────────────────────
+type Media = {
+  _id: string;
+  url: string;
+  isPrimary: boolean;
 };
 
-const trustedProducts: TrustedProduct[] = [
-  {
-    id: "1",
-    name: "Oversized Heavyweight Tee",
-    brand: "STUDIO BLANK",
-    price: "1,299",
-    image: "https://images.unsplash.com/photo-1583743814966-8936f5b7be1a?q=80&w=400&auto=format&fit=crop",
-    isVerified: true,
-  },
-  {
-    id: "2",
-    name: "Matte Ceramic Vase",
-    brand: "NORDIC HOME",
-    price: "850",
-    image: "https://images.unsplash.com/photo-1613563914594-52622615456c?q=80&w=400&auto=format&fit=crop",
-  },
-  {
-    id: "3",
-    name: "Minimalist Leather Tote",
-    brand: "ATELIER",
-    price: "4,500",
-    image: "https://images.unsplash.com/photo-1590874103328-eac38a683ce7?q=80&w=400&auto=format&fit=crop",
-    isVerified: true,
-  },
-  {
-    id: "4",
-    name: "Aged Silver Ring",
-    brand: "METALS",
-    price: "2,100",
-    image: "https://images.unsplash.com/photo-1605100804763-247f66121408?q=80&w=400&auto=format&fit=crop",
-  },
-];
+type Business = {
+  companyName: string;
+  city: string;
+  state: string;
+};
+
+type Supplier = {
+  _id: string;
+  name: string;
+  phone: string;
+  business?: Business;
+};
+
+type Product = {
+  _id: string;
+  name: string;
+  slug: string;
+  price: number;
+  unit: string;
+  priceType: string;
+  media: Media[];
+  supplier?: Supplier;
+};
 
 const IBTrusted = () => {
+  const router = useRouter();
+  const [products, setProducts] = useState<Product[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchTrustedProducts = async () => {
+      try {
+        const response = await fetch("https://backend.inquirybazaar.com/api/categories/sub/led-display-board/Delhi");
+        const json = await response.json();
+        if (json.success && json.data && json.data.products) {
+          setProducts(json.data.products.slice(0, 10)); // Limit to 10 products
+        }
+      } catch (error) {
+        console.error("Error fetching trusted products:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchTrustedProducts();
+  }, []);
+
+  const handleCardPress = (item: Product) => {
+    productCache[item._id] = item;
+    router.push({
+      pathname: "/Products_Page/[slug]",
+      params: {
+        slug: item.slug,
+        productId: item._id,
+      },
+    });
+  };
+
   return (
     <View className={styles.container}>
       
@@ -60,6 +84,13 @@ const IBTrusted = () => {
         <Pressable 
           className={styles.viewAllBtn}
           hitSlop={8}
+          onPress={() => router.push({
+            pathname: "/Products_Page",
+            params: {
+              subCategorySlug: "led-display-board",
+              subCategoryName: "LED Display Board",
+            }
+          })}
         >
           <Text className={styles.viewAllText}>
             Explore
@@ -67,61 +98,75 @@ const IBTrusted = () => {
         </Pressable>
       </View>
 
-      {/* Horizontal Carousel */}
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        className={styles.cardsContainer}
-        contentContainerStyle={styles.scrollContent}
-        snapToInterval={160 + 16} 
-        decelerationRate="fast">
-        {trustedProducts.map((item) => (
-          <Pressable
-            key={item.id}
-            className={styles.card}
-          >
-            {({ pressed }) => (
-              <View style={{ opacity: pressed ? 0.9 : 1, transform: [{ scale: pressed ? 0.98 : 1 }] }} className="transition-all">
-                
-                {/* 
-                  UNIQUE TWIST: Arched "Tombstone" Image Container.
-                  This dramatically changes the silhouette of the card while keeping the same dimensions.
-                */}
-                <View style={styles.imageWrapper}>
-                  <Image
-                    source={{ uri: item.image }}
-                    style={styles.image}
-                    contentFit="cover"
-                    transition={200}
-                  />
-                  
-                  {/* Floating 'VERIFIED' Trust Seal - Centered at the bottom edge */}
-                  {item.isVerified && (
-                    <View className={styles.trustBadge}>
-                      {/* Optional: You can add a small shield icon or checkmark here from expo/vector-icons */}
-                      <Text className={styles.trustBadgeText}>✓ VERIFIED</Text>
+      {/* Horizontal Carousel or Loading state */}
+      {isLoading ? (
+        <View className="py-12 justify-center items-center">
+          <ActivityIndicator size="small" color="#059669" />
+        </View>
+      ) : (
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          className={styles.cardsContainer}
+          contentContainerStyle={styles.scrollContent}
+          snapToInterval={160 + 16} 
+          decelerationRate="fast"
+        >
+          {products.map((item) => {
+            const primaryImage = item.media && item.media.length > 0
+              ? (item.media.find((m) => m.isPrimary) || item.media[0]).url
+              : "https://images.unsplash.com/photo-1590874103328-eac38a683ce7?q=80";
+
+            const companyName = item.supplier?.business?.companyName || item.supplier?.name || "Verified Seller";
+            const isPriceOnRequest = item.priceType === "on_request" || !item.price;
+
+            return (
+              <Pressable
+                key={item._id}
+                className={styles.card}
+                onPress={() => handleCardPress(item)}
+              >
+                {({ pressed }) => (
+                  <View 
+                    style={{ opacity: pressed ? 0.9 : 1, transform: [{ scale: pressed ? 0.98 : 1 }] }} 
+                    className="transition-all"
+                  >
+                    
+                    {/* Image Container - Rectangular rounded card */}
+                    <View className={styles.imageWrapper}>
+                      <Image
+                        source={{ uri: primaryImage }}
+                        style={styles.image}
+                        contentFit="cover"
+                        transition={200}
+                      />
+                      
+                      {/* Floating 'VERIFIED' Trust Seal */}
+                      <View className={styles.trustBadge}>
+                        <Text className={styles.trustBadgeText}>✓ VERIFIED</Text>
+                      </View>
                     </View>
-                  )}
-                </View>
 
-                {/* Typography details (Kept identical as requested) */}
-                <View className={styles.textWrapper}>
-                  <Text className={styles.brandText} numberOfLines={1}>
-                    {item.brand}
-                  </Text>
-                  <Text className={styles.cardTitle} numberOfLines={1}>
-                    {item.name}
-                  </Text>
-                  <Text className={styles.cardPrice}>
-                    ₹{item.price}
-                  </Text>
-                </View>
+                    {/* Typography details */}
+                    <View className={styles.textWrapper}>
+                      <Text className={styles.brandText} numberOfLines={1}>
+                        {companyName}
+                      </Text>
+                      <Text className={styles.cardTitle} numberOfLines={1}>
+                        {item.name}
+                      </Text>
+                      <Text className={styles.cardPrice}>
+                        {isPriceOnRequest ? "Price on Request" : `₹${item.price}/${item.unit}`}
+                      </Text>
+                    </View>
 
-              </View>
-            )}
-          </Pressable>
-        ))}
-      </ScrollView>
+                  </View>
+                )}
+              </Pressable>
+            );
+          })}
+        </ScrollView>
+      )}
 
     </View>
   );
@@ -131,14 +176,13 @@ export default IBTrusted;
 
 // --- STYLES ---
 const styles = {
-  // Added a very subtle background tint and padding to the whole section to make it feel like a distinct "zone"
   container: "mt-8 bg-slate-50 py-6", 
 
   outer: "flex flex-row justify-between items-end px-5",
 
   left: "flex-col",
 
-  kicker: "text-[10px] font-jakarta-bold text-emerald-600 tracking-[0.15em] mb-1 uppercase", // Changed to emerald for trust
+  kicker: "text-[10px] font-jakarta-bold text-emerald-600 tracking-[0.15em] mb-1 uppercase", 
 
   heading: "text-[26px] font-jakarta-extrabold text-slate-900 tracking-tighter leading-none", 
 
@@ -155,30 +199,8 @@ const styles = {
 
   card: "mr-4 w-[160px]", 
 
-  // UNIQUE ARCH SHAPE (Half circle top, slightly rounded bottom)
-  imageArchWrapper: {
-    width: 160,
-    height: 200,
-    backgroundColor: "#f1f5f9", // slate-100
-    borderTopLeftRadius: 80,    // Creates the perfect arch
-    borderTopRightRadius: 80,   // Creates the perfect arch
-    borderBottomLeftRadius: 16,
-    borderBottomRightRadius: 16,
-    position: "relative" as const,
-    overflow: "visible" as const, // Allows the badge to pop out slightly if needed
-  },
+  imageWrapper: "w-[160px] h-[200px] bg-slate-100 rounded-2xl relative overflow-visible",
 
-  // Regular rectangular image wrapper (replaces arch for simpler design)
-  imageWrapper: {
-    width: 160,
-    height: 200,
-    backgroundColor: "#f1f5f9", // slate-100
-    borderRadius: 16,
-    position: "relative" as const,
-    overflow: "visible" as const,
-  },
-
-  // Image style to fill rectangular wrapper
   image: {
     width: "100%" as const,
     height: "100%" as const,
@@ -187,12 +209,11 @@ const styles = {
   trustBadge: "absolute -bottom-2.5 self-center bg-slate-900 border-2 border-white px-2.5 py-1 rounded-full shadow-sm shadow-slate-900/20",
   trustBadgeText: "text-white font-jakarta-extrabold text-[8px] tracking-widest uppercase",
 
-  // Text wrapper gets a tiny bit more top margin to account for the overlapping badge
-  textWrapper: "mt-5 px-1 items-center", // Centered text complements the arched shape beautifully
+  textWrapper: "mt-5 px-1 items-center", 
 
   brandText: "text-slate-400 font-jakarta-semibold text-[10px] tracking-wider uppercase mb-1",
 
   cardTitle: "text-slate-800 font-jakarta-bold text-[14px] tracking-tight leading-snug mb-1 text-center",
 
-  cardPrice: "text-slate-950 font-jakarta-black text-[16px] tracking-tighter",
+  cardPrice: "text-slate-950 font-jakarta-black text-[15px] tracking-tighter",
 };

@@ -7,10 +7,12 @@ module.exports = {
     extend: {
       fontFamily: {
         // These strings MUST match the exact name you used when loading the font in Expo
-        'jakarta-bold': ['PlusJakartaSans-Bold'],
-        'jakarta-semibold': ['PlusJakartaSans-SemiBold'],
-        'jakarta-medium': ['PlusJakartaSans-Medium'],
-        'jakarta-regular': ['PlusJakartaSans-Regular'],
+        'jakarta-black':     ['PlusJakartaSans-ExtraBold'],
+        'jakarta-extrabold': ['PlusJakartaSans-ExtraBold'],
+        'jakarta-bold':      ['PlusJakartaSans-Bold'],
+        'jakarta-semibold':  ['PlusJakartaSans-SemiBold'],
+        'jakarta-medium':    ['PlusJakartaSans-Medium'],
+        'jakarta-regular':   ['PlusJakartaSans-Regular'],
       },
     },
   },

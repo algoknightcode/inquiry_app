@@ -1,76 +1,112 @@
-import React from 'react';
-import { FlatList, Image, Text, TouchableOpacity, View } from 'react-native';
+import { useRouter } from "expo-router";
+import React, { useEffect, useState } from "react";
+import { ActivityIndicator, FlatList, Image, Text, TouchableOpacity, View } from "react-native";
+import { productCache } from "@/utils/productCache";
 
-// Added realistic Unsplash images to demonstrate the premium feel
-const productData = [
-  {
-    id: '1',
-    title: 'Sony WH-1000XM4 Wireless Headphones',
-    price: '22,990',
-    currency: 'INR',
-    image: 'https://images.unsplash.com/photo-1618366712010-f4ae9c647dcb?q=80&w=400&auto=format&fit=crop',
-  },
-  {
-    id: '2',
-    title: 'Mechanical Gaming Keyboard - RGB',
-    price: '4,500',
-    currency: 'INR',
-    image: 'https://images.unsplash.com/photo-1595225476474-87563907a212?q=80&w=400&auto=format&fit=crop',
-  },
-  {
-    id: '3',
-    title: 'Minimalist Desk Lamp with Charger',
-    price: '1,850',
-    currency: 'INR',
-    image: 'https://images.unsplash.com/photo-1507473885765-e6ed057f782c?q=80&w=400&auto=format&fit=crop',
-  }
-];
+// ── TypeScript Types matching backend payload ──────────────────────────────
+type Media = {
+  _id: string;
+  url: string;
+  isPrimary: boolean;
+};
 
-interface Product {
-  id: string;
-  title: string;
-  price: string;
-  currency: string;
-  image: string;
-}
+type Business = {
+  companyName: string;
+  city: string;
+  state: string;
+  businessType: string;
+};
 
-// Calculate snap interval: w-60 is usually 240px + mr-5 is 20px = 260
+type Supplier = {
+  _id: string;
+  name: string;
+  phone: string;
+  profileImage?: string;
+  business?: Business;
+};
+
+type Product = {
+  _id: string;
+  name: string;
+  slug: string;
+  price: number;
+  oldPrice?: number;
+  unit: string;
+  priceType: string;
+  minOrderQty: number;
+  deliveryTime?: string;
+  media: Media[];
+  supplier?: Supplier;
+};
+
 const CARD_WIDTH = 170; 
 const CARD_MARGIN = 20;
 
 const ProductCard = ({ item }: { item: Product }) => {
+  const router = useRouter();
+  
+  // Find primary image url
+  const primaryImage = item.media && item.media.length > 0
+    ? (item.media.find((m) => m.isPrimary) || item.media[0]).url
+    : "https://images.unsplash.com/photo-1618366712010-f4ae9c647dcb?q=80&w=400";
+
+  const isPriceOnRequest = item.priceType === "on_request" || !item.price;
+
+  const handlePress = () => {
+    productCache[item._id] = item;
+    router.push({
+      pathname: "/Products_Page/[slug]",
+      params: {
+        slug: item.slug,
+        productId: item._id,
+      },
+    });
+  };
+
   return (
     <TouchableOpacity
-      // Increased width, larger border radius, and softer shadows for a premium look
       className="bg-white rounded-3xl mr-5 shadow-lg shadow-slate-200/50 border border-slate-100 overflow-hidden"
       style={{ width: CARD_WIDTH }}
       activeOpacity={0.7}
+      onPress={handlePress}
     >
       {/* 1. Full-Bleed Image Container */}
       <View className="h-48 w-full bg-slate-100">
         <Image
-          source={{ uri: item.image }}
+          source={{ uri: primaryImage }}
           className="w-full h-full"
           resizeMode="cover"
         />
       </View>
 
       {/* 2. Streamlined Content Container */}
-      <View className="p-5 flex-1 justify-between bg-white">
+      <View className="p-4 flex-1 justify-between bg-white">
         
         {/* Title */}
         <Text 
-          className="text-slate-800 font-bold text-base leading-snug mb-3" 
+          className="text-slate-800 font-jakarta-bold text-sm leading-snug mb-2" 
           numberOfLines={2}
         >
-          {item.title}
+          {item.name}
         </Text>
 
         {/* Clean, bold price */}
-        <View className="flex-row items-center mt-auto">
-          <Text className="text-slate-900 font-black text-2xl tracking-tight">
-            ₹{item.price}
-          </Text>
+        <View className="flex-col mt-auto">
+          {isPriceOnRequest ? (
+            <Text className="text-amber-600 font-jakarta-bold text-xs">
+              Price on Request
+            </Text>
+          ) : (
+            <Text className="text-slate-900 font-jakarta-black text-lg tracking-tight">
+              ₹{item.price.toLocaleString()}
+            </Text>
+          )}
+          
+          {item.supplier?.business?.companyName ? (
+            <Text className="text-[10px] text-slate-400 font-jakarta-medium mt-1" numberOfLines={1}>
+              {item.supplier.business.companyName}
+            </Text>
+          ) : null}
         </View>
         
       </View>
@@ -79,10 +115,32 @@ const ProductCard = ({ item }: { item: Product }) => {
 };
 
 export default function HorizontalProductList() {
+  const router = useRouter();
+  const [products, setProducts] = useState<Product[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchTrendingProducts = async () => {
+      try {
+        const response = await fetch("https://backend.inquirybazaar.com/api/categories/sub/led-display-board/Delhi");
+        const json = await response.json();
+        if (json.success && json.data && json.data.products) {
+          setProducts(json.data.products.slice(0, 10)); // Limit to top 10 items
+        }
+      } catch (error) {
+        console.error("Error fetching trending products:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchTrendingProducts();
+  }, []);
+
   return (
     <View className="mt-8">
 
-      {/* Section Header — matches NewOnes layout exactly */}
+      {/* Section Header */}
       <View className="flex flex-row justify-between items-end px-5">
         <View className="flex-col">
           <Text className="text-[10px] font-jakarta-bold text-slate-400 tracking-[0.15em] mb-1 uppercase">
@@ -96,6 +154,13 @@ export default function HorizontalProductList() {
         <TouchableOpacity
           activeOpacity={0.6}
           style={{ borderBottomWidth: 1, borderBottomColor: '#0f172a', paddingBottom: 2 }}
+          onPress={() => router.push({
+            pathname: "/Products_Page",
+            params: {
+              subCategorySlug: "led-display-board",
+              subCategoryName: "LED Display Board",
+            }
+          })}
         >
           <Text className="text-slate-900 font-jakarta-bold text-sm tracking-tight">
             Explore
@@ -103,19 +168,25 @@ export default function HorizontalProductList() {
         </TouchableOpacity>
       </View>
 
-      {/* Horizontal List */}
-      <FlatList
-        data={productData}
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        keyExtractor={(item) => item.id}
-        renderItem={({ item }) => <ProductCard item={item} />}
-        className="mt-5 pl-5"
-        contentContainerStyle={{ paddingRight: 20 }}
-        snapToInterval={CARD_WIDTH + CARD_MARGIN}
-        decelerationRate="fast"
-        snapToAlignment="start"
-      />
+      {/* Horizontal List or Spinner */}
+      {isLoading ? (
+        <View className="py-12 justify-center items-center">
+          <ActivityIndicator size="small" color="#2563eb" />
+        </View>
+      ) : (
+        <FlatList
+          data={products}
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          keyExtractor={(item) => item._id}
+          renderItem={({ item }) => <ProductCard item={item} />}
+          className="mt-5 pl-5"
+          contentContainerStyle={{ paddingRight: 20 }}
+          snapToInterval={CARD_WIDTH + CARD_MARGIN}
+          decelerationRate="fast"
+          snapToAlignment="start"
+        />
+      )}
     </View>
   );
 }

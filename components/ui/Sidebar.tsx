@@ -34,7 +34,7 @@ const menuItems: MenuItem[] = [
   { icon: "grid-outline", title: "Explore Industries", route: "/Industries" },
   { icon: "create-outline", title: "Post Requirement", route: "/(tabs)", highlight: true }, 
   { icon: "briefcase-outline", title: "Free Listing", route: "/(tabs)", highlight: true },
-  { icon: "notifications-outline", title: "Notifications", route: "/(tabs)" },
+  { icon: "notifications-outline", title: "Notifications", route: "/NotificationPanel" },
   { icon: "settings-outline", title: "Settings", route: "/(tabs)" },
   { icon: "help-circle-outline", title: "Help & Support", route: "/(tabs)" },
 ];

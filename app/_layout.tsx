@@ -23,10 +23,31 @@ export default function RootLayout() {
           <Stack.Screen name="Products_Page/index" options={{ headerShown: false }} />
           <Stack.Screen name="Products_Page/[slug]/index" options={{ headerShown: false }} />
           <Stack.Screen name="SubCategory/index" options={{ headerShown: false }} />
-          <Stack.Screen name="Industries/index" options={{ headerShown: false }} />
+          <Stack.Screen 
+            name="Industries/index" 
+            options={{ 
+              headerShown: false, 
+              animation: "slide_from_bottom" 
+            }} 
+          />
           <Stack.Screen name="GrId_MainCategory/index" options={{ headerShown: false }} />
           <Stack.Screen name="AllCities/index" options={{ headerShown: false }} />
           <Stack.Screen name="PostRequirenmentForm/index" options={{ headerShown: false }} />
+          <Stack.Screen name="NotificationPanel/index" options={{ headerShown: false }} />
+          <Stack.Screen 
+            name="Account/index" 
+            options={{ 
+              headerShown: false, 
+              animation: "slide_from_bottom" 
+            }} 
+          />
+          <Stack.Screen 
+            name="Wishlist/index" 
+            options={{ 
+              headerShown: false, 
+              animation: "slide_from_bottom" 
+            }} 
+          />
         </Stack>
         <StatusBar style="dark" />
       </ThemeProvider>

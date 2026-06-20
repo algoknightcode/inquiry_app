@@ -1,4 +1,5 @@
 import { Ionicons } from "@expo/vector-icons";
+import { useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import React from "react";
 import { Image, Pressable, View } from "react-native";
@@ -7,6 +8,7 @@ import Logo from "../../../assets/images/logoo.webp";
 
 const Navbar = ({ onMenuPress }: { onMenuPress?: () => void }) => {
   const insets = useSafeAreaInsets();
+  const router = useRouter();
 
   return (
     <View 
@@ -37,6 +39,7 @@ const Navbar = ({ onMenuPress }: { onMenuPress?: () => void }) => {
       <Pressable 
         className="h-12 w-12 items-center justify-center rounded-full active:bg-black/5 active:scale-[0.92] transition-all"
         hitSlop={12}
+        onPress={()=> router.push("/NotificationPanel")}
       >
         <View className="relative items-center justify-center">
           <Ionicons name="notifications-outline" size={26} color="#0f172a" />
