@@ -34,7 +34,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 export default function RootLayout() {
   const colorScheme = useColorScheme();
-  usePushNotifications();
+  // usePushNotifications();
 
   useEffect(() => {
     const restoreSession = async () => {
