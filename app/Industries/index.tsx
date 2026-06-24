@@ -82,6 +82,8 @@ const AnimatedIndustryCard = ({ item, index }: { item: Industry; index: number }
   );
 };
 
+import { fetchWithCache } from "@/utils/apiCache";
+
 // --- Main List Component ---
 const IndustriesList = () => {
   const [industriesList, setIndustriesList] = useState<Industry[]>([]);
@@ -91,9 +93,7 @@ const IndustriesList = () => {
   useEffect(() => {
     const fetchIndustries = async () => {
       try {
-        const response = await fetch("https://backend.inquirybazaar.com/api/industries");
-        const json = await response.json();
-
+        const json = await fetchWithCache("https://backend.inquirybazaar.com/api/industries");
         if (json.success && json.data) {
           setIndustriesList(json.data);
         }

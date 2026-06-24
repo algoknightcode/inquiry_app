@@ -35,6 +35,8 @@ type Product = {
   supplier?: Supplier;
 };
 
+import { fetchWithCache } from "@/utils/apiCache";
+
 const IBTrusted = () => {
   const router = useRouter();
   const [products, setProducts] = useState<Product[]>([]);
@@ -43,8 +45,7 @@ const IBTrusted = () => {
   useEffect(() => {
     const fetchTrustedProducts = async () => {
       try {
-        const response = await fetch("https://backend.inquirybazaar.com/api/categories/sub/led-display-board/Delhi");
-        const json = await response.json();
+        const json = await fetchWithCache("https://backend.inquirybazaar.com/api/categories/sub/led-display-board/Delhi");
         if (json.success && json.data && json.data.products) {
           setProducts(json.data.products.slice(0, 10)); // Limit to 10 products
         }

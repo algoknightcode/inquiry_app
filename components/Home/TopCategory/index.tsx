@@ -10,6 +10,8 @@ type Category = {
   imageUrl?: string;
 };
 
+import { fetchWithCache } from "@/utils/apiCache";
+
 const Main_Category = () => {
   const router = useRouter();
   const [category, setCategory] = useState<Category[]>([]);
@@ -18,8 +20,7 @@ const Main_Category = () => {
   useEffect(() => {
     const fetchCategories = async () => {
       try {
-        const response = await fetch("https://backend.inquirybazaar.com/api/categories/main");
-        const json = await response.json();
+        const json = await fetchWithCache("https://backend.inquirybazaar.com/api/categories/main");
         if (json.success && json.data) {
           setCategory(json.data);
         }

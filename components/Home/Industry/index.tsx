@@ -14,6 +14,8 @@ type Industry = {
   productCount?: string; // Optional since your API doesn't currently send this
 };
 
+import { fetchWithCache } from "@/utils/apiCache";
+
 const Top_Industries = () => {
     const router = useRouter();
     const [industriesList, setIndustriesList] = useState<Industry[]>([]);
@@ -22,11 +24,7 @@ const Top_Industries = () => {
     useEffect(() => {
         const fetchIndustries = async () => {
             try {
-                // Changed to your industries endpoint!
-                const response = await fetch("https://backend.inquirybazaar.com/api/industries");
-                const json = await response.json();
-
-                // 2. THE FIX: Access the nested .data array from your API response
+                const json = await fetchWithCache("https://backend.inquirybazaar.com/api/industries");
                 if (json.success && json.data) {
                     setIndustriesList(json.data);
                 }

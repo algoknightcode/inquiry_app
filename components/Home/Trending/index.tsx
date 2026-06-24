@@ -114,6 +114,8 @@ const ProductCard = ({ item }: { item: Product }) => {
   );
 };
 
+import { fetchWithCache } from "@/utils/apiCache";
+
 export default function HorizontalProductList() {
   const router = useRouter();
   const [products, setProducts] = useState<Product[]>([]);
@@ -122,8 +124,7 @@ export default function HorizontalProductList() {
   useEffect(() => {
     const fetchTrendingProducts = async () => {
       try {
-        const response = await fetch("https://backend.inquirybazaar.com/api/categories/sub/led-display-board/Delhi");
-        const json = await response.json();
+        const json = await fetchWithCache("https://backend.inquirybazaar.com/api/categories/sub/led-display-board/Delhi");
         if (json.success && json.data && json.data.products) {
           setProducts(json.data.products.slice(0, 10)); // Limit to top 10 items
         }

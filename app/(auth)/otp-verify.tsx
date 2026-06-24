@@ -1,7 +1,18 @@
 import React, { useState } from "react";
-import { Image, TextInput, View, TouchableOpacity, Text, Alert } from "react-native";
+import {
+  Image,
+  TextInput,
+  View,
+  TouchableOpacity,
+  Text,
+  Alert,
+  StyleSheet,
+  SafeAreaView,
+  KeyboardAvoidingView,
+  Platform
+} from "react-native";
 import { useRouter } from "expo-router";
-import Logo from "../../../assets/images/logoo.webp";
+import Logo from "../../assets/images/logoo.webp";
 
 const OtpVerify = () => {
   const router = useRouter();
@@ -9,7 +20,7 @@ const OtpVerify = () => {
 
   const handleVerify = (code: string) => {
     if (code === "1234") {
-      router.push("/choose-role");
+      router.replace("/(tabs)");
     } else {
       Alert.alert("Invalid OTP", "Please enter the dummy OTP: 1234");
     }
@@ -28,49 +39,136 @@ const OtpVerify = () => {
   };
 
   return (
-    <View className="flex-1 bg-white justify-between pb-10">
-      
-      {/* Logo Section */}
-      <View className="flex-1 justify-center items-center px-6">
-        <Image
-          source={Logo}
-          className="w-[120px] h-[120px] mb-10"
-          resizeMode="contain"
-        />
-
-        <Text className="text-xl font-semibold text-gray-800 mb-5">
-          Enter OTP
-        </Text>
-
-        {/* OTP Inputs */}
-        <View className="flex-row gap-3">
-          {[0, 1, 2, 3].map((index) => (
-            <TextInput
-              key={index}
-              value={otp[index] || ""}
-              maxLength={1}
-              keyboardType="number-pad"
-              onChangeText={(text) => handleChange(text, index)}
-              className="w-12 h-12 border border-gray-300 rounded-lg text-center text-xl"
+    <SafeAreaView style={s.container}>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        style={s.keyboardView}
+      >
+        <View style={s.content}>
+          {/* Logo Section */}
+          <View style={s.logoContainer}>
+            <Image
+              source={Logo}
+              style={s.logo}
+              resizeMode="contain"
             />
-          ))}
+          </View>
+
+          {/* Form Card */}
+          <View style={s.card}>
+            <Text style={s.title}>Verification Code</Text>
+            <Text style={s.subtitle}>Enter the 4-digit code sent to your phone. Use dummy OTP: 1234</Text>
+
+            {/* OTP Inputs */}
+            <View style={s.otpContainer}>
+              {[0, 1, 2, 3].map((index) => (
+                <TextInput
+                  key={index}
+                  value={otp[index] || ""}
+                  maxLength={1}
+                  keyboardType="number-pad"
+                  onChangeText={(text) => handleChange(text, index)}
+                  style={s.otpInput}
+                  placeholder="-"
+                  placeholderTextColor="#94a3b8"
+                />
+              ))}
+            </View>
+
+            <TouchableOpacity style={s.btn} onPress={() => handleVerify(otp)}>
+              <Text style={s.btnText}>Verify OTP</Text>
+            </TouchableOpacity>
+          </View>
         </View>
-      </View>
-
-      {/* Verify button */}
-      <View className="px-6">
-        <TouchableOpacity
-          className="bg-black h-16 rounded-xl justify-center items-center"
-          onPress={() => handleVerify(otp)}
-        >
-          <Text className="text-white text-lg font-bold">
-            Verify OTP
-          </Text>
-        </TouchableOpacity>
-      </View>
-
-    </View>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 };
+
+const s = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: "#f8fafc",
+  },
+  keyboardView: {
+    flex: 1,
+  },
+  content: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    paddingHorizontal: 24,
+  },
+  logoContainer: {
+    marginBottom: 40,
+    alignItems: "center",
+  },
+  logo: {
+    width: 140,
+    height: 140,
+  },
+  card: {
+    width: "100%",
+    backgroundColor: "#fff",
+    borderRadius: 24,
+    padding: 24,
+    shadowColor: "#0f172a",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.05,
+    shadowRadius: 12,
+    elevation: 3,
+    borderWidth: 1,
+    borderColor: "#f1f5f9",
+  },
+  title: {
+    fontSize: 24,
+    fontWeight: "bold",
+    color: "#1e3a8a",
+    textAlign: "center",
+    marginBottom: 8,
+  },
+  subtitle: {
+    fontSize: 14,
+    color: "#64748b",
+    textAlign: "center",
+    marginBottom: 24,
+    lineHeight: 20,
+  },
+  otpContainer: {
+    flexDirection: "row",
+    justifyContent: "center",
+    gap: 16,
+    marginBottom: 24,
+  },
+  otpInput: {
+    width: 56,
+    height: 56,
+    borderWidth: 1.5,
+    borderColor: "#e2e8f0",
+    borderRadius: 16,
+    textAlign: "center",
+    fontSize: 22,
+    fontWeight: "bold",
+    color: "#1e3a8a",
+    backgroundColor: "#f8fafc",
+  },
+  btn: {
+    backgroundColor: "#2563eb",
+    height: 56,
+    borderRadius: 16,
+    justifyContent: "center",
+    alignItems: "center",
+    shadowColor: "#2563eb",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  btnText: {
+    color: "#fff",
+    fontSize: 16,
+    fontWeight: "bold",
+  },
+});
 
 export default OtpVerify;

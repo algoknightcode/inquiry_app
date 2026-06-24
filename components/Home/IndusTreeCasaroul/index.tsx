@@ -2,6 +2,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import { useRouter } from "expo-router";
 import React, { useEffect, useRef, useState } from "react";
+import { fetchWithCache } from "@/utils/apiCache";
 import {
   ActivityIndicator,
   Dimensions,
@@ -59,11 +60,9 @@ export default function IndustryTreeCarousel() {
   useEffect(() => {
     (async () => {
       try {
-        const res = await fetch(
+        const json: ApiResponse = await fetchWithCache(
           "https://backend.inquirybazaar.com/api/industries/tree"
         );
-        if (!res.ok) throw new Error("Failed to fetch");
-        const json: ApiResponse = await res.json();
         if (json.success && json.data) {
           setData(json.data.filter((i) => (i.categories?.length ?? 0) >= 4));
         } else {

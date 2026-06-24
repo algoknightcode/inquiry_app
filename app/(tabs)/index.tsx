@@ -12,38 +12,72 @@ import LeadGenCard from '@/components/Home/SmallForm';
 import Main_Category from '@/components/Home/TopCategory';
 import HorizontalProductList from '@/components/Home/Trending';
 import TrustedBy from '@/components/Home/Trusted';
-import VideoSection from '@/components/Home/Video_component';
 import Sidebar from '@/components/ui/Sidebar';
-import React, { useState } from 'react';
-import { SafeAreaView, StyleSheet } from 'react-native';
-import { ScrollView } from 'react-native-gesture-handler';
+import { userRole } from '@/utils/roleCache';
+import React, { useState, useEffect } from 'react';
+import { SafeAreaView, StyleSheet, FlatList, View } from 'react-native';
 
 export default function HomeScreen() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [renderBelowFold, setRenderBelowFold] = useState(false);
+
+  // Progressive rendering: Load heavy below-the-fold components after initial render
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setRenderBelowFold(true);
+    }, 400);
+    return () => clearTimeout(timer);
+  }, []);
+
+  const sections = [
+    { id: 'hero', render: () => <HeroBanner /> },
+    { id: 'categories', render: () => <Main_Category /> },
+    { id: 'banner2', render: () => <Banner2 /> },
+    { id: 'industries', render: () => <Top_Industries /> },
+    { id: 'trending', render: () => <HorizontalProductList /> },
+    {
+      id: 'belowFold',
+      render: () =>
+        renderBelowFold ? (
+          <View>
+            <NewOnes />
+            <TrustedBy />
+            <LeadGenCard />
+            <IndustryTreeCarousel />
+            <SellersByCityGrid />
+            <TestimonialComponent />
+            <Form2 />
+          </View>
+        ) : (
+          <View style={{ height: 600 }} />
+        ),
+    },
+  ];
 
   return (
     <SafeAreaView style={styles.container}>
       <Navbar onMenuPress={() => setIsSidebarOpen(true)} />
-      <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="always">
-        <HeroBanner />
-        <Main_Category />
-        <Banner2 />
-        <Top_Industries />
-        <HorizontalProductList/>
-        <VideoSection />
-        <NewOnes/>
-        <TrustedBy/>
-        <LeadGenCard/>
-        <IndustryTreeCarousel/>
-        <SellersByCityGrid/>
-        <TestimonialComponent/>
-        <Form2/>
-      </ScrollView>
-      <Sidebar visible={isSidebarOpen} onClose={() => setIsSidebarOpen(false)} />
+      <FlatList
+        data={sections}
+        keyExtractor={(item) => item.id}
+        renderItem={({ item }) => item.render()}
+        showsVerticalScrollIndicator={false}
+        initialNumToRender={5}
+        maxToRenderPerBatch={5}
+        windowSize={3}
+        removeClippedSubviews={true}
+        keyboardShouldPersistTaps="always"
+      />
+      <Sidebar 
+        visible={isSidebarOpen} 
+        onClose={() => setIsSidebarOpen(false)} 
+        currentRole={userRole}
+      />
       <CustomTabBar/>
     </SafeAreaView>
   );
 }
+
 
 const styles = StyleSheet.create({
   container: {

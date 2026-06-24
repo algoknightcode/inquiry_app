@@ -3,6 +3,7 @@ import { useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
 import { ActivityIndicator, Pressable, ScrollView, Text, View } from "react-native";
 import { productCache } from "@/utils/productCache";
+import { fetchWithCache } from "@/utils/apiCache";
 
 // ── Types ──────────────────────────────────────────────────────────────────
 type Media = {
@@ -45,8 +46,7 @@ const NewOnes = () => {
     const fetchCategoryProducts = async () => {
       try {
         // 1. Fetch industry tree
-        const response = await fetch("https://backend.inquirybazaar.com/api/industries/tree");
-        const json = await response.json();
+        const json = await fetchWithCache("https://backend.inquirybazaar.com/api/industries/tree");
 
         if (json.success && json.data) {
           // 2. Find "Plants & Machinery"
@@ -73,8 +73,7 @@ const NewOnes = () => {
                 // 4. Fetch products from all subcategories in parallel (Delhi location default)
                 const productRequests = subCats.map(async (sub: any) => {
                   try {
-                    const res = await fetch(`https://backend.inquirybazaar.com/api/categories/sub/${sub.slug}/Delhi`);
-                    const resJson = await res.json();
+                    const resJson = await fetchWithCache(`https://backend.inquirybazaar.com/api/categories/sub/${sub.slug}/Delhi`);
                     if (resJson.success && resJson.data && resJson.data.products) {
                       return resJson.data.products;
                     }

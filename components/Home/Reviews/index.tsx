@@ -1,13 +1,13 @@
 import { FontAwesome, MaterialCommunityIcons } from "@expo/vector-icons";
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
-    Animated,
-    Dimensions,
-    Image,
-    Platform,
-    SafeAreaView,
-    Text,
-    View,
+  Dimensions,
+  FlatList,
+  Image,
+  Platform,
+  SafeAreaView,
+  Text,
+  View,
 } from "react-native";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
@@ -16,7 +16,6 @@ const CARD_WIDTH = Math.round(SCREEN_WIDTH * 0.82);
 const SPACING = 20;
 const ITEM_SIZE = CARD_WIDTH + SPACING;
 
-// --- EXPANDED MOCK DATA ---
 const testimonials = [
   {
     id: "1",
@@ -32,7 +31,7 @@ const testimonials = [
     company: "NEXUS TECH SOLUTIONS",
     avatar: "https://i.pravatar.cc/150?img=5",
     rating: 5,
-    text: "The integration process was seamless. We saw a 40% increase in lead generation within the first quarter alone.though I'd love to see a few more advanced filtering options in the future",
+    text: "The integration process was seamless. We saw a 40% increase in lead generation within the first quarter alone. though I'd love to see a few more advanced filtering options in the future.",
   },
   {
     id: "3",
@@ -45,7 +44,6 @@ const testimonials = [
 ];
 
 const typography = {
-  // Using lighter weights for the new header design
   light: { fontFamily: Platform.OS === 'ios' ? 'System' : 'sans-serif-light', fontWeight: '300' as const },
   regular: { fontFamily: Platform.OS === 'ios' ? 'System' : 'sans-serif', fontWeight: '400' as const },
   medium: { fontFamily: Platform.OS === 'ios' ? 'System' : 'sans-serif-medium', fontWeight: '500' as const },
@@ -53,106 +51,66 @@ const typography = {
 };
 
 export default function TestimonialCarousel() {
-  const scrollX = useRef(new Animated.Value(0)).current;
-  
-  // --- ENTRANCE ANIMATION VALUES ---
-  const mountAnim = useRef(new Animated.Value(0)).current;
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const flatListRef = useRef<FlatList>(null);
 
+  // --- AUTO-SWIPE LOGIC ---
   useEffect(() => {
-    // Triggers a smooth spring animation when the screen loads
-    Animated.spring(mountAnim, {
-      toValue: 1,
-      tension: 20,
-      friction: 8,
-      useNativeDriver: true,
-    }).start();
-  }, []);
+    const timer = setInterval(() => {
+      let nextIndex = currentIndex + 1;
+      if (nextIndex >= testimonials.length) {
+        nextIndex = 0; // Loop back to the start
+      }
+      
+      flatListRef.current?.scrollToIndex({
+        index: nextIndex,
+        animated: true,
+      });
+      
+    }, 3500); // Swipes every 3.5 seconds
 
-  const renderItem = ({ item, index }: { item: typeof testimonials[0], index: number }) => {
-    const inputRange = [
-      (index - 1) * ITEM_SIZE,
-      index * ITEM_SIZE,
-      (index + 1) * ITEM_SIZE,
-    ];
+    return () => clearInterval(timer);
+  }, [currentIndex]);
 
-    // Swipe animations
-    const scale = scrollX.interpolate({
-      inputRange,
-      outputRange: [0.9, 1, 0.9],
-      extrapolate: "clamp",
-    });
+  // Sync index when the user manually swipes
+  const viewabilityConfig = useRef({ itemVisiblePercentThreshold: 50 }).current;
+  const onViewableItemsChanged = useRef(({ viewableItems }: any) => {
+    if (viewableItems.length > 0) {
+      setCurrentIndex(viewableItems[0].index);
+    }
+  }).current;
 
-    const opacity = scrollX.interpolate({
-      inputRange,
-      outputRange: [0.5, 1, 0.5],
-      extrapolate: "clamp",
-    });
+  // Required for safe and fast scrollToIndex calculations on Android
+  const getItemLayout = (_: any, index: number) => ({
+    length: ITEM_SIZE,
+    offset: ITEM_SIZE * index,
+    index,
+  });
 
-    // 3D Tilt rotation as cards are swiped
-    const rotateY = scrollX.interpolate({
-      inputRange,
-      outputRange: ["8deg", "0deg", "-8deg"],
-      extrapolate: "clamp",
-    });
-
-    // Parallax card vertical offset
-    const translateY = scrollX.interpolate({
-      inputRange,
-      outputRange: [15, 0, 15],
-      extrapolate: "clamp",
-    });
-
-    // Dynamic avatar float & scale
-    const avatarScale = scrollX.interpolate({
-      inputRange,
-      outputRange: [0.85, 1.1, 0.85],
-      extrapolate: "clamp",
-    });
-
-    const avatarTranslateY = scrollX.interpolate({
-      inputRange,
-      outputRange: [10, 0, 10],
-      extrapolate: "clamp",
-    });
-
+  const renderItem = ({ item }: { item: typeof testimonials[0] }) => {
     return (
       <View style={{ width: ITEM_SIZE, alignItems: "center" }} className="pt-14 pb-4">
-        <Animated.View 
+        <View 
           style={{
             width: CARD_WIDTH,
-            transform: [
-              { perspective: 1000 },
-              { scale },
-              { rotateY },
-              { translateY }
-            ],
-            opacity,
-            shadowColor: "#1e3a8a", // Dark Blue
-            shadowOffset: { width: 0, height: 16 },
-            shadowOpacity: 0.08,
-            shadowRadius: 24,
-            elevation: 8,
+            shadowColor: "#1e3a8a",
+            shadowOffset: { width: 0, height: 8 },
+            shadowOpacity: 0.06,
+            shadowRadius: 16,
+            elevation: 5, // Android shadow
           }}
           className="bg-white rounded-[32px] px-6 pb-8 pt-14 relative border border-slate-100"
         >
           {/* Overlapping Avatar */}
-          <Animated.View 
-            style={{
-              transform: [
-                { scale: avatarScale },
-                { translateY: avatarTranslateY }
-              ]
-            }}
-            className="absolute -top-10 left-0 right-0 items-center z-10"
-          >
-            <View className="bg-slate-50 p-1.5 rounded-full shadow-md">
+          <View className="absolute -top-10 left-0 right-0 items-center z-10">
+            <View className="bg-slate-50 p-1.5 rounded-full shadow-sm elevation-2">
               <Image 
                 source={{ uri: item.avatar }} 
                 className="w-20 h-20 rounded-full bg-slate-200 border-2 border-white"
                 resizeMode="cover"
               />
             </View>
-          </Animated.View>
+          </View>
  
           {/* Card Content */}
           <View className="items-center mt-2">
@@ -177,7 +135,7 @@ export default function TestimonialCarousel() {
             </View>
 
             {/* Quote */}
-            <View className="relative w-full px-2 mb-6">
+            <View className="relative w-full px-2">
               <View className="absolute -top-2 -left-2 opacity-10">
                 <MaterialCommunityIcons name="format-quote-open" size={36} color="#1e3a8a" />
               </View>
@@ -193,45 +151,8 @@ export default function TestimonialCarousel() {
                 <MaterialCommunityIcons name="format-quote-close" size={36} color="#1e3a8a" />
               </View>
             </View>
-
-            {/* Pagination Indicators Inside Card */}
-            <View className="flex-row justify-center items-center">
-              {testimonials.map((_, dotIndex) => {
-                const dotInputRange = [
-                  (dotIndex - 1) * ITEM_SIZE,
-                  dotIndex * ITEM_SIZE,
-                  (dotIndex + 1) * ITEM_SIZE,
-                ];
-
-                const dotWidth = scrollX.interpolate({
-                  inputRange: dotInputRange,
-                  outputRange: [8, 24, 8],
-                  extrapolate: "clamp",
-                });
-
-                const dotOpacity = scrollX.interpolate({
-                  inputRange: dotInputRange,
-                  outputRange: [0.3, 1, 0.3],
-                  extrapolate: "clamp",
-                });
-
-                return (
-                  <Animated.View 
-                    key={dotIndex}
-                    style={{
-                      width: dotWidth,
-                      opacity: dotOpacity,
-                      height: 6,
-                      borderRadius: 3,
-                      backgroundColor: "#1e3a8a", // Dark Blue
-                      marginHorizontal: 4,
-                    }}
-                  />
-                );
-              })}
-            </View>
           </View>
-        </Animated.View>
+        </View>
       </View>
     );
   };
@@ -240,62 +161,61 @@ export default function TestimonialCarousel() {
     <SafeAreaView className="flex-1 bg-slate-50 justify-center">
       <View className="py-6 w-full">
         
-        {/* Animated Header Section (Thin text, no subheader) */}
-        <Animated.View 
-          className="mb-2 items-center px-6"
-          style={{
-            opacity: mountAnim,
-            transform: [{
-              translateY: mountAnim.interpolate({
-                inputRange: [0, 1],
-                outputRange: [20, 0] // Slides up gracefully
-              })
-            }]
-          }}
-        >
+        {/* Static Header Section */}
+        <View className="mb-2 items-center px-6">
           <Text 
             style={typography.light} 
             className="text-2xl text-slate-800 text-center tracking-[2px] uppercase"
           >
             What Our Customers Say
           </Text>
-        </Animated.View>
+        </View>
 
-        {/* Animated Carousel Section */}
-        <Animated.View
-          style={{
-            opacity: mountAnim,
-            transform: [{
-              translateY: mountAnim.interpolate({
-                inputRange: [0, 1],
-                outputRange: [40, 0] // Slides up slightly delayed from the header
-              })
-            }]
-          }}
-        >
-          <Animated.FlatList
+        {/* Optimized FlatList Section */}
+        <View>
+          <FlatList
+            ref={flatListRef}
             data={testimonials}
             keyExtractor={(item) => item.id}
             renderItem={renderItem}
             horizontal
             showsHorizontalScrollIndicator={false}
-            // CRITICAL FIX FOR CENTERING: 
-            // Setting snapToAlignment to "start" perfectly pairs with the padding calculation below
             snapToInterval={ITEM_SIZE}
             snapToAlignment="start" 
             decelerationRate="fast"
-            disableIntervalMomentum={true}
             bounces={false}
             contentContainerStyle={{
               paddingHorizontal: (SCREEN_WIDTH - ITEM_SIZE) / 2,
             }}
-            onScroll={Animated.event(
-              [{ nativeEvent: { contentOffset: { x: scrollX } } }],
-              { useNativeDriver: false } 
-            )}
-            scrollEventThrottle={16}
+            
+            // --- ANDROID PERFORMANCE OPTIMIZATIONS ---
+            getItemLayout={getItemLayout}
+            removeClippedSubviews={true} // Unmounts off-screen cards
+            initialNumToRender={2}
+            maxToRenderPerBatch={2}
+            windowSize={3} // Prevents rendering too far ahead
+            
+            // --- STATE SYNC LOGIC ---
+            viewabilityConfig={viewabilityConfig}
+            onViewableItemsChanged={onViewableItemsChanged}
           />
-        </Animated.View>
+        </View>
+
+        {/* Global Pagination Indicators */}
+        <View className="flex-row justify-center items-center mt-2">
+          {testimonials.map((_, index) => (
+            <View 
+              key={index}
+              style={{
+                height: 6,
+                borderRadius: 3,
+                backgroundColor: currentIndex === index ? "#1e3a8a" : "#cbd5e1",
+                width: currentIndex === index ? 24 : 8,
+                marginHorizontal: 4,
+              }}
+            />
+          ))}
+        </View>
 
       </View>
     </SafeAreaView>

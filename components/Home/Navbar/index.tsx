@@ -2,7 +2,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import React from "react";
-import { Image, Pressable, View } from "react-native";
+import { Image, Platform, Pressable, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Logo from "../../../assets/images/logoo.webp";
 
@@ -12,6 +12,7 @@ const Navbar = ({ onMenuPress }: { onMenuPress?: () => void }) => {
 
   return (
     <View 
+      style={{ paddingTop: Platform.OS === 'android' ? Math.max(insets.top, 10) : 0 }}
       className="flex flex-row items-center justify-between px-5 bg-white border-b border-gray-100 shadow-sm"
     >
       {/* Forces the phone's time, battery, and wifi icons to be dark so they show on white! */}

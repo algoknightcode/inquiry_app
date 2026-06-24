@@ -2,6 +2,7 @@ import { Ionicons } from "@expo/vector-icons";
 import React, { useRef, useState } from "react";
 import {
   ActivityIndicator,
+  Alert,
   Keyboard,
   Modal,
   StyleSheet,
@@ -12,21 +13,71 @@ import {
 } from "react-native";
 
 export default function LeadGenCard() {
+  const [productName, setProductName] = useState("");
   const [mobile, setMobile] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [showModal, setShowModal] = useState(false);
-  const inputRef = useRef<TextInput>(null);
+  
+  const phoneInputRef = useRef<TextInput>(null);
+  const productInputRef = useRef<TextInput>(null);
 
-  const handleSubmit = () => {
-    if (mobile.length !== 10 || isLoading) return;
+  // Validation check
+  const isFormValid = mobile.length === 10 && productName.trim().length > 0;
+
+  const handleSubmit = async () => {
+    if (!isFormValid || isLoading) return;
     Keyboard.dismiss();
     setIsLoading(true);
-    console.log("Submitting mobile number:", mobile);
-    setTimeout(() => {
+
+    try {
+      // Prepare the payload exactly as required by the backend schema
+      const payload = {
+        supplierToken: "7303486777",
+        platform: "App Home Page",
+        platformEmail: "lead.inquirybazaar@gmail.com",
+        name: "Home Page Buyer - APP",
+        phone: mobile,
+        email: "lead.inquirybazaar@gmail.com",
+        product: productName.trim(),
+        place: "Delhi, India",
+        message: `We need help with ${productName.trim()}`,
+      };
+
+      console.log("Submitting Payload:", payload);
+
+      // Make the API call
+      const response = await fetch("https://brandbnalo.com/api/form/add", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(payload),
+      });
+
+      const responseText = await response.text();
+      console.log("Lead Gen Raw Response:", responseText);
+
+      let data: any;
+      try {
+        data = JSON.parse(responseText);
+      } catch (e) {
+        throw new Error(`Server returned invalid response (${response.status}): ${responseText.slice(0, 150)}`);
+      }
+
+      if (response.ok) {
+        // Success! Show modal and clear form
+        setShowModal(true);
+        setMobile("");
+        setProductName("");
+      } else {
+        Alert.alert("Submission Failed", data.message || "Something went wrong. Please try again.");
+      }
+    } catch (error) {
+      console.error("Lead Gen Error:", error);
+      Alert.alert("Network Error", "Please check your internet connection and try again.");
+    } finally {
       setIsLoading(false);
-      setShowModal(true);
-      setMobile("");
-    }, 1500);
+    }
   };
 
   return (
@@ -47,21 +98,41 @@ export default function LeadGenCard() {
           Tell us what you need, and we'll instantly connect you with verified wholesale sellers.
         </Text>
 
-        {/* Input Label */}
+        {/* --- Product Input --- */}
+        <Text style={styles.label}>
+          Product Name <Text style={{ color: "#ef4444" }}>*</Text>
+        </Text>
+        <TouchableOpacity
+          activeOpacity={1}
+          onPress={() => productInputRef.current?.focus()}
+          style={styles.inputWrapper}
+        >
+          <Ionicons name="cube-outline" size={20} color="#64748b" style={styles.inputIcon} />
+          <TextInput
+            ref={productInputRef}
+            value={productName}
+            onChangeText={setProductName}
+            placeholder="e.g. Diesel Generator"
+            placeholderTextColor="#94a3b8"
+            editable={!isLoading}
+            style={styles.textInput}
+            selectionColor="#2563eb"
+          />
+        </TouchableOpacity>
+
+        {/* --- Mobile Input --- */}
         <Text style={styles.label}>
           Mobile Number <Text style={{ color: "#ef4444" }}>*</Text>
         </Text>
-
-        {/* Input Row */}
         <TouchableOpacity
           activeOpacity={1}
-          onPress={() => inputRef.current?.focus()}
+          onPress={() => phoneInputRef.current?.focus()}
           style={styles.inputWrapper}
         >
           <Text style={styles.countryCode}>+91</Text>
           <View style={styles.divider} />
           <TextInput
-            ref={inputRef}
+            ref={phoneInputRef}
             value={mobile}
             onChangeText={setMobile}
             placeholder="Enter 10-digit number"
@@ -83,10 +154,10 @@ export default function LeadGenCard() {
         <TouchableOpacity
           activeOpacity={0.8}
           onPress={handleSubmit}
-          disabled={mobile.length !== 10 || isLoading}
+          disabled={!isFormValid || isLoading}
           style={[
             styles.button,
-            { backgroundColor: mobile.length === 10 ? "#2563eb" : "#1e293b" },
+            { backgroundColor: isFormValid ? "#2563eb" : "#1e293b" },
           ]}
         >
           {isLoading ? (
@@ -206,6 +277,9 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#e2e8f0",
   },
+  inputIcon: {
+    marginRight: 12,
+  },
   countryCode: {
     fontSize: 16,
     fontFamily: "PlusJakartaSans-Bold",
@@ -238,6 +312,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     gap: 8,
     elevation: 4,
+    marginTop: 4,
   },
   buttonText: {
     color: "#ffffff",

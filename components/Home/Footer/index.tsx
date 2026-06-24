@@ -2,7 +2,11 @@ import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { router } from "expo-router";
 import React, { useState } from "react";
-import { Platform, SafeAreaView, Text, TouchableOpacity, View } from "react-native";
+import { Platform, Text, TouchableOpacity, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+
+import { userRole, isSellerSignedIn } from "@/utils/roleCache";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 // 1. Extract the exact type of valid icon names from Ionicons
 type IconName = React.ComponentProps<typeof Ionicons>["name"];
@@ -25,6 +29,7 @@ const tabs: TabItem[] = [
 
 export default function CustomTabBar() {
   const [activeTab, setActiveTab] = useState("home");
+  const insets = useSafeAreaInsets();
 
   const handlePress = async (tabId: string) => {
     setActiveTab(tabId);
@@ -37,7 +42,19 @@ export default function CustomTabBar() {
     }
 
     if(tabId === "account"){
-      router.push("/Account");
+      try {
+        const storedBuyerId = await AsyncStorage.getItem("buyerId");
+        const storedSupplierId = await AsyncStorage.getItem("supplierId");
+        if (storedSupplierId) {
+          router.push("/Seller/Profile");
+        } else if (storedBuyerId) {
+          router.push("/Buyer/profile");
+        } else {
+          router.push("/(auth)/choose-role");
+        }
+      } catch (e) {
+        router.push("/(auth)/choose-role");
+      }
     } else if(tabId === "wishlist"){
       router.push("/Wishlist");
     } else if(tabId === "categories"){
@@ -46,10 +63,13 @@ export default function CustomTabBar() {
   };
 
   return (
-    <SafeAreaView className="bg-white shadow-2xl shadow-slate-200 border-t border-slate-100">
+    <View 
+      style={{ paddingBottom: Math.max(insets.bottom, 12) }}
+      className="bg-white shadow-2xl shadow-slate-200 border-t border-slate-100"
+    >
       {/* Changed px-6 to px-8 for better spacing with 4 items */}
       <View 
-        className={`flex-row justify-between items-center px-8 ${Platform.OS === 'ios' ? 'pb-1' : 'pb-2'} pt-1.5`}
+        className="flex-row justify-between items-center px-8 pb-1 pt-1.5"
       >
         {tabs.map((tab) => {
           const isActive = activeTab === tab.id;
@@ -79,6 +99,6 @@ export default function CustomTabBar() {
           );
         })}
       </View>
-    </SafeAreaView>
+    </View>
   );
 }
