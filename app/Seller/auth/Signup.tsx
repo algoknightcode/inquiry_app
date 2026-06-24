@@ -83,12 +83,37 @@ const SellerSignUp = () => {
 
   return (
     <KeyboardAvoidingView
-      behavior={Platform.OS === "ios" ? "padding" : "height"}
+      behavior={Platform.OS === "ios" ? "padding" : "padding"}
+      keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 20}
       className="flex-1 bg-[#F8FAFC]"
+      style={{ flex: 1 }}
     >
+      {/* Custom Back Header */}
+      <View 
+        style={{ paddingTop: insets.top + 10, paddingBottom: 10, backgroundColor: "#F8FAFC" }}
+        className="px-4 flex-row items-center border-b border-slate-100"
+      >
+        <TouchableOpacity 
+          onPress={() => {
+            if (router.canGoBack()) {
+              router.back();
+            } else {
+              router.replace("/(auth)/choose-role");
+            }
+          }} 
+          style={{ flexDirection: "row", alignItems: "center" }}
+        >
+          <Ionicons name="chevron-back" size={28} color="#007AFF" />
+          <Text style={{ color: "#007AFF", fontSize: 17, marginLeft: -6 }}>Back</Text>
+        </TouchableOpacity>
+        <Text className="text-lg font-jakarta-bold font-bold text-slate-800 ml-4">
+          Supplier Registration
+        </Text>
+      </View>
+
       <View className="flex-1 justify-start">
         <ScrollView
-          contentContainerStyle={{ flexGrow: 1, justifyContent: "flex-start", paddingTop: 24 }}
+          contentContainerStyle={{ flexGrow: 1, justifyContent: "flex-start", paddingTop: 16 }}
           className="px-4 pb-6"
           showsVerticalScrollIndicator={false}
         >

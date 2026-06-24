@@ -17,7 +17,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Logo from "../../../assets/images/logoo.webp";
-import { setSellerSignedIn, setGlobalSellerId } from "../../../utils/roleCache";
+import { setSellerSignedIn, setGlobalSellerId, setGlobalBuyerId, setGlobalRole } from "../../../utils/roleCache";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const SellerLogin = () => {
@@ -52,8 +52,11 @@ const SellerLogin = () => {
       if ((formdata.email === "testing@gmail.com" || formdata.email === "1111111111" || formdata.email === "8888888888") && formdata.password === "test") {
         console.log("ℹ️ Login Path: DEMO BYPASS MATCHED");
         await AsyncStorage.setItem("supplierId", "6a36322b7d11e405b8330ea1");
+        await AsyncStorage.removeItem("buyerId");
         setGlobalSellerId("6a36322b7d11e405b8330ea1");
+        setGlobalBuyerId(null);
         setSellerSignedIn(true);
+        setGlobalRole("seller");
         setIsSuccess(true);
         setTimeout(() => {
           setIsSuccess(false);
@@ -76,7 +79,10 @@ const SellerLogin = () => {
             await AsyncStorage.setItem("supplierId", response.id);
             setGlobalSellerId(response.id);
           }
+          await AsyncStorage.removeItem("buyerId");
+          setGlobalBuyerId(null);
           setSellerSignedIn(true);
+          setGlobalRole("seller");
           setIsSuccess(true);
           setTimeout(() => {
             setIsSuccess(false);
@@ -101,8 +107,11 @@ const SellerLogin = () => {
       if ((formdata.email === "1111111111" || formdata.email === "8888888888" || formdata.email === "testing@gmail.com") && otp === "1234") {
         console.log("ℹ️ Login Path: DEMO OTP BYPASS MATCHED");
         await AsyncStorage.setItem("supplierId", "6a36322b7d11e405b8330ea1");
+        await AsyncStorage.removeItem("buyerId");
         setGlobalSellerId("6a36322b7d11e405b8330ea1");
+        setGlobalBuyerId(null);
         setSellerSignedIn(true);
+        setGlobalRole("seller");
         setIsSuccess(true);
         setTimeout(() => {
           setIsSuccess(false);
@@ -118,8 +127,10 @@ const SellerLogin = () => {
 
   return (
     <KeyboardAvoidingView
-      behavior={Platform.OS === "ios" ? "padding" : "height"}
+      behavior={Platform.OS === "ios" ? "padding" : "padding"}
+      keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 20}
       className="flex-1 bg-[#F8FAFC]"
+      style={{ flex: 1 }}
     >
 
       {/* --- SUCCESS TICK MODAL --- */}
@@ -137,9 +148,32 @@ const SellerLogin = () => {
         </View>
       </Modal>
 
+      {/* Custom Back Header */}
+      <View 
+        style={{ paddingTop: insets.top + 10, paddingBottom: 10, backgroundColor: "#F8FAFC" }}
+        className="px-4 flex-row items-center border-b border-slate-100"
+      >
+        <TouchableOpacity 
+          onPress={() => {
+            if (router.canGoBack()) {
+              router.back();
+            } else {
+              router.replace("/(auth)/choose-role");
+            }
+          }} 
+          style={{ flexDirection: "row", alignItems: "center" }}
+        >
+          <Ionicons name="chevron-back" size={28} color="#007AFF" />
+          <Text style={{ color: "#007AFF", fontSize: 17, marginLeft: -6 }}>Back</Text>
+        </TouchableOpacity>
+        <Text className="text-lg font-jakarta-bold font-bold text-slate-800 ml-4">
+          Supplier Login
+        </Text>
+      </View>
+
       <View className="flex-1 justify-start">
         <ScrollView
-          contentContainerStyle={{ flexGrow: 1, justifyContent: "flex-start", paddingTop: 24 }}
+          contentContainerStyle={{ flexGrow: 1, justifyContent: "flex-start", paddingTop: 16 }}
           className="px-4 pb-6"
           showsVerticalScrollIndicator={false}
         >

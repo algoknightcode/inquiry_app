@@ -3,6 +3,8 @@ import { Image } from "expo-image";
 import React, { useEffect, useRef } from "react";
 import { Animated, Dimensions, Pressable, Text, View } from "react-native";
 import { useRouter } from "expo-router";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { isSellerSignedIn } from "@/utils/roleCache";
 
 const { width } = Dimensions.get("window");
 const CARD_WIDTH = (width - 25) / 2;
@@ -12,6 +14,19 @@ const Banner2 = () => {
   const pressScaleLeft = useRef(new Animated.Value(1)).current;
   const pressScaleRight = useRef(new Animated.Value(1)).current;
   const router = useRouter();
+
+  const handleFreeListingPress = async () => {
+    try {
+      const supplierId = await AsyncStorage.getItem("supplierId");
+      if (supplierId || isSellerSignedIn) {
+        router.push("/Seller/AddProduct");
+      } else {
+        router.push("/Seller/auth/Login");
+      }
+    } catch (e) {
+      router.push("/Seller/auth/Login");
+    }
+  };
 
   useEffect(() => {
     Animated.loop(
@@ -91,6 +106,7 @@ const Banner2 = () => {
             className={styles.card}
             onPressIn={() => handlePressIn(pressScaleRight)}
             onPressOut={() => handlePressOut(pressScaleRight)}
+            onPress={handleFreeListingPress}
             android_ripple={{ color: "#f1f5f9" }}
           >
             <Image

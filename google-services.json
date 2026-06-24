@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "83013516202",
+    "project_id": "formbackend-8d706",
+    "storage_bucket": "formbackend-8d706.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:83013516202:android:0efbbd702b40c8f56a09d3",
+        "android_client_info": {
+          "package_name": "com.inquirybazaar.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyD8GOgCDzPmJTF7hT7wuYpdzP8fOsgmynM"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

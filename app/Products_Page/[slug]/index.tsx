@@ -12,7 +12,6 @@ import {
   Linking,
   Modal,
   Platform,
-  SafeAreaView,
   ScrollView,
   Text,
   TextInput,
@@ -20,9 +19,11 @@ import {
   Vibration,
   View,
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 export default function ProductDetailPage() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const { productId, slug } = useLocalSearchParams<{ productId?: string; slug?: string }>();
 
   // --- STATES ---
@@ -209,7 +210,7 @@ export default function ProductDetailPage() {
 
   if (!product) {
     return (
-      <SafeAreaView style={{ flex: 1, backgroundColor: "#fff", alignItems: "center", justifyContent: "center", paddingHorizontal: 32 }}>
+      <View style={{ flex: 1, backgroundColor: "#fff", alignItems: "center", justifyContent: "center", paddingHorizontal: 32, paddingTop: insets.top }}>
         <Stack.Screen options={{ headerShown: false }} />
         <Ionicons name="alert-circle-outline" size={56} color="#cbd5e1" />
         <Text style={{ color: "#334155", fontWeight: "bold", fontSize: 18, marginTop: 16, textAlign: "center" }}>
@@ -221,7 +222,7 @@ export default function ProductDetailPage() {
         >
           <Text style={{ color: "#fff", fontWeight: "bold", fontSize: 14 }}>Go Back</Text>
         </TouchableOpacity>
-      </SafeAreaView>
+      </View>
     );
   }
 
@@ -237,11 +238,11 @@ export default function ProductDetailPage() {
   const specs: any[] = product.specifications || [];
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: "#fff" }}>
+    <View style={{ flex: 1, backgroundColor: "#fff" }}>
       <Stack.Screen options={{ headerShown: false }} />
 
       {/* ── HEADER ── */}
-      <View style={{ backgroundColor: "#fff", paddingHorizontal: 20, paddingVertical: 12, flexDirection: "row", alignItems: "center", justifyContent: "space-between", borderBottomWidth: 1, borderBottomColor: "#f1f5f9" }}>
+      <View style={{ backgroundColor: "#fff", paddingHorizontal: 20, paddingTop: insets.top + 8, paddingBottom: 12, flexDirection: "row", alignItems: "center", justifyContent: "space-between", borderBottomWidth: 1, borderBottomColor: "#f1f5f9" }}>
         <TouchableOpacity onPress={() => router.back()} style={{ padding: 4, marginLeft: -4 }}>
           <Ionicons name="arrow-back" size={24} color="#0f172a" />
         </TouchableOpacity>
@@ -260,7 +261,7 @@ export default function ProductDetailPage() {
         </View>
       </View>
 
-      <ScrollView style={{ flex: 1, backgroundColor: "#f8fafc" }} contentContainerStyle={{ paddingBottom: 120 }} showsVerticalScrollIndicator={false}>
+      <ScrollView style={{ flex: 1, backgroundColor: "#f8fafc" }} contentContainerStyle={{ paddingBottom: insets.bottom + 70 }} showsVerticalScrollIndicator={false}>
         {/* HERO IMAGE */}
         <View style={{ width: "100%", height: 280, backgroundColor: "#e2e8f0" }}>
           {imageUri ? (
@@ -401,14 +402,14 @@ export default function ProductDetailPage() {
       </ScrollView>
 
       {/* FIXED BOTTOM BAR */}
-      <View style={{ position: "absolute", bottom: 0, left: 0, right: 0, backgroundColor: "#fff", borderTopWidth: 1, borderTopColor: "#f1f5f9", paddingHorizontal: 20, paddingTop: 16, paddingBottom: Platform.OS === "ios" ? 32 : 20 }}>
+      <View style={{ position: "absolute", bottom: 0, left: 0, right: 0, backgroundColor: "#fff", borderTopWidth: 1, borderTopColor: "#f1f5f9", paddingHorizontal: 20, paddingTop: 10, paddingBottom: Math.max(insets.bottom, 10) }}>
         <View style={{ flexDirection: "row", gap: 12 }}>
-          <TouchableOpacity onPress={() => phone && Linking.openURL(`tel:${phone}`)} style={{ flex: 1, flexDirection: "row", justifyContent: "center", alignItems: "center", paddingVertical: 16, borderRadius: 16, borderWidth: 2, borderColor: "#e2e8f0", backgroundColor: "#fff" }}>
+          <TouchableOpacity onPress={() => phone && Linking.openURL(`tel:${phone}`)} style={{ flex: 1, flexDirection: "row", justifyContent: "center", alignItems: "center", paddingVertical: 12, borderRadius: 12, borderWidth: 2, borderColor: "#e2e8f0", backgroundColor: "#fff" }}>
             <Ionicons name="call" size={18} color="#475569" />
             <Text style={{ color: "#475569", fontWeight: "700", fontSize: 15, marginLeft: 8 }}>Call</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity onPress={() => setModalVisible(true)} style={{ flex: 2, flexDirection: "row", justifyContent: "center", alignItems: "center", paddingVertical: 16, borderRadius: 16, backgroundColor: "#4f46e5" }}>
+          <TouchableOpacity onPress={() => setModalVisible(true)} style={{ flex: 2, flexDirection: "row", justifyContent: "center", alignItems: "center", paddingVertical: 12, borderRadius: 12, backgroundColor: "#4f46e5" }}>
             <Ionicons name="paper-plane-outline" size={18} color="white" />
             <Text style={{ color: "#fff", fontWeight: "700", fontSize: 15, marginLeft: 8 }}>Send Inquiry</Text>
           </TouchableOpacity>
@@ -505,6 +506,6 @@ export default function ProductDetailPage() {
         </View>
       </Modal>
 
-    </SafeAreaView>
+    </View>
   );
 }

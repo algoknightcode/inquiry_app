@@ -18,8 +18,19 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-// 🔴 1. IMPORT NATIVE FIREBASE AUTH (Commented out for build)
-// import auth, { FirebaseAuthTypes } from '@react-native-firebase/auth';
+// 🔴 1. IMPORT NATIVE FIREBASE AUTH conditionally for Expo Go
+import type { FirebaseAuthTypes } from '@react-native-firebase/auth';
+import Constants, { ExecutionEnvironment } from 'expo-constants';
+
+const isExpoGo = Constants.executionEnvironment === ExecutionEnvironment.StoreClient;
+let auth: any = null;
+if (!isExpoGo) {
+  try {
+    auth = require('@react-native-firebase/auth').default;
+  } catch (e) {
+    console.log("Firebase Auth skipped in Expo Go");
+  }
+}
 
 interface InputFieldProps extends TextInputProps {
   label: string;
@@ -66,8 +77,8 @@ export default function RequestQuoteForm() {
   const [otp, setOtp] = useState("");
   const [showOtpBox, setShowOtpBox] = useState(false);
   const [isPhoneVerified, setIsPhoneVerified] = useState(false);
-  // Store Firebase's confirmation object (Commented out for build)
-  const [confirm, setConfirm] = useState<any | null>(null);
+  // Store Firebase's confirmation object
+  const [confirm, setConfirm] = useState<FirebaseAuthTypes.ConfirmationResult | null>(null);
 
   const [formData, setFormData] = useState({
     fullName: "",
@@ -85,11 +96,14 @@ export default function RequestQuoteForm() {
 
   // --- 1. SEND OTP (NO CAPTCHA) ---
   const handleSendOTP = async () => {
+    console.log("🚀 [OTP] Starting handleSendOTP flow...");
     if (!formData.fullName || !formData.phoneNumber || !formData.requirement) {
+      console.log("⚠️ [OTP] Missing required fields:", { fullName: !!formData.fullName, phoneNumber: !!formData.phoneNumber, requirement: !!formData.requirement });
       setErrorMessage("Please fill all required fields before proceeding.");
       return;
     }
     if (formData.phoneNumber.trim().length !== 10) {
+      console.log("⚠️ [OTP] Invalid phone number length:", formData.phoneNumber);
       setErrorMessage("Enter a valid 10-digit phone number.");
       return;
     }
@@ -98,15 +112,18 @@ export default function RequestQuoteForm() {
     setErrorMessage("");
 
     try {
-      // 🔴 2. SILENTLY SEND OTP USING FIREBASE NATIVE (Commented out for build)
-      // const confirmation = await auth().signInWithPhoneNumber(`+91${formData.phoneNumber}`);
-      // setConfirm(confirmation);
-      // setShowOtpBox(true);
-
-      // Bypass OTP for APK build and submit directly:
-      await submitForm();
+      if (!auth) {
+        setErrorMessage("Firebase is not available. Please reinstall the app.");
+        setLoading(false);
+        return;
+      }
+      console.log(`📤 [OTP] Requesting SMS OTP for: +91${formData.phoneNumber}`);
+      const confirmation = await auth().signInWithPhoneNumber(`+91${formData.phoneNumber}`);
+      console.log("📥 [OTP] Firebase confirmation object received:", confirmation ? "SUCCESS" : "EMPTY");
+      setConfirm(confirmation);
+      setShowOtpBox(true);
     } catch (error: any) {
-      console.log("Firebase Auth Error:", error);
+      console.error("❌ [OTP] Firebase Auth Error:", error);
       setErrorMessage(error?.message || "Failed to Send OTP");
     } finally {
       setLoading(false);
@@ -115,7 +132,9 @@ export default function RequestQuoteForm() {
 
   // --- 2. VERIFY OTP ---
   const handleVerifyOTP = async () => {
+    console.log("🚀 [OTP] Starting handleVerifyOTP flow...");
     if (!otp || otp.length < 4) {
+      console.log("⚠️ [OTP] Invalid OTP length entered:", otp);
       setErrorMessage("Please enter a valid OTP.");
       return;
     }
@@ -124,18 +143,20 @@ export default function RequestQuoteForm() {
     setErrorMessage("");
 
     try {
-      // 🔴 3. VERIFY THE OTP ENTERED BY THE USER (Commented out for build)
       if (confirm) {
-        // await confirm.confirm(otp);
+        console.log(`📤 [OTP] Verifying code: "${otp}"`);
+        const userCredential = await confirm.confirm(otp);
+        console.log("📥 [OTP] Verification successful! User credential:", userCredential?.user?.uid);
         setIsPhoneVerified(true);
         // Proceed directly to submit form after successful verification
         await submitForm();
       } else {
+        console.error("❌ [OTP] No confirmation object found.");
         setErrorMessage("Please request an OTP first.");
         setLoading(false);
       }
     } catch (error: any) {
-      console.log("OTP Verification Error:", error);
+      console.error("❌ [OTP] OTP Verification Error:", error);
       setErrorMessage("Invalid OTP. Please try again.");
       setLoading(false);
     }
@@ -143,6 +164,7 @@ export default function RequestQuoteForm() {
 
   // --- 3. SUBMIT FORM TO BACKEND ---
   const submitForm = async () => {
+    console.log("🚀 [API] Starting submitForm flow...");
     try {
       const payload = {
         platform: "App Request Quote",
@@ -156,15 +178,20 @@ export default function RequestQuoteForm() {
         message: `Company Name: ${formData.companyName || "N/A"}\nGST Number: ${formData.gstNumber || "N/A"}\nRequirement: ${formData.requirement}`,
       };
 
+      console.log("📤 [API] Sending payload to backend:", JSON.stringify(payload, null, 2));
+
       const res = await fetch("https://brandbnalo.com/api/form/add", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
 
+      console.log("📥 [API] Response status:", res.status);
       const data = await res.json();
+      console.log("📥 [API] Response JSON:", JSON.stringify(data, null, 2));
 
       if (res.ok || data?.success) {
+        console.log("✅ [API] Form submitted successfully!");
         // Format text for WhatsApp redirection
         const whatsappText = `Hi, I am ${formData.fullName}.\n\nCompany Name: ${formData.companyName || "N/A"}\nGST Number: ${formData.gstNumber || "N/A"}\nEmail: ${formData.email || "N/A"}\nMessage: ${formData.requirement}\nContact: ${formData.phoneNumber}`;
         const waUrl = `whatsapp://send?phone=916306530720&text=${encodeURIComponent(whatsappText)}`;
@@ -173,7 +200,8 @@ export default function RequestQuoteForm() {
 
         // Redirect to WhatsApp after 1.5 seconds
         setTimeout(() => {
-          Linking.openURL(waUrl).catch(() => console.log("WhatsApp not installed"));
+          console.log("🔗 [Redirect] Opening WhatsApp...");
+          Linking.openURL(waUrl).catch((err) => console.error("❌ [Redirect] Failed to open WhatsApp:", err));
         }, 1500);
 
         // Reset form
@@ -186,9 +214,11 @@ export default function RequestQuoteForm() {
         setConfirm(null);
         setIsPhoneVerified(false);
       } else {
+        console.error("❌ [API] Backend failed to process submission:", data?.message);
         setErrorMessage("Failed to submit form. Please try again.");
       }
     } catch (error) {
+      console.error("❌ [API] Server error during submission:", error);
       setErrorMessage("Server error. Please check your internet connection.");
     } finally {
       setLoading(false);

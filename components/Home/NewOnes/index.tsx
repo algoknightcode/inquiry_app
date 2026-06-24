@@ -84,7 +84,7 @@ const NewOnes = () => {
                 });
 
                 const allProductsArrays = await Promise.all(productRequests);
-                const flattened = allProductsArrays.flat();
+                const flattened = allProductsArrays.flat().slice(0, 10);
                 setProductsList(flattened);
               }
             }

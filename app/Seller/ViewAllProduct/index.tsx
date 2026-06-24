@@ -14,11 +14,10 @@ import {
     TouchableOpacity,
     View,
 } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 const ManageProducts = () => {
   const router = useRouter();
-  const insets = useSafeAreaInsets();
   
   const [searchQuery, setSearchQuery] = useState("");
   const [products, setProducts] = useState<any[]>([]);
@@ -163,86 +162,88 @@ const ManageProducts = () => {
   };
 
   return (
-    <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} className="flex-1 bg-slate-50">
-      
-      {/* --- PREMIUM HEADER --- */}
-      <View style={{ paddingTop: insets.top }} className="bg-white px-5 pb-5 pt-4 shadow-sm shadow-slate-100 z-20">
+    <SafeAreaView style={{ flex: 1, backgroundColor: "#F8FAFC" }} edges={["top", "bottom"]}>
+      <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} className="flex-1 bg-slate-50" style={{ flex: 1 }}>
         
-        {/* Top Row: Title, Total Count & Add Button */}
-        <View className="flex-row items-start justify-between mb-5">
-          <View>
-            <Text className="text-2xl font-jakarta-extrabold text-slate-900 tracking-tight">Products</Text>
-            <Text className="text-[13px] font-jakarta-medium text-slate-500 mt-0.5">
-              {isLoading ? "Loading inventory..." : `Total ${filteredProducts.length} products listed`}
-            </Text>
-          </View>
-
-          <TouchableOpacity 
-            onPress={() => router.push("/Seller/AddProduct")}
-            className="flex-row items-center bg-blue-900 px-4 py-2.5 rounded-xl shadow-md shadow-blue-900/30 active:opacity-80"
-          >
-            <Ionicons name="add" size={18} color="#FFFFFF" className="mr-1" />
-            <Text className="text-white font-jakarta-bold text-[14px]">Add New</Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* Bottom Row: Search & Filter */}
-        <View className="flex-row items-center gap-x-3">
-          <TouchableOpacity className="flex-row items-center bg-slate-50 border border-slate-200 rounded-xl px-3 py-3 w-1/3 active:bg-slate-100">
-            <Text className="flex-1 text-[13px] font-jakarta-semibold text-slate-700" numberOfLines={1}>Category</Text>
-            <Ionicons name="chevron-down" size={16} color="#64748B" />
-          </TouchableOpacity>
-
-          <View className="flex-1 flex-row items-center bg-slate-50 border border-slate-200 rounded-xl px-3 h-full">
-            <Ionicons name="search" size={18} color="#94A3B8" className="mr-2" />
-            <TextInput
-              className="flex-1 text-[14px] font-jakarta-medium text-slate-900 h-full py-3"
-              placeholder="Search products..."
-              placeholderTextColor="#94A3B8"
-              value={searchQuery}
-              onChangeText={setSearchQuery}
-            />
-          </View>
-        </View>
-      </View>
-
-      {/* --- CONTENT AREA --- */}
-      {isLoading ? (
-        <View className="flex-1 items-center justify-center">
-          <ActivityIndicator size="large" color="#1E3A8A" />
-          <Text className="mt-4 font-jakarta-medium text-slate-500">Fetching your catalog...</Text>
-        </View>
-      ) : (
-        <FlatList
-          data={filteredProducts}
-          keyExtractor={(item, index) => item._id || item.id || index.toString()}
-          renderItem={renderProductCard}
-          numColumns={2}
-          contentContainerStyle={{ padding: 8, paddingBottom: 100 }}
-          columnWrapperStyle={{ justifyContent: 'space-between' }}
-          showsVerticalScrollIndicator={false}
-          refreshControl={
-            <RefreshControl
-              refreshing={refreshing}
-              onRefresh={onRefresh}
-              colors={["#1E3A8A"]}
-              tintColor="#1E3A8A"
-            />
-          }
-          ListEmptyComponent={
-            <View className="items-center justify-center py-20 px-8 mt-10">
-              <View className="h-24 w-24 bg-slate-100 rounded-full items-center justify-center mb-6">
-                <Ionicons name="cube-outline" size={48} color="#CBD5E1" />
-              </View>
-              <Text className="text-lg font-jakarta-bold text-slate-900 mb-2">No products found</Text>
-              <Text className="text-sm font-jakarta-medium text-slate-500 text-center">
-                {searchQuery ? "No products match your search." : "You haven't added any products yet."}
+        {/* --- PREMIUM HEADER --- */}
+        <View className="bg-white px-5 pb-5 pt-4 shadow-sm shadow-slate-100 z-20">
+          
+          {/* Top Row: Title, Total Count & Add Button */}
+          <View className="flex-row items-start justify-between mb-5">
+            <View>
+              <Text className="text-2xl font-jakarta-extrabold text-slate-900 tracking-tight">Products</Text>
+              <Text className="text-[13px] font-jakarta-medium text-slate-500 mt-0.5">
+                {isLoading ? "Loading inventory..." : `Total ${filteredProducts.length} products listed`}
               </Text>
             </View>
-          }
-        />
-      )}
-    </KeyboardAvoidingView>
+
+            <TouchableOpacity 
+              onPress={() => router.push("/Seller/AddProduct")}
+              className="flex-row items-center bg-blue-900 px-4 py-2.5 rounded-xl shadow-md shadow-blue-900/30 active:opacity-80"
+            >
+              <Ionicons name="add" size={18} color="#FFFFFF" className="mr-1" />
+              <Text className="text-white font-jakarta-bold text-[14px]">Add New</Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* Bottom Row: Search & Filter */}
+          <View className="flex-row items-center gap-x-3">
+            <TouchableOpacity className="flex-row items-center bg-slate-50 border border-slate-200 rounded-xl px-3 py-3 w-1/3 active:bg-slate-100">
+              <Text className="flex-1 text-[13px] font-jakarta-semibold text-slate-700" numberOfLines={1}>Category</Text>
+              <Ionicons name="chevron-down" size={16} color="#64748B" />
+            </TouchableOpacity>
+
+            <View className="flex-1 flex-row items-center bg-slate-50 border border-slate-200 rounded-xl px-3 h-full">
+              <Ionicons name="search" size={18} color="#94A3B8" className="mr-2" />
+              <TextInput
+                className="flex-1 text-[14px] font-jakarta-medium text-slate-900 h-full py-3"
+                placeholder="Search products..."
+                placeholderTextColor="#94A3B8"
+                value={searchQuery}
+                onChangeText={setSearchQuery}
+              />
+            </View>
+          </View>
+        </View>
+
+        {/* --- CONTENT AREA --- */}
+        {isLoading ? (
+          <View className="flex-1 items-center justify-center">
+            <ActivityIndicator size="large" color="#1E3A8A" />
+            <Text className="mt-4 font-jakarta-medium text-slate-500">Fetching your catalog...</Text>
+          </View>
+        ) : (
+          <FlatList
+            data={filteredProducts}
+            keyExtractor={(item, index) => item._id || item.id || index.toString()}
+            renderItem={renderProductCard}
+            numColumns={2}
+            contentContainerStyle={{ padding: 8, paddingBottom: 100 }}
+            columnWrapperStyle={{ justifyContent: 'space-between' }}
+            showsVerticalScrollIndicator={false}
+            refreshControl={
+              <RefreshControl
+                refreshing={refreshing}
+                onRefresh={onRefresh}
+                colors={["#1E3A8A"]}
+                tintColor="#1E3A8A"
+              />
+            }
+            ListEmptyComponent={
+              <View className="items-center justify-center py-20 px-8 mt-10">
+                <View className="h-24 w-24 bg-slate-100 rounded-full items-center justify-center mb-6">
+                  <Ionicons name="cube-outline" size={48} color="#CBD5E1" />
+                </View>
+                <Text className="text-lg font-jakarta-bold text-slate-900 mb-2">No products found</Text>
+                <Text className="text-sm font-jakarta-medium text-slate-500 text-center">
+                  {searchQuery ? "No products match your search." : "You haven't added any products yet."}
+                </Text>
+              </View>
+            }
+          />
+        )}
+      </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 };
 

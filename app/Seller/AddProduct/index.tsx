@@ -21,7 +21,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useSafeAreaInsets, SafeAreaView } from "react-native-safe-area-context";
 
 // --- REUSABLE INPUT COMPONENT ---
 const InputField = ({ label, icon, placeholder, value, onChangeText, keyboardType = "default", multiline = false }: any) => (
@@ -484,47 +484,48 @@ const AddProduct = () => {
   const subCategoryOptions = filteredSubCats.map(s => s.name);
 
   return (
-    <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} className="flex-1 bg-slate-50">
-      
-      <Modal visible={isSaving} transparent animationType="fade">
-        <View style={{ flex: 1, backgroundColor: 'rgba(15, 23, 42, 0.6)', justifyContent: 'center', alignItems: 'center' }}>
-          <View className="bg-white rounded-[32px] p-8 items-center shadow-2xl shadow-blue-900/50 w-[80%] max-w-[340px]">
-            <View className="bg-blue-50 h-20 w-20 rounded-full items-center justify-center mb-5 border-[4px] border-white shadow-lg shadow-blue-100">
-              <ActivityIndicator size="large" color="#1E3A8A" />
+    <SafeAreaView style={{ flex: 1, backgroundColor: "#F8FAFC" }} edges={["top", "bottom"]}>
+      <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} className="flex-1 bg-slate-50" style={{ flex: 1 }}>
+        
+        <Modal visible={isSaving} transparent animationType="fade">
+          <View style={{ flex: 1, backgroundColor: 'rgba(15, 23, 42, 0.6)', justifyContent: 'center', alignItems: 'center' }}>
+            <View className="bg-white rounded-[32px] p-8 items-center shadow-2xl shadow-blue-900/50 w-[80%] max-w-[340px]">
+              <View className="bg-blue-50 h-20 w-20 rounded-full items-center justify-center mb-5 border-[4px] border-white shadow-lg shadow-blue-100">
+                <ActivityIndicator size="large" color="#1E3A8A" />
+              </View>
+              <Text className="text-[20px] font-jakarta-bold text-slate-900 mb-2 tracking-tight">
+                {isEditMode ? "Updating Product" : "Saving Product"}
+              </Text>
+              <Text className="text-[14px] font-jakarta-medium text-slate-500 text-center leading-relaxed">
+                {isEditMode ? "Saving changes to your catalog..." : "Uploading details to your catalog..."}
+              </Text>
             </View>
-            <Text className="text-[20px] font-jakarta-bold text-slate-900 mb-2 tracking-tight">
-              {isEditMode ? "Updating Product" : "Saving Product"}
-            </Text>
-            <Text className="text-[14px] font-jakarta-medium text-slate-500 text-center leading-relaxed">
-              {isEditMode ? "Saving changes to your catalog..." : "Uploading details to your catalog..."}
-            </Text>
           </View>
-        </View>
-      </Modal>
+        </Modal>
 
-      <Modal visible={isSuccess} transparent animationType="fade">
-        <View style={{ flex: 1, backgroundColor: 'rgba(15, 23, 42, 0.6)', justifyContent: 'center', alignItems: 'center' }}>
-          <View className="bg-white rounded-[32px] p-8 items-center shadow-2xl shadow-emerald-900/50 w-[80%] max-w-[340px]">
-            <View className="bg-emerald-50 h-20 w-20 rounded-full items-center justify-center mb-5 border-[4px] border-white shadow-lg shadow-emerald-100">
-              <Ionicons name="checkmark" size={40} color="#10B981" />
+        <Modal visible={isSuccess} transparent animationType="fade">
+          <View style={{ flex: 1, backgroundColor: 'rgba(15, 23, 42, 0.6)', justifyContent: 'center', alignItems: 'center' }}>
+            <View className="bg-white rounded-[32px] p-8 items-center shadow-2xl shadow-emerald-900/50 w-[80%] max-w-[340px]">
+              <View className="bg-emerald-50 h-20 w-20 rounded-full items-center justify-center mb-5 border-[4px] border-white shadow-lg shadow-emerald-100">
+                <Ionicons name="checkmark" size={40} color="#10B981" />
+              </View>
+              <Text className="text-[20px] font-jakarta-bold text-slate-900 mb-2 tracking-tight">
+                {isEditMode ? "Product Updated!" : "Product Saved!"}
+              </Text>
+              <Text className="text-[14px] font-jakarta-medium text-slate-500 text-center leading-relaxed">
+                {isEditMode ? "Your product has been updated successfully." : "Your product has been added successfully."}
+              </Text>
             </View>
-            <Text className="text-[20px] font-jakarta-bold text-slate-900 mb-2 tracking-tight">
-              {isEditMode ? "Product Updated!" : "Product Saved!"}
-            </Text>
-            <Text className="text-[14px] font-jakarta-medium text-slate-500 text-center leading-relaxed">
-              {isEditMode ? "Your product has been updated successfully." : "Your product has been added successfully."}
-            </Text>
           </View>
-        </View>
-      </Modal>
+        </Modal>
 
-      <View style={{ paddingTop: insets.top }} className="bg-white px-4 pb-4 pt-4 shadow-sm shadow-slate-100 flex-row items-center z-20">
-        <TouchableOpacity onPress={() => router.back()} className="flex-row items-center bg-blue-900 px-3 py-2 rounded-xl active:opacity-80">
-          <Ionicons name="arrow-back" size={18} color="#FFFFFF" className="mr-1" />
-          <Text className="text-white font-jakarta-bold text-[14px]">Back</Text>
-        </TouchableOpacity>
-        <Text className="text-xl font-jakarta-bold text-slate-900 ml-4">{isEditMode ? "Edit Product" : "Add Product"}</Text>
-      </View>
+        <View className="bg-white px-4 pb-4 pt-4 shadow-sm shadow-slate-100 flex-row items-center z-20">
+          <TouchableOpacity onPress={() => router.back()} className="flex-row items-center bg-blue-900 px-3 py-2 rounded-xl active:opacity-80">
+            <Ionicons name="arrow-back" size={18} color="#FFFFFF" className="mr-1" />
+            <Text className="text-white font-jakarta-bold text-[14px]">Back</Text>
+          </TouchableOpacity>
+          <Text className="text-xl font-jakarta-bold text-slate-900 ml-4">{isEditMode ? "Edit Product" : "Add Product"}</Text>
+        </View>
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 120 }}>
         
@@ -721,7 +722,8 @@ const AddProduct = () => {
         </View>
 
       </ScrollView>
-    </KeyboardAvoidingView>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 };
 

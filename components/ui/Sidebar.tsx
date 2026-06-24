@@ -45,12 +45,12 @@ type MenuItem = {
 // Main base menu items visible to everyone
 const baseMenuItems: MenuItem[] = [
   { icon: "home-outline", title: "Home", route: "/(tabs)" },
+  { icon: "person-outline", title: "Profile", route: "/Buyer/profile" },
   { icon: "grid-outline", title: "Explore Industries", route: "/Industries" },
-  { icon: "create-outline", title: "Post RFQ", route: "/Buyer/PostRFQ", highlight: true }, 
-  { icon: "briefcase-outline", title: "Free Listing", route: "/(tabs)", highlight: true },
+  { icon: "create-outline", title: "Post Requirement", route: "/Buyer/PostRFQ", highlight: true }, 
+  { icon: "briefcase-outline", title: "Free Listing", route: "/Seller/auth/Signup", highlight: true },
   { icon: "notifications-outline", title: "Notifications", route: "/NotificationPanel" },
-  { icon: "settings-outline", title: "Settings", route: "/(tabs)" },
-  { icon: "help-circle-outline", title: "Help & Support", route: "/(tabs)" },
+  { icon: "help-circle-outline", title: "Help & Support", route: "/HelpSupport" },
 ];
 
 // Seller dashboard specific sub-items pulled from image_b2b71e.png (excluding Website Page)
@@ -146,27 +146,37 @@ export default function Sidebar({ visible, onClose, currentRole }: SidebarProps)
     setSellerMenuExpanded(!sellerMenuExpanded);
   };
 
-  const handleNavigation = (route: string) => {
+  const handleNavigation = async (route: string) => {
     onClose();
+    const supplierId = await AsyncStorage.getItem("supplierId");
     setTimeout(() => {
       let finalRoute = route;
-      const isSellerRoute = 
-        route.toLowerCase() === "/seller/profile" || 
-        route.toLowerCase() === "/seller/addproduct" ||
-        route.toLowerCase() === "/seller/viewallproduct" ||
-        route.toLowerCase() === "/seller/dashboard" ||
-        route.toLowerCase() === "/seller/lead";
-      
-      if (isSellerRoute && !isSellerSignedIn) {
-        finalRoute = "/Seller/auth/Login";
+
+      if (route === "/Buyer/profile") {
+        if (!isLoggedIn) {
+          finalRoute = "/(auth)/choose-role";
+        } else if (activeRole === "seller") {
+          finalRoute = "/Seller/Profile";
+        }
+      } else {
+        const isSellerRoute = 
+          route.toLowerCase() === "/seller/profile" || 
+          route.toLowerCase() === "/seller/addproduct" ||
+          route.toLowerCase() === "/seller/viewallproduct" ||
+          route.toLowerCase() === "/seller/dashboard" ||
+          route.toLowerCase() === "/seller/lead";
+        
+        if (isSellerRoute && !isSellerSignedIn && !supplierId) {
+          finalRoute = "/Seller/auth/Login";
+        }
       }
       router.push(finalRoute as any);
     }, 250);
   };
 
-  const activeMenuItems = [...baseMenuItems];
-  if (activeRole === "buyer" && isLoggedIn) {
-    activeMenuItems.splice(1, 0, { icon: "person-outline", title: "Profile", route: "/Buyer/profile" });
+  let activeMenuItems = [...baseMenuItems];
+  if (activeRole === "seller") {
+    activeMenuItems = activeMenuItems.filter(item => item.title !== "Free Listing");
   }
 
   if (!visible) return null;

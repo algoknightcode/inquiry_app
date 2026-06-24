@@ -88,9 +88,7 @@ const Dashboard = () => {
 
   return (
     <View className="flex-1 bg-slate-50">
-      <View style={{ paddingTop: insets.top, backgroundColor: "#ffffff" }}>
-        <Navbar onMenuPress={() => setIsSidebarOpen(true)} />
-      </View>
+      <Navbar onMenuPress={() => setIsSidebarOpen(true)} />
       <ScrollView
         contentContainerStyle={{ paddingBottom: 40 }}
         className="px-4 pt-4"

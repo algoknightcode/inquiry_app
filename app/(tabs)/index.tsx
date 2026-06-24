@@ -1,5 +1,6 @@
 import Banner2 from '@/components/Home/Bannee2';
 import SellersByCityGrid from '@/components/Home/Cities';
+import FaqSection from '@/components/Home/Faq';
 import CustomTabBar from '@/components/Home/Footer';
 import Form2 from '@/components/Home/Form2';
 import HeroBanner from '@/components/Home/HeroBanner';
@@ -14,8 +15,8 @@ import HorizontalProductList from '@/components/Home/Trending';
 import TrustedBy from '@/components/Home/Trusted';
 import Sidebar from '@/components/ui/Sidebar';
 import { userRole } from '@/utils/roleCache';
-import React, { useState, useEffect } from 'react';
-import { SafeAreaView, StyleSheet, FlatList, View } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { FlatList, SafeAreaView, StyleSheet, View } from 'react-native';
 
 export default function HomeScreen() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -46,6 +47,7 @@ export default function HomeScreen() {
             <IndustryTreeCarousel />
             <SellersByCityGrid />
             <TestimonialComponent />
+            <FaqSection/>
             <Form2 />
           </View>
         ) : (

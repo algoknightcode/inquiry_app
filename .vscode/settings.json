@@ -8,5 +8,6 @@
     "typescriptreact": "javascriptreact",
     "javascriptreact": "javascriptreact"
   },
-  "tailwindCSS.emmetCompletions": true
+  "tailwindCSS.emmetCompletions": true,
+  "java.configuration.updateBuildConfiguration": "interactive"
 }

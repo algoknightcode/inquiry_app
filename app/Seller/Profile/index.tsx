@@ -1,6 +1,6 @@
 import Navbar from "@/components/Home/Navbar";
 import Sidebar from "@/components/ui/Sidebar";
-import { setGlobalSellerId, setSellerSignedIn, globalSellerId } from "@/utils/roleCache";
+import { setGlobalSellerId, setSellerSignedIn, globalSellerId, setGlobalBuyerId, setGlobalRole } from "@/utils/roleCache";
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { router } from "expo-router";
@@ -137,6 +137,8 @@ const SellerProfileSettings = () => {
   const handleLogout = async () => {
     setSellerSignedIn(false);
     setGlobalSellerId(null);
+    setGlobalBuyerId(null);
+    setGlobalRole("buyer");
     try {
       await AsyncStorage.removeItem("supplierId");
       await AsyncStorage.removeItem("buyerId");
@@ -576,16 +578,16 @@ const SellerProfileSettings = () => {
 
   return (
     <KeyboardAvoidingView
-      behavior={Platform.OS === "ios" ? "padding" : "height"}
+      behavior={Platform.OS === "ios" ? "padding" : "padding"}
+      keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 20}
       className="flex-1 bg-slate-50"
+      style={{ flex: 1 }}
     >
-      <View style={{ paddingTop: insets.top, backgroundColor: "#ffffff" }}>
-        <Navbar onMenuPress={() => setIsSidebarOpen(true)} />
-      </View>
+      <Navbar onMenuPress={() => setIsSidebarOpen(true)} />
 
       <ScrollView 
         showsVerticalScrollIndicator={false} 
-        contentContainerStyle={{ paddingBottom: 100 }}
+        contentContainerStyle={{ paddingBottom: insets.bottom + 100 }}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}

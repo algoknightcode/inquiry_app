@@ -554,17 +554,17 @@ const BuyerProfileSettings = () => {
 
   return (
     <KeyboardAvoidingView
-      behavior={Platform.OS === "ios" ? "padding" : "height"}
+      behavior={Platform.OS === "ios" ? "padding" : "padding"}
+      keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 20}
       className="flex-1 bg-slate-50"
+      style={{ flex: 1 }}
     >
       <Stack.Screen options={{ headerShown: false }} />
-      <View style={{ paddingTop: insets.top, backgroundColor: "#ffffff" }}>
-        <Navbar onMenuPress={() => setIsSidebarOpen(true)} />
-      </View>
+      <Navbar onMenuPress={() => setIsSidebarOpen(true)} />
 
       <ScrollView 
         showsVerticalScrollIndicator={false} 
-        contentContainerStyle={{ paddingBottom: 100 }}
+        contentContainerStyle={{ paddingBottom: insets.bottom + 100 }}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}

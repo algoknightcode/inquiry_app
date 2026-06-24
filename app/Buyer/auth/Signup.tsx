@@ -1,24 +1,29 @@
 import { Ionicons } from "@expo/vector-icons";
+import { useRouter } from "expo-router";
 import React, { useState } from "react";
 import {
-    Image,
-    KeyboardAvoidingView,
-    Platform,
-    Pressable,
-    ScrollView,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Alert,
+  Image,
+  KeyboardAvoidingView,
+  Platform,
+  Pressable,
+  ScrollView,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useRouter } from "expo-router";
 import Logo from "../../../assets/images/logoo.webp";
+
+const API_BASE_URL = "https://buyer.inquirybazaar.com"; 
 
 const BuyerSignUp = () => {
   const router = useRouter();
   const insets = useSafeAreaInsets();
 
+  const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [formdata, setFormData] = useState({
     name: "",
@@ -31,28 +36,99 @@ const BuyerSignUp = () => {
     setFormData((prevData: any) => ({ ...prevData, [name]: value }));
   };
 
-  const handleSubmit = () => {
-    console.log("Buyer Form data has been Submitted");
-    console.log(formdata);
-    // Since OTP page is already set up to go to tabs, let's redirect them to enter-numer/otp or directly to tabs/login
-    // For now we can redirect them to Login
-    router.push("/Buyer/auth/Login");
+  const validateForm = () => {
+    const { name, email, phone, password } = formdata;
+    if (!name.trim() || !email.trim() || !phone.trim() || !password.trim()) {
+      Alert.alert("Error", "All fields are required.");
+      return false;
+    }
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email.trim())) {
+      Alert.alert("Error", "Please enter a valid email address.");
+      return false;
+    }
+    if (password.length < 6) {
+      Alert.alert("Error", "Password must be at least 6 characters long.");
+      return false;
+    }
+    return true;
+  };
+
+  const handleSubmit = async () => {
+    if (!validateForm()) return;
+
+    setLoading(true);
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/auth/register`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          name: formdata.name.trim(),
+          email: formdata.email.trim(),
+          phone: formdata.phone.trim(),
+          password: formdata.password,
+          role: "buyer",
+        }),
+      });
+
+      const result = await response.json();
+
+      if (response.ok && result.success) {
+        Alert.alert("Success", "Account registered successfully!", [
+          {
+            text: "OK",
+            onPress: () => router.push("/Buyer/auth/Login"),
+          },
+        ]);
+      } else {
+        Alert.alert("Registration Failed", result.message || "Something went wrong.");
+      }
+    } catch (error: any) {
+      Alert.alert("Error", "Unable to connect to the server. Please try again.");
+      console.error("Signup error:", error);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
     <KeyboardAvoidingView
-      behavior={Platform.OS === "ios" ? "padding" : "height"}
+      behavior={Platform.OS === "ios" ? "padding" : "padding"}
+      keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 20}
       className="flex-1 bg-[#F8FAFC]"
+      style={{ flex: 1 }}
     >
+      {/* Custom Back Header */}
+      <View 
+        style={{ paddingTop: insets.top + 10, paddingBottom: 10, backgroundColor: "#F8FAFC" }}
+        className="px-4 flex-row items-center border-b border-slate-100"
+      >
+        <TouchableOpacity 
+          onPress={() => {
+            if (router.canGoBack()) {
+              router.back();
+            } else {
+              router.replace("/(auth)/choose-role");
+            }
+          }} 
+          style={{ flexDirection: "row", alignItems: "center" }}
+        >
+          <Ionicons name="chevron-back" size={28} color="#007AFF" />
+          <Text style={{ color: "#007AFF", fontSize: 17, marginLeft: -6 }}>Back</Text>
+        </TouchableOpacity>
+        <Text className="text-lg font-jakarta-bold font-bold text-slate-800 ml-4">
+          Buyer Registration
+        </Text>
+      </View>
 
       <View className="flex-1 justify-start">
         <ScrollView
-          contentContainerStyle={{ flexGrow: 1, justifyContent: "flex-start", paddingTop: 24 }}
+          contentContainerStyle={{ flexGrow: 1, justifyContent: "flex-start", paddingTop: 16 }}
           className="px-4 pb-6"
           showsVerticalScrollIndicator={false}
         >
-
-
           {/* Main Card Canvas */}
           <View className="bg-white rounded-[32px] px-6 py-9 shadow-2xl shadow-black/30 w-full min-h-[580px]">
             
@@ -80,6 +156,7 @@ const BuyerSignUp = () => {
                   value={formdata.name}
                   onChangeText={(val) => handleChange("name", val)}
                   autoCapitalize="words"
+                  editable={!loading}
                 />
               </View>
 
@@ -94,6 +171,7 @@ const BuyerSignUp = () => {
                   onChangeText={(val) => handleChange("email", val)}
                   keyboardType="email-address"
                   autoCapitalize="none"
+                  editable={!loading}
                 />
               </View>
 
@@ -107,6 +185,7 @@ const BuyerSignUp = () => {
                   value={formdata.phone}
                   onChangeText={(val) => handleChange("phone", val)}
                   keyboardType="phone-pad"
+                  editable={!loading}
                 />
               </View>
 
@@ -121,6 +200,7 @@ const BuyerSignUp = () => {
                   onChangeText={(val) => handleChange("password", val)}
                   secureTextEntry={!showPassword}
                   autoCapitalize="none"
+                  editable={!loading}
                 />
                 <Pressable onPress={() => setShowPassword(!showPassword)} className="p-1">
                   <Ionicons
@@ -133,13 +213,18 @@ const BuyerSignUp = () => {
 
               {/* Branded Orange CTA Button */}
               <TouchableOpacity 
-                className="bg-orange-600 rounded-2xl h-14 items-center justify-center mt-3 shadow-lg shadow-orange-600/30 active:opacity-90"
+                className="bg-orange-600 rounded-2xl h-14 items-center justify-center mt-3 shadow-lg shadow-orange-600/30 active:opacity-90 flex-row gap-x-2"
                 onPress={handleSubmit} 
                 activeOpacity={0.9}
+                disabled={loading}
               >
-                <Text className="text-white text-[16px] font-jakarta-bold font-bold">
-                  Register Buyer
-                </Text>
+                {loading ? (
+                  <ActivityIndicator color="#fff" size="small" />
+                ) : (
+                  <Text className="text-white text-[16px] font-jakarta-bold font-bold">
+                    Register Buyer
+                  </Text>
+                )}
               </TouchableOpacity>
 
             </View>

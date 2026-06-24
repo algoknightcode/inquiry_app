@@ -125,7 +125,6 @@ const s = StyleSheet.create({
     height: 300,
     borderRadius: 150,
     backgroundColor: "rgba(217, 101, 10, 0.15)", // Orange glow
-    blurRadius: 100,
   },
   glow2: {
     position: "absolute",
@@ -135,7 +134,6 @@ const s = StyleSheet.create({
     height: 400,
     borderRadius: 200,
     backgroundColor: "rgba(27, 42, 107, 0.3)", // Deep blue glow
-    blurRadius: 120,
   },
   content: {
     flex: 1,

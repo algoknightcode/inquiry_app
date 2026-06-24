@@ -28,16 +28,26 @@ const CustomBackButton = () => {
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useEffect } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { setGlobalSellerId } from '@/utils/roleCache';
+import { setGlobalSellerId, setSellerSignedIn, setGlobalBuyerId, setGlobalRole } from '@/utils/roleCache';
+import { usePushNotifications } from '@/hooks/usePushNotifications';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 export default function RootLayout() {
   const colorScheme = useColorScheme();
+  usePushNotifications();
 
   useEffect(() => {
     const restoreSession = async () => {
-      const storedId = await AsyncStorage.getItem("supplierId");
-      if (storedId) {
-        setGlobalSellerId(storedId);
+      const storedSellerId = await AsyncStorage.getItem("supplierId");
+      const storedBuyerId = await AsyncStorage.getItem("buyerId");
+      
+      if (storedSellerId) {
+        setGlobalSellerId(storedSellerId);
+        setSellerSignedIn(true);
+        setGlobalRole("seller");
+      } else if (storedBuyerId) {
+        setGlobalBuyerId(storedBuyerId);
+        setGlobalRole("buyer");
       }
     };
     restoreSession();
@@ -45,8 +55,10 @@ export default function RootLayout() {
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
-      <ThemeProvider value={DefaultTheme}>
-        <Stack>
+      <SafeAreaProvider>
+        <ThemeProvider value={DefaultTheme}>
+          <Stack>
+
           <Stack.Screen name="welcome" options={{ headerShown: false }} />
           <Stack.Screen name="(auth)" options={{ headerShown: false }} />
           <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
@@ -103,36 +115,28 @@ export default function RootLayout() {
           <Stack.Screen 
             name="Seller/auth/Login" 
             options={{ 
-              headerShown: true,
-              title: "Supplier Login",
-              headerLeft: () => <CustomBackButton />,
+              headerShown: false,
               animation: "slide_from_right"
             }} 
           />
           <Stack.Screen 
             name="Seller/auth/Signup" 
             options={{ 
-              headerShown: true,
-              title: "Supplier Registration",
-              headerLeft: () => <CustomBackButton />,
+              headerShown: false,
               animation: "slide_from_right"
             }} 
           />
           <Stack.Screen 
             name="Buyer/auth/Login" 
             options={{ 
-              headerShown: true,
-              title: "Buyer Login",
-              headerLeft: () => <CustomBackButton />,
+              headerShown: false,
               animation: "slide_from_right"
             }} 
           />
           <Stack.Screen 
             name="Buyer/auth/Signup" 
             options={{ 
-              headerShown: true,
-              title: "Buyer Registration",
-              headerLeft: () => <CustomBackButton />,
+              headerShown: false,
               animation: "slide_from_right"
             }} 
           />
@@ -164,9 +168,17 @@ export default function RootLayout() {
             animation: "slide_from_right"
           }} 
         />
+        <Stack.Screen 
+          name="HelpSupport/index" 
+          options={{ 
+            headerShown: false,
+            animation: "slide_from_right"
+          }} 
+        />
       </Stack>
         <StatusBar style="dark" />
       </ThemeProvider>
+      </SafeAreaProvider>
     </GestureHandlerRootView>
   );
 }

@@ -184,3 +184,7 @@ export const locations = [
         ]
     }
 ]
+
+export default function DataRoute() {
+  return null;
+}

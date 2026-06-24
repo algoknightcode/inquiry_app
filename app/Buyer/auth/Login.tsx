@@ -17,7 +17,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Logo from "../../../assets/images/logoo.webp";
-import { setGlobalRole, setGlobalBuyerId } from "../../../utils/roleCache";
+import { setGlobalRole, setGlobalBuyerId, setGlobalSellerId, setSellerSignedIn } from "../../../utils/roleCache";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const BuyerLogin = () => {
@@ -48,7 +48,10 @@ const BuyerLogin = () => {
     if ((formdata.email === "testing@gmail.com" || formdata.email === "1111111111" || formdata.email === "8888888888") && formdata.password === "test") {
       console.log("ℹ️ Buyer Login Path: DEMO BYPASS MATCHED");
       await AsyncStorage.setItem("buyerId", "buyer-demo-id-12345");
+      await AsyncStorage.removeItem("supplierId");
       setGlobalBuyerId("buyer-demo-id-12345");
+      setGlobalSellerId(null);
+      setSellerSignedIn(false);
       setGlobalRole("buyer");
       setIsSuccess(true);
       setTimeout(() => {
@@ -81,7 +84,10 @@ const BuyerLogin = () => {
           
           // Save actual ID to AsyncStorage
           await AsyncStorage.setItem("buyerId", loggedInUserId);
+          await AsyncStorage.removeItem("supplierId");
           setGlobalBuyerId(loggedInUserId);
+          setGlobalSellerId(null);
+          setSellerSignedIn(false);
           setGlobalRole("buyer");
           
           setIsSuccess(true);
@@ -105,8 +111,10 @@ const BuyerLogin = () => {
 
   return (
     <KeyboardAvoidingView
-      behavior={Platform.OS === "ios" ? "padding" : "height"}
+      behavior={Platform.OS === "ios" ? "padding" : "padding"}
+      keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 20}
       className="flex-1 bg-[#F8FAFC]"
+      style={{ flex: 1 }}
     >
 
       {/* --- SUCCESS TICK MODAL --- */}
@@ -124,10 +132,32 @@ const BuyerLogin = () => {
         </View>
       </Modal>
 
+      {/* Custom Back Header */}
+      <View 
+        style={{ paddingTop: insets.top + 10, paddingBottom: 10, backgroundColor: "#F8FAFC" }}
+        className="px-4 flex-row items-center border-b border-slate-100"
+      >
+        <TouchableOpacity 
+          onPress={() => {
+            if (router.canGoBack()) {
+              router.back();
+            } else {
+              router.replace("/(auth)/choose-role");
+            }
+          }} 
+          style={{ flexDirection: "row", alignItems: "center" }}
+        >
+          <Ionicons name="chevron-back" size={28} color="#007AFF" />
+          <Text style={{ color: "#007AFF", fontSize: 17, marginLeft: -6 }}>Back</Text>
+        </TouchableOpacity>
+        <Text className="text-lg font-jakarta-bold font-bold text-slate-800 ml-4">
+          Buyer Login
+        </Text>
+      </View>
 
       <View className="flex-1 justify-start">
         <ScrollView
-          contentContainerStyle={{ flexGrow: 1, justifyContent: "flex-start", paddingTop: 24 }}
+          contentContainerStyle={{ flexGrow: 1, justifyContent: "flex-start", paddingTop: 16 }}
           className="px-4 pb-6"
           showsVerticalScrollIndicator={false}
         >
