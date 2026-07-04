@@ -189,6 +189,7 @@ const AddProduct = () => {
 
   const [isSaving, setIsSaving] = useState(false); 
   const [isSuccess, setIsSuccess] = useState(false); 
+  const [validationError, setValidationError] = useState<string | null>(null); 
 
   // Fix 1: Directly use the parameters, no useRef needed.
   const params = useLocalSearchParams();
@@ -430,7 +431,19 @@ const AddProduct = () => {
 
   const handleSaveProduct = async () => {
     if (!productImage) {
-      Alert.alert("Validation Error", "Please select a product image first.");
+      setValidationError("Please upload or select a product image first.");
+      return;
+    }
+    if (!formData.productName?.trim()) {
+      setValidationError("Product Name is required.");
+      return;
+    }
+    if (!formData.category?.trim()) {
+      setValidationError("Please select a Category.");
+      return;
+    }
+    if (!formData.subCategory?.trim()) {
+      setValidationError("Please select a Sub Category.");
       return;
     }
     try {
@@ -514,11 +527,11 @@ const AddProduct = () => {
           router.back();
         }, 1500);
       } else {
-        Alert.alert("Error", data.error || data.message || "Failed to save product.");
+        setValidationError(data.error || data.message || "Failed to save product.");
       }
     } catch (error: any) {
       console.error("Upload error:", error);
-      Alert.alert("Error", error.message || "An unexpected error occurred.");
+      setValidationError(error.message || "An unexpected error occurred.");
     } finally {
       setIsSaving(false);
     }
@@ -566,6 +579,28 @@ const AddProduct = () => {
               <Text className="text-[14px] font-jakarta-medium text-slate-500 text-center leading-relaxed">
                 {isEditMode ? "Your product has been updated successfully." : "Your product has been added successfully."}
               </Text>
+            </View>
+          </View>
+        </Modal>
+
+        <Modal visible={!!validationError} transparent animationType="fade" onRequestClose={() => setValidationError(null)}>
+          <View style={{ flex: 1, backgroundColor: 'rgba(15, 23, 42, 0.6)', justifyContent: 'center', alignItems: 'center' }}>
+            <View className="bg-white rounded-[32px] p-8 items-center shadow-2xl shadow-rose-900/10 w-[85%] max-w-[340px]">
+              <View className="bg-rose-50 h-16 w-16 rounded-full items-center justify-center mb-4 border-[4px] border-white shadow-lg shadow-rose-100">
+                <Ionicons name="alert-circle" size={32} color="#EF4444" />
+              </View>
+              <Text className="text-[18px] font-jakarta-bold text-slate-900 mb-2 tracking-tight text-center">
+                Validation Error
+              </Text>
+              <Text className="text-[13px] font-jakarta-medium text-slate-500 text-center leading-relaxed mb-6">
+                {validationError}
+              </Text>
+              <TouchableOpacity
+                onPress={() => setValidationError(null)}
+                className="w-full bg-[#0F172A] py-3 rounded-2xl items-center justify-center active:scale-[0.98]"
+              >
+                <Text className="text-white font-jakarta-bold text-[14px]">Okay</Text>
+              </TouchableOpacity>
             </View>
           </View>
         </Modal>

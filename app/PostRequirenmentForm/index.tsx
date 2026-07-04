@@ -1,6 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import React, { useState } from "react";
+import React, { useState, useRef } from "react";
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
@@ -69,6 +69,7 @@ const InputField: React.FC<InputFieldProps> = ({
 export default function RequestQuoteForm() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const scrollViewRef = useRef<ScrollView>(null);
   const [loading, setLoading] = useState(false);
   const [showModal, setShowModal] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
@@ -122,6 +123,9 @@ export default function RequestQuoteForm() {
       console.log("📥 [OTP] Firebase confirmation object received:", confirmation ? "SUCCESS" : "EMPTY");
       setConfirm(confirmation);
       setShowOtpBox(true);
+      setTimeout(() => {
+        scrollViewRef.current?.scrollToEnd({ animated: true });
+      }, 150);
     } catch (error: any) {
       console.error("❌ [OTP] Firebase Auth Error:", error);
       setErrorMessage(error?.message || "Failed to Send OTP");
@@ -251,9 +255,11 @@ export default function RequestQuoteForm() {
 
       <KeyboardAvoidingView
         style={styles.container}
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
+        behavior={Platform.OS === "ios" ? "padding" : "padding"}
+        keyboardVerticalOffset={Platform.OS === "ios" ? 88 : 100}
       >
         <ScrollView
+          ref={scrollViewRef}
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"

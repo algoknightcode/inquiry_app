@@ -99,13 +99,7 @@ export default function RootLayout() {
                 animation: "slide_from_right"
               }} 
             />
-            <Stack.Screen 
-              name="Buyer/PostRFQ/index" 
-              options={{ 
-                headerShown: false,
-                animation: "slide_from_right"
-              }} 
-            />
+
             <Stack.Screen 
               name="Seller/Profile/index" 
               options={{ 
@@ -171,6 +165,13 @@ export default function RootLayout() {
           />
           <Stack.Screen 
             name="HelpSupport/index" 
+            options={{ 
+              headerShown: false,
+              animation: "slide_from_right"
+            }} 
+          />
+          <Stack.Screen 
+            name="ExhibitionPage/index" 
             options={{ 
               headerShown: false,
               animation: "slide_from_right"

@@ -98,38 +98,6 @@ const Dashboard = () => {
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={["#4F46E5"]} tintColor="#4F46E5" />
         }
       >
-        {/* --- MEMBERSHIP PLAN HERO CARD --- */}
-        <View style={s.heroCard}>
-          {/* Decorative Background Icon */}
-          <Ionicons name="shield-checkmark" size={moderateScale(120)} color="rgba(255,255,255,0.1)" style={s.decorativeIcon} />
-          
-          <View style={s.heroHeader}>
-            <View style={s.activeBadge}>
-              <View style={s.activeDot} />
-              <Text style={s.activeText}>Active</Text>
-            </View>
-            <Ionicons name="medal" size={moderateScale(24)} color="#FFF" />
-          </View>
-          
-          <Text style={s.heroTitle}>
-            Elite Plan
-          </Text>
-          
-          <View style={s.heroFooter}>
-            <View>
-              <Text style={s.dateText}>
-                <Ionicons name="calendar-outline" size={moderateScale(12)} /> Start: 01 Jan 2026
-              </Text>
-              <Text style={s.dateText}>
-                <Ionicons name="calendar-outline" size={moderateScale(12)} /> End: 31 Dec 2026
-              </Text>
-            </View>
-            <TouchableOpacity style={s.upgradeBtn}>
-              <Text style={s.upgradeBtnText}>Upgrade</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-
         {/* --- METRICS GRID (Side by Side) --- */}
         <View style={s.metricsGrid}>
           {/* Total Products (Purple Card) */}
@@ -227,69 +195,78 @@ const Dashboard = () => {
 
         {/* --- COMPANY PROFILE --- */}
         <View style={s.sectionCard}>
-          <View style={s.companyProfileHeader}>
-            <View style={s.companyLogoWrapper}>
-              <Text style={s.companyLogoText}>
-                {(businessProfile?.companyName || "Guruji Colours Enterprises").charAt(0).toUpperCase()}
-              </Text>
+          {isLoading ? (
+            <View style={{ height: verticalScale(180), justifyContent: 'center', alignItems: 'center' }}>
+              <ActivityIndicator size="large" color="#4F46E5" />
+              <Text className="text-[13px] font-jakarta-medium text-slate-500 mt-2">Loading supplier details...</Text>
             </View>
-            <View style={s.flexContainer}>
-              <Text style={s.companyNameText}>
-                {businessProfile?.companyName || "Guruji Colours Enterprises"}
-              </Text>
-              <Text style={s.companyTypeText}>
-                <Ionicons name="business" size={moderateScale(13)} /> {businessProfile?.businessType || "Wholesaler"}
-              </Text>
-            </View>
-          </View>
+          ) : (
+            <>
+              <View style={s.companyProfileHeader}>
+                <View style={s.companyLogoWrapper}>
+                  <Text style={s.companyLogoText}>
+                    {(businessProfile?.companyName || "N/A").charAt(0).toUpperCase()}
+                  </Text>
+                </View>
+                <View style={s.flexContainer}>
+                  <Text style={s.companyNameText}>
+                    {businessProfile?.companyName || "N/A"}
+                  </Text>
+                  <Text style={s.companyTypeText}>
+                    <Ionicons name="business" size={moderateScale(13)} /> {businessProfile?.businessType || "N/A"}
+                  </Text>
+                </View>
+              </View>
 
-          <View style={s.gridContainer}>
-            <View style={s.gridRow}>
-              <Ionicons name="person-outline" size={moderateScale(16)} color="#64748B" style={s.gridIcon} />
-              <View style={s.gridCol}>
-                <Text style={s.gridColLabel}>CEO</Text>
-                <Text style={s.gridColValue}>
-                  {businessProfile?.ceoName || "Tanish Sukh"}
-                </Text>
-              </View>
-              <View style={s.gridCol}>
-                <Text style={s.gridColLabel}>GST No</Text>
-                <Text style={s.gridColValue}>
-                  {businessProfile?.gstNumber || "07LVXPS5272F1ZK"}
-                </Text>
-              </View>
-            </View>
+              <View style={s.gridContainer}>
+                <View style={s.gridRow}>
+                  <Ionicons name="person-outline" size={moderateScale(16)} color="#64748B" style={s.gridIcon} />
+                  <View style={s.gridCol}>
+                    <Text style={s.gridColLabel}>CEO</Text>
+                    <Text style={s.gridColValue}>
+                      {businessProfile?.ceoName || "N/A"}
+                    </Text>
+                  </View>
+                  <View style={s.gridCol}>
+                    <Text style={s.gridColLabel}>GST No</Text>
+                    <Text style={s.gridColValue}>
+                      {businessProfile?.gstNumber || "N/A"}
+                    </Text>
+                  </View>
+                </View>
 
-            <View style={s.gridRow}>
-              <Ionicons name="cash-outline" size={moderateScale(16)} color="#64748B" style={s.gridIcon} />
-              <View style={s.gridCol}>
-                <Text style={s.gridColLabel}>Annual Turnover</Text>
-                <Text style={s.gridColValue}>
-                  {businessProfile?.annualTurnover || "5 - 20 Cr"}
-                </Text>
-              </View>
-            </View>
+                <View style={s.gridRow}>
+                  <Ionicons name="cash-outline" size={moderateScale(16)} color="#64748B" style={s.gridIcon} />
+                  <View style={s.gridCol}>
+                    <Text style={s.gridColLabel}>Annual Turnover</Text>
+                    <Text style={s.gridColValue}>
+                      {businessProfile?.annualTurnover || "N/A"}
+                    </Text>
+                  </View>
+                </View>
 
-            <View style={s.gridRow}>
-              <Ionicons name="briefcase-outline" size={moderateScale(16)} color="#64748B" style={s.gridIcon} />
-              <View style={s.gridCol}>
-                <Text style={s.gridColLabel}>Business Field</Text>
-                <Text style={s.gridColValue}>
-                  {businessProfile?.businessField || "Chemicals, Dyes & Solvents"}
-                </Text>
-              </View>
-            </View>
+                <View style={s.gridRow}>
+                  <Ionicons name="briefcase-outline" size={moderateScale(16)} color="#64748B" style={s.gridIcon} />
+                  <View style={s.gridCol}>
+                    <Text style={s.gridColLabel}>Business Field</Text>
+                    <Text style={s.gridColValue}>
+                      {businessProfile?.businessField || "N/A"}
+                    </Text>
+                  </View>
+                </View>
 
-            <View style={s.gridRow}>
-              <Ionicons name="location-outline" size={moderateScale(16)} color="#64748B" style={s.gridIcon} />
-              <View style={s.gridCol}>
-                <Text style={s.gridColLabel}>Address</Text>
-                <Text style={s.gridColValue}>
-                  {businessProfile?.businessAddress || "Adrash Nagar, New Delhi"}
-                </Text>
+                <View style={s.gridRow}>
+                  <Ionicons name="location-outline" size={moderateScale(16)} color="#64748B" style={s.gridIcon} />
+                  <View style={s.gridCol}>
+                    <Text style={s.gridColLabel}>Address</Text>
+                    <Text style={s.gridColValue}>
+                      {businessProfile?.businessAddress || "N/A"}
+                    </Text>
+                  </View>
+                </View>
               </View>
-            </View>
-          </View>
+            </>
+          )}
         </View>
       </ScrollView>
 

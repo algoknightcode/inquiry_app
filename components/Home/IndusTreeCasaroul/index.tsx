@@ -296,7 +296,7 @@ const s = StyleSheet.create({
     flexWrap: "wrap",
     justifyContent: "space-between",
     rowGap: 10,
-    marginBottom: 16,
+    marginBottom: 8,
   },
 
   catCard: {
@@ -405,7 +405,9 @@ const s = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     gap: 6,
-    paddingVertical: 14,
+    paddingTop: 0,
+    paddingBottom: 0,
+    marginTop: -28,
     backgroundColor: WHITE,
   },
   dotIndicator: {

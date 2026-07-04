@@ -31,14 +31,47 @@ export default function ContactUs() {
   const handleEmail = () => Linking.openURL("mailto:care@inquirybazaar.com");
 
   // Form Submit Handler
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
+    if (!form.name.trim() || !form.phone.trim() || !form.message.trim()) {
+      alert("Please fill all required fields");
+      return;
+    }
+
     setIsSubmitting(true);
-    // Simulate API call
-    setTimeout(() => {
+    try {
+      const formData = {
+        platform: "Inquiry Bazaar Contact Form",
+        platformEmail: "lead.inquirybazaar@gmail.com",
+        name: form.name,
+        phone: form.phone,
+        email: form.email || "N/A",
+        place: "N/A",
+        product: "Contact Us Inquiry",
+        message: form.message,
+      };
+
+      const response = await fetch("https://brandbnalo.com/api/form/add", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(formData),
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data?.success) {
+        alert("Message Sent Successfully");
+        setForm({ name: "", email: "", phone: "", message: "" });
+      } else {
+        alert("Failed to submit form");
+      }
+    } catch (error) {
+      console.error("Contact Form Submission Error:", error);
+      alert("Server Error. Please try again.");
+    } finally {
       setIsSubmitting(false);
-      alert("Message Sent! We will get back to you soon.");
-      setForm({ name: "", email: "", phone: "", message: "" });
-    }, 1500);
+    }
   };
 
   return (

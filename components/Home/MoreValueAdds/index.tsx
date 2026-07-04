@@ -1,8 +1,8 @@
-import React, { useEffect, useRef, useState } from "react";
-import { FlatList, Pressable, Text, useWindowDimensions, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import { useRouter } from "expo-router";
+import React, { useEffect, useRef, useState } from "react";
+import { FlatList, Linking, Pressable, Text, useWindowDimensions, View } from "react-native";
 
 type ValueAddCard = {
   id: string;
@@ -18,7 +18,7 @@ const cardsData: ValueAddCard[] = [
     badge: "Inquiry Bazaar",
     title: "Buy Premium\nDomains",
     imageSource: require("@/assets/images/more_value/2-2.webp"),
-    route: "/Pricing",
+    route: "https://domain.inquirybazaar.com/",
   },
   {
     id: "2",
@@ -32,14 +32,14 @@ const cardsData: ValueAddCard[] = [
     badge: "Inquiry Bazaar",
     title: "GEM Tenders",
     imageSource: require("@/assets/images/more_value/4-4.webp"),
-    route: "/Pricing",
+    route: "https://gem.gov.in/",
   },
   {
     id: "4",
     badge: "Inquiry Bazaar",
     title: "Exhibitions Se Google\nTak Har Jagah Bas Aap",
     imageSource: require("@/assets/images/more_value/5-5.webp"),
-    route: "/Pricing",
+    route: "/ExhibitionPage",
   },
 ];
 
@@ -81,12 +81,20 @@ export default function MoreValueAdds() {
     }
   };
 
+  const handlePress = (route: string) => {
+    if (route.startsWith("http://") || route.startsWith("https://")) {
+      Linking.openURL(route).catch((err) => console.error("Failed to open external link", err));
+    } else {
+      router.push(route);
+    }
+  };
+
   const renderItem = ({ item, index }: { item: ValueAddCard; index: number }) => {
     const isLastItem = index === cardsData.length - 1;
 
     return (
       <Pressable
-        onPress={() => router.push(item.route)}
+        onPress={() => handlePress(item.route)}
         style={{ 
           width: cardWidth, 
           height: cardHeight,

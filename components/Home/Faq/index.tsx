@@ -5,6 +5,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { useRouter } from "expo-router";
 
 const faqs = [
   {
@@ -88,6 +89,7 @@ const AccordionItem = ({
 
 // --- MAIN FAQ COMPONENT ---
 export default function FaqSection() {
+  const router = useRouter();
   const [expandedIndex, setExpandedIndex] = useState<number | null>(0); // First item open by default
 
   const handlePress = (index: number) => {
@@ -110,6 +112,7 @@ export default function FaqSection() {
 
         <TouchableOpacity 
           activeOpacity={0.7}
+          onPress={() => router.push("/HelpSupport")}
           className="flex-row items-center bg-slate-50 border border-slate-100 px-3 py-1.5 rounded-xl"
         >
           <Text className="text-[12px] font-jakarta-bold text-slate-600 mr-1">

@@ -47,7 +47,6 @@ const baseMenuItems: MenuItem[] = [
   { icon: "home-outline", title: "Home", route: "/(tabs)" },
   { icon: "person-outline", title: "Profile", route: "/Buyer/profile" },
   { icon: "grid-outline", title: "Explore Industries", route: "/Industries" },
-  { icon: "create-outline", title: "Post Requirement", route: "/Buyer/PostRFQ", highlight: true }, 
   { icon: "briefcase-outline", title: "Free Listing", route: "/Seller/auth/Signup", highlight: true },
   { icon: "notifications-outline", title: "Notifications", route: "/NotificationPanel" },
   { icon: "help-circle-outline", title: "Help & Support", route: "/HelpSupport" },
@@ -240,6 +239,28 @@ export default function Sidebar({ visible, onClose, currentRole }: SidebarProps)
           {/* Menu Scroller */}
           <ScrollView className="flex-1 px-3 pt-4" showsVerticalScrollIndicator={false}>
             
+            {/* STANDARD PLAN SMALL CARD */}
+            {activeRole === "seller" && (
+              <View className="mx-1 mb-4 p-3.5 rounded-2xl bg-emerald-50 border border-emerald-100 flex-row items-center">
+                <View className="h-9 w-9 rounded-xl bg-emerald-500 items-center justify-center mr-3 shadow-sm">
+                  <Ionicons name="shield-checkmark" size={18} color="#ffffff" />
+                </View>
+                <View className="flex-1">
+                  <View className="flex-row items-center gap-1.5">
+                    <Text className="text-[14px] font-jakarta-bold text-slate-800">
+                      Standard Plan
+                    </Text>
+                    <View className="px-1.5 py-0.5 rounded-full bg-emerald-500/10 flex-row items-center">
+                      <View className="w-1.5 h-1.5 rounded-full bg-emerald-500 mr-1" />
+                      <Text className="text-[9px] font-jakarta-bold text-emerald-600 uppercase">
+                        Active
+                      </Text>
+                    </View>
+                  </View>
+                </View>
+              </View>
+            )}
+
             {/* SELLER DROPDOWN SECTION (Only renders if user selected Seller) */}
             {activeRole === "seller" && (
               <View className="mb-4 rounded-2xl overflow-hidden border border-slate-100" style={{ backgroundColor: 'rgba(248, 250, 252, 0.7)' }}>
