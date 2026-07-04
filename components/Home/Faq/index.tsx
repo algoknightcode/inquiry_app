@@ -1,196 +1,136 @@
 import { Ionicons } from "@expo/vector-icons";
-import React, { useEffect, useRef, useState } from "react";
+import React, { useState } from "react";
 import {
-    Animated,
-    LayoutAnimation,
-    Platform,
-    Text,
-    TouchableOpacity,
-    UIManager,
-    Vibration,
-    View,
+  Text,
+  TouchableOpacity,
+  View,
 } from "react-native";
 
-// Safely enable LayoutAnimation for Android
-if (Platform.OS === "android" && UIManager.setLayoutAnimationEnabledExperimental) {
-  UIManager.setLayoutAnimationEnabledExperimental(true);
-}
-
-// --- FAQ DATA ---
 const faqs = [
   {
+    id: "f1",
     question: "How do I request a bulk quotation?",
-    answer: "Simply click the 'Request Quote' button on any product page, fill in your business details and required quantity, and our sellers will get back to you within 24 hours.",
+    answer: "Click 'Request Quote' on a product page, fill in business details and quantity, and sellers will reply within 24 hours.",
   },
   {
+    id: "f2",
     question: "Are all suppliers verified?",
-    answer: "Yes! Every supplier on our platform goes through a strict 3-step KYC and verification process to ensure 100% authentic and reliable B2B trading.",
+    answer: "Yes, every supplier goes through a KYC and verification process to ensure authentic and reliable B2B trading.",
   },
   {
+    id: "f3",
     question: "What are the payment terms?",
-    answer: "Payment terms are directly negotiated between the buyer and the seller. However, we recommend using secure Escrow or standard Net-30/Net-60 terms for trusted partners.",
+    answer: "Terms are negotiated directly. We recommend secure Escrow or standard Net-30/60 terms for trusted partners.",
   },
   {
+    id: "f4",
     question: "How do I track my inquiries?",
-    answer: "You can track all your active, pending, and completed inquiries directly from your Buyer Dashboard under the 'My Inquiries' tab.",
+    answer: "Track all your active, pending, and completed inquiries directly from your Dashboard under 'My Inquiries'.",
   },
 ];
 
-// --- PREMIUM ANIMATED FAQ CARD ---
-const FaqCard = ({
-  item,
+// --- ACCORDION ITEM COMPONENT ---
+const AccordionItem = ({
+  question,
+  answer,
   isExpanded,
   onPress,
 }: {
-  item: typeof faqs[0];
+  question: string;
+  answer: string;
   isExpanded: boolean;
   onPress: () => void;
 }) => {
-  // Use Animated.Value to fix the Android color popping bug
-  const animationController = useRef(new Animated.Value(isExpanded ? 1 : 0)).current;
-
-  useEffect(() => {
-    Animated.timing(animationController, {
-      toValue: isExpanded ? 1 : 0,
-      duration: 300,
-      useNativeDriver: false, // Must be false for colors
-    }).start();
-  }, [isExpanded]);
-
-  // Smoothly transition colors to avoid Android glitches
-  const backgroundColor = animationController.interpolate({
-    inputRange: [0, 1],
-    outputRange: ["#FFFFFF", "#EFF6FF"], // White to soft Blue-50
-  });
-
-  const borderColor = animationController.interpolate({
-    inputRange: [0, 1],
-    outputRange: ["#F1F5F9", "#93C5FD"], // Slate-100 to Blue-300
-  });
-
-  const iconRotate = animationController.interpolate({
-    inputRange: [0, 1],
-    outputRange: ["0deg", "180deg"], // Rotates Chevron Down to Up
-  });
-
   return (
-    <Animated.View
-      style={{
-        backgroundColor,
-        borderColor,
-        borderWidth: 1.5,
-        borderRadius: 16,
-        marginBottom: 12,
-        overflow: "hidden",
-        // Soft elevation shadow when expanded
-        ...(isExpanded ? {
-          shadowColor: "#1E3A8A",
-          shadowOffset: { width: 0, height: 6 },
-          shadowOpacity: 0.08,
-          shadowRadius: 12,
-          elevation: 3,
-        } : {}),
-      }}
+    <View 
+      className={`mb-3 border rounded-2xl overflow-hidden ${
+        isExpanded ? "border-indigo-200 bg-indigo-50/20" : "border-slate-100 bg-white"
+      }`}
     >
+      {/* Accordion Trigger */}
       <TouchableOpacity
-        activeOpacity={0.8}
+        activeOpacity={0.7}
         onPress={onPress}
-        className="py-4 px-4 flex-row items-center justify-between"
+        className="flex-row justify-between items-center px-4 py-3.5"
       >
-        <Text
-          className={`flex-1 text-[15px] font-bold tracking-tight pr-4 leading-6 ${
-            isExpanded ? "text-[#1E3A8A]" : "text-[#0F172A]"
+        <Text 
+          className={`flex-1 text-[14px] font-jakarta-bold tracking-tight pr-4 leading-5 ${
+            isExpanded ? "text-indigo-900" : "text-slate-800"
           }`}
         >
-          {item.question}
+          {question}
         </Text>
-
-        {/* Rotating Chevron Icon */}
-        <Animated.View
-          style={{ transform: [{ rotate: iconRotate }] }}
-          className={`w-7 h-7 rounded-full items-center justify-center ${
-            isExpanded ? "bg-[#EFF6FF]" : "bg-slate-50"
+        <View 
+          className={`w-6 h-6 rounded-full items-center justify-center ${
+            isExpanded ? "bg-indigo-100" : "bg-slate-50"
           }`}
         >
-          <Ionicons
-            name="chevron-down"
-            size={16}
-            color={isExpanded ? "#1E3A8A" : "#64748B"}
+          <Ionicons 
+            name={isExpanded ? "chevron-up" : "chevron-down"} 
+            size={14} 
+            color={isExpanded ? "#4F46E5" : "#64748B"} 
           />
-        </Animated.View>
+        </View>
       </TouchableOpacity>
 
-      {/* Expandable Content Area */}
+      {/* Accordion Content */}
       {isExpanded && (
-        <View className="px-4 pb-4 pt-0 flex-row">
-          {/* Vertical brand accent indicator bar */}
-          <View className="w-[3px] bg-[#1E3A8A] rounded-full mr-3 my-0.5" />
-          <Text className="flex-1 text-[14px] leading-[22px] text-[#475569] font-medium">
-            {item.answer}
+        <View className="px-4 pb-3.5 pt-0 flex-row">
+          <View className="w-[2.5px] bg-indigo-600 rounded-full mr-3 my-0.5" />
+          <Text className="flex-1 text-[13px] leading-[20px] text-slate-500 font-jakarta-medium">
+            {answer}
           </Text>
         </View>
       )}
-    </Animated.View>
+    </View>
   );
 };
 
-// --- MAIN EXPORTED COMPONENT ---
+// --- MAIN FAQ COMPONENT ---
 export default function FaqSection() {
   const [expandedIndex, setExpandedIndex] = useState<number | null>(0); // First item open by default
 
   const handlePress = (index: number) => {
-    // 1. Premium Haptic Feedback
-    Vibration.vibrate(Platform.OS === "ios" ? 10 : 20);
-
-    // 2. Smooth native layout expansion
-    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-
-    // 3. Toggle state
     setExpandedIndex(expandedIndex === index ? null : index);
   };
 
   return (
-    <View className="w-full bg-transparent px-5 py-6">
+    <View className="w-full bg-transparent px-5 py-4">
       
-      {/* Modern Editorial Header */}
-      <View className="mb-8 items-start">
-        <View className="flex-row items-center border border-blue-200 bg-blue-50 px-3 py-1.5 rounded-lg mb-4">
-          <Ionicons name="chatbubble-ellipses" size={14} color="#1E3A8A" />
-          <Text className="text-[12px] font-bold text-[#1E3A8A] uppercase tracking-widest ml-2">
-            Support
+      {/* Compact Elegant Header */}
+      <View className="mb-5 flex-row items-center justify-between">
+        <View className="flex-row items-center">
+          <View className="w-8 h-8 rounded-xl bg-indigo-50 border border-indigo-100 items-center justify-center mr-3">
+            <Ionicons name="help-circle" size={18} color="#4F46E5" />
+          </View>
+          <Text className="text-xl font-jakarta-bold text-slate-900 tracking-tight">
+            FAQs
           </Text>
         </View>
 
-        <Text className="text-3xl font-black text-[#0F172A] tracking-tight mb-2">
-          Got Questions?
-        </Text>
-        <Text className="text-[15px] text-[#475569] leading-6 font-medium pr-4">
-          Everything you need to know about the platform, billing, and connecting with verified suppliers.
-        </Text>
+        <TouchableOpacity 
+          activeOpacity={0.7}
+          className="flex-row items-center bg-slate-50 border border-slate-100 px-3 py-1.5 rounded-xl"
+        >
+          <Text className="text-[12px] font-jakarta-bold text-slate-600 mr-1">
+            Get Help
+          </Text>
+          <Ionicons name="arrow-forward" size={12} color="#475569" />
+        </TouchableOpacity>
       </View>
 
-      {/* FAQ List Generation */}
+      {/* Accordion Container */}
       <View className="w-full">
         {faqs.map((item, index) => (
-          <FaqCard
-            key={index.toString()}
-            item={item}
+          <AccordionItem
+            key={item.id}
+            question={item.question}
+            answer={item.answer}
             isExpanded={expandedIndex === index}
             onPress={() => handlePress(index)}
           />
         ))}
       </View>
-
-      {/* Contact Support CTA Bottom */}
-      <TouchableOpacity
-        activeOpacity={0.8}
-        className="mt-4 bg-[#0F172A] flex-row items-center justify-center py-4 rounded-2xl shadow-lg shadow-slate-900/20"
-      >
-        <Text className="text-white text-[16px] font-bold mr-2">
-          Contact Support
-        </Text>
-        <Ionicons name="arrow-forward" size={18} color="#FFFFFF" />
-      </TouchableOpacity>
       
     </View>
   );

@@ -3,18 +3,20 @@ import { FontAwesome, Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import React, { useCallback, useEffect, useState } from "react";
 import {
-    ActivityIndicator,
-    FlatList,
-    KeyboardAvoidingView,
-    Linking,
-    Platform,
-    RefreshControl,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  FlatList,
+  KeyboardAvoidingView,
+  Linking,
+  Platform,
+  RefreshControl,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+  StyleSheet,
 } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context"; // Added this import
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { scale, verticalScale, moderateScale } from "react-native-size-matters";
 
 const TIME_FILTERS = [
   { label: "Today", value: "today" },
@@ -25,7 +27,7 @@ const TIME_FILTERS = [
 ];
 
 const LeadsScreen = () => {
-  const insets = useSafeAreaInsets(); // Initialize safe area insets
+  const insets = useSafeAreaInsets();
   
   const [activeFilter, setActiveFilter] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
@@ -90,7 +92,6 @@ const LeadsScreen = () => {
     let dateStr = "N/A";
     let timeStr = "";
     
-    // Safely parse date to prevent UI crashes
     if (item.createdAt) {
       const dt = new Date(item.createdAt);
       if (!isNaN(dt.getTime())) {
@@ -115,65 +116,65 @@ const LeadsScreen = () => {
     };
 
     return (
-      <View className="bg-white rounded-[24px] p-5 mb-4 shadow-sm shadow-slate-200/50 border border-slate-100">
-        <View className="flex-row justify-between items-start mb-4">
-          <View className="flex-row items-center flex-1">
-            <View className="relative mr-3">
-              <View className="w-12 h-12 bg-slate-100 rounded-full items-center justify-center border border-slate-200">
-                <Ionicons name="person-outline" size={20} color="#64748B" />
+      <View style={s.card}>
+        <View style={s.cardHeader}>
+          <View style={s.cardHeaderLeft}>
+            <View style={s.avatarWrapper}>
+              <View style={s.avatar}>
+                <Ionicons name="person-outline" size={moderateScale(18)} color="#64748B" />
               </View>
               {item.status === "new" && (
-                <View className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-emerald-500 rounded-full border-2 border-white z-10" />
+                <View style={s.badgeDot} />
               )}
             </View>
-            <View className="flex-1 pr-2">
-              <Text className="text-[16px] font-bold text-slate-900 tracking-tight" numberOfLines={1}>
+            <View style={s.userInfo}>
+              <Text style={s.userName} numberOfLines={1}>
                 {userName}
               </Text>
-              <View className="flex-row items-center mt-0.5">
-                <Ionicons name="globe-outline" size={12} color="#3B82F6" />
-                <Text className="text-[12px] font-medium text-slate-500 ml-1" numberOfLines={1}>
+              <View style={s.platformRow}>
+                <Ionicons name="globe-outline" size={moderateScale(11)} color="#3B82F6" />
+                <Text style={s.platformText} numberOfLines={1}>
                   {item.platform || "Direct Inquiry"}
                 </Text>
               </View>
             </View>
           </View>
           
-          <View className="items-end pl-2">
-            <Text className="text-[13px] font-bold text-slate-700">{dateStr}</Text>
-            <Text className="text-[11px] font-medium text-slate-400 mt-0.5">{timeStr}</Text>
+          <View style={s.cardHeaderRight}>
+            <Text style={s.dateText}>{dateStr}</Text>
+            <Text style={s.timeText}>{timeStr}</Text>
           </View>
         </View>
 
-        <View className="bg-blue-50/50 rounded-2xl p-3.5 flex-row items-center mb-5 border border-blue-100">
-          <View className="w-8 h-8 bg-blue-100 rounded-xl items-center justify-center mr-3">
-            <Ionicons name="cube" size={16} color="#3B82F6" />
+        <View style={s.productBox}>
+          <View style={s.productIconWrapper}>
+            <Ionicons name="cube" size={moderateScale(14)} color="#3B82F6" />
           </View>
-          <Text className="text-[13px] font-semibold text-blue-950 flex-1 leading-5">
+          <Text style={s.productText}>
             {productInterest}
           </Text>
         </View>
 
-        <View className="flex-row justify-between items-end">
-          <View className="flex-1 gap-y-2">
-            <View className="flex-row items-center">
-              <Ionicons name="call-outline" size={14} color="#64748B" />
-              <Text className="text-[13px] font-semibold text-slate-700 ml-2">{item.phone || "N/A"}</Text>
+        <View style={s.cardFooter}>
+          <View style={s.contactInfo}>
+            <View style={s.contactRow}>
+              <Ionicons name="call-outline" size={moderateScale(13)} color="#64748B" />
+              <Text style={s.contactText}>{item.phone || "N/A"}</Text>
             </View>
-            <View className="flex-row items-center">
-              <Ionicons name="mail-outline" size={14} color="#64748B" />
-              <Text className="text-[13px] font-medium text-slate-500 ml-2 flex-1" numberOfLines={1}>
+            <View style={s.contactRow}>
+              <Ionicons name="mail-outline" size={moderateScale(13)} color="#64748B" />
+              <Text style={s.contactText} numberOfLines={1}>
                 {item.email || "N/A"}
               </Text>
             </View>
           </View>
 
-          <View className="flex-row gap-x-3 ml-2">
-            <TouchableOpacity onPress={handleCall} className="w-11 h-11 rounded-full bg-rose-50 items-center justify-center border border-rose-100 active:bg-rose-100">
-              <Ionicons name="call" size={18} color="#E11D48" />
+          <View style={s.actionsRow}>
+            <TouchableOpacity onPress={handleCall} style={s.callBtn}>
+              <Ionicons name="call" size={moderateScale(16)} color="#E11D48" />
             </TouchableOpacity>
-            <TouchableOpacity onPress={handleWhatsApp} className="w-11 h-11 rounded-full bg-emerald-50 items-center justify-center border border-emerald-100 active:bg-emerald-100">
-              <FontAwesome name="whatsapp" size={20} color="#10B981" />
+            <TouchableOpacity onPress={handleWhatsApp} style={s.whatsappBtn}>
+              <FontAwesome name="whatsapp" size={moderateScale(18)} color="#10B981" />
             </TouchableOpacity>
           </View>
         </View>
@@ -182,29 +183,29 @@ const LeadsScreen = () => {
   };
 
   return (
-    <View className="flex-1 bg-slate-50">
-      <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} className="flex-1">
+    <View style={s.flexContainer}>
+      <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={s.flexContainer}>
         
-        {/* TOP HEADER - Fixed SafeAreaView overlap */}
-        <View className="px-5 pb-2" style={{ paddingTop: insets.top + 16 }}>
-          <View className="flex-row items-center justify-between mb-5">
+        {/* TOP HEADER */}
+        <View style={[s.topHeader, { paddingTop: insets.top + verticalScale(8) }]}>
+          <View style={s.headerRow}>
             <View>
-              <View className="flex-row items-center">
-                <Text className="text-2xl font-bold text-slate-900 tracking-tight">Inquiry</Text>
-                <View className="bg-slate-800 w-6 h-6 rounded-md items-center justify-center ml-2">
-                  <Ionicons name="grid" size={12} color="white" />
+              <View style={s.titleRow}>
+                <Text style={s.title}>Inquiry</Text>
+                <View style={s.titleIcon}>
+                  <Ionicons name="grid" size={moderateScale(11)} color="white" />
                 </View>
               </View>
-              <Text className="text-[13px] font-medium text-slate-500 mt-1">
+              <Text style={s.subtitle}>
                 Total Inquiry: {filteredLeads.length}
               </Text>
             </View>
           </View>
 
-          <View className="flex-row items-center bg-white border border-slate-200 rounded-2xl px-4 h-12 shadow-sm shadow-slate-100 mb-4">
-            <Ionicons name="search" size={20} color="#94A3B8" />
+          <View style={s.searchBar}>
+            <Ionicons name="search" size={moderateScale(18)} color="#94A3B8" />
             <TextInput
-              className="flex-1 ml-2 text-[15px] font-medium text-slate-900 h-full"
+              style={s.searchInput}
               placeholder="Search leads..."
               placeholderTextColor="#94A3B8"
               value={searchQuery}
@@ -212,28 +213,28 @@ const LeadsScreen = () => {
             />
           </View>
 
-
-
-          {/* TIME FILTERS - Fixed FlatList constraints and spacing */}
-          <View className="mb-2">
+          {/* TIME FILTERS */}
+          <View style={s.filtersContainer}>
             <FlatList
               horizontal
               showsHorizontalScrollIndicator={false}
               data={TIME_FILTERS}
               keyExtractor={(item) => item.value}
-              contentContainerStyle={{ paddingRight: 20 }}
+              contentContainerStyle={{ paddingRight: scale(20) }}
               renderItem={({ item }) => {
                 const isActive = activeFilter === item.value;
                 return (
                   <TouchableOpacity
                     onPress={() => setActiveFilter(item.value)}
-                    className={`px-4 py-2 mr-2 rounded-full border ${
-                      isActive 
-                        ? 'bg-blue-900 border-blue-900' 
-                        : 'bg-white border-slate-200'
-                    }`}
+                    style={[
+                      s.filterBtn,
+                      isActive ? s.filterBtnActive : s.filterBtnInactive
+                    ]}
                   >
-                    <Text className={`text-[13px] font-semibold ${isActive ? 'text-white' : 'text-slate-600'}`}>
+                    <Text style={[
+                      s.filterBtnText,
+                      isActive ? s.filterTextActive : s.filterTextInactive
+                    ]}>
                       {item.label}
                     </Text>
                   </TouchableOpacity>
@@ -244,18 +245,18 @@ const LeadsScreen = () => {
         </View>
 
         {/* LIST CONTENT */}
-        <View className="flex-1">
+        <View style={s.flexContainer}>
           {isLoading ? (
-            <View className="flex-1 items-center justify-center">
+            <View style={s.loadingWrapper}>
               <ActivityIndicator size="large" color="#1E3A8A" />
-              <Text className="mt-4 font-jakarta-medium text-slate-500">Fetching inquiries...</Text>
+              <Text style={s.loadingText}>Fetching inquiries...</Text>
             </View>
           ) : (
             <FlatList
               data={filteredLeads}
               keyExtractor={(item, index) => item._id || item.id || index.toString()}
               renderItem={renderLeadCard}
-              contentContainerStyle={{ padding: 20, paddingBottom: 100 }}
+              contentContainerStyle={s.listContent}
               showsVerticalScrollIndicator={false}
               initialNumToRender={8}
               maxToRenderPerBatch={10}
@@ -270,9 +271,9 @@ const LeadsScreen = () => {
                 />
               }
               ListEmptyComponent={
-                <View className="items-center justify-center mt-20">
-                  <Ionicons name="document-text-outline" size={48} color="#CBD5E1" />
-                  <Text className="text-slate-400 font-medium mt-4 text-[15px]">No inquiries found.</Text>
+                <View style={s.emptyListWrapper}>
+                  <Ionicons name="document-text-outline" size={moderateScale(44)} color="#CBD5E1" />
+                  <Text style={s.emptyListText}>No inquiries found.</Text>
                 </View>
               }
             />
@@ -283,5 +284,280 @@ const LeadsScreen = () => {
     </View>
   );
 };
+
+const s = StyleSheet.create({
+  flexContainer: {
+    flex: 1,
+    backgroundColor: "#F8FAFC",
+  },
+  topHeader: {
+    paddingHorizontal: scale(16),
+    paddingBottom: verticalScale(6),
+    backgroundColor: "#F8FAFC",
+  },
+  headerRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: verticalScale(10),
+  },
+  titleRow: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  title: {
+    fontSize: moderateScale(22),
+    fontWeight: "800",
+    color: "#0F172A",
+    letterSpacing: -0.5,
+  },
+  titleIcon: {
+    backgroundColor: "#1E293B",
+    width: scale(22),
+    height: scale(22),
+    borderRadius: moderateScale(6),
+    alignItems: "center",
+    justifyContent: "center",
+    marginLeft: scale(8),
+  },
+  subtitle: {
+    fontSize: moderateScale(12.5),
+    fontWeight: "600",
+    color: "#64748B",
+    marginTop: verticalScale(2),
+  },
+  searchBar: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#FFFFFF",
+    borderWidth: 1.5,
+    borderColor: "#E2E8F0",
+    borderRadius: moderateScale(14),
+    paddingHorizontal: scale(14),
+    height: verticalScale(42),
+    shadowColor: "#64748B",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.04,
+    shadowRadius: 6,
+    elevation: 2,
+    marginBottom: verticalScale(10),
+  },
+  searchInput: {
+    flex: 1,
+    marginLeft: scale(8),
+    fontSize: moderateScale(13.5),
+    fontWeight: "600",
+    color: "#0F172A",
+    height: "100%",
+  },
+  filtersContainer: {
+    marginBottom: verticalScale(4),
+  },
+  filterBtn: {
+    paddingHorizontal: scale(14),
+    paddingVertical: verticalScale(6),
+    marginRight: scale(8),
+    borderRadius: moderateScale(20),
+    borderWidth: 1.5,
+  },
+  filterBtnActive: {
+    backgroundColor: "#1E3A8A",
+    borderColor: "#1E3A8A",
+  },
+  filterBtnInactive: {
+    backgroundColor: "#FFFFFF",
+    borderColor: "#E2E8F0",
+  },
+  filterBtnText: {
+    fontSize: moderateScale(12.5),
+    fontWeight: "700",
+  },
+  filterTextActive: {
+    color: "#FFFFFF",
+  },
+  filterTextInactive: {
+    color: "#475569",
+  },
+  loadingWrapper: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  loadingText: {
+    marginTop: verticalScale(12),
+    fontWeight: "600",
+    color: "#64748B",
+    fontSize: moderateScale(13.5),
+  },
+  listContent: {
+    padding: scale(16),
+    paddingBottom: verticalScale(80),
+  },
+  card: {
+    backgroundColor: "#FFFFFF",
+    borderRadius: moderateScale(20),
+    padding: moderateScale(16),
+    marginBottom: verticalScale(12),
+    borderWidth: 1,
+    borderColor: "#F1F5F9",
+    shadowColor: "#64748B",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.04,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  cardHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "start",
+    marginBottom: verticalScale(12),
+  },
+  cardHeaderLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+    flex: 1,
+  },
+  avatarWrapper: {
+    position: "relative",
+    marginRight: scale(10),
+  },
+  avatar: {
+    width: scale(40),
+    height: scale(40),
+    backgroundColor: "#F1F5F9",
+    borderRadius: scale(20),
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+  },
+  badgeDot: {
+    position: "absolute",
+    top: verticalScale(-2),
+    right: scale(-2),
+    width: scale(10),
+    height: scale(10),
+    backgroundColor: "#10B981",
+    borderRadius: scale(5),
+    borderWidth: 2,
+    borderColor: "#FFFFFF",
+    zIndex: 10,
+  },
+  userInfo: {
+    flex: 1,
+    paddingRight: scale(8),
+  },
+  userName: {
+    fontSize: moderateScale(14.5),
+    fontWeight: "700",
+    color: "#0F172A",
+  },
+  platformRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginTop: verticalScale(2),
+  },
+  platformText: {
+    fontSize: moderateScale(11),
+    fontWeight: "600",
+    color: "#64748B",
+    marginLeft: scale(4),
+  },
+  cardHeaderRight: {
+    alignItems: "flex-end",
+  },
+  dateText: {
+    fontSize: moderateScale(12),
+    fontWeight: "700",
+    color: "#475569",
+  },
+  timeText: {
+    fontSize: moderateScale(10.5),
+    fontWeight: "600",
+    color: "#94A3B8",
+    marginTop: verticalScale(2),
+  },
+  productBox: {
+    backgroundColor: "rgba(59, 130, 246, 0.05)",
+    borderRadius: moderateScale(12),
+    padding: moderateScale(10),
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: verticalScale(14),
+    borderWidth: 1,
+    borderColor: "rgba(59, 130, 246, 0.1)",
+  },
+  productIconWrapper: {
+    width: scale(26),
+    height: scale(26),
+    backgroundColor: "rgba(59, 130, 246, 0.12)",
+    borderRadius: moderateScale(8),
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: scale(10),
+  },
+  productText: {
+    fontSize: moderateScale(12.5),
+    fontWeight: "700",
+    color: "#1E3A8A",
+    flex: 1,
+    lineHeight: verticalScale(16),
+  },
+  cardFooter: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-end",
+  },
+  contactInfo: {
+    flex: 1,
+    gap: verticalScale(4),
+  },
+  contactRow: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  contactText: {
+    fontSize: moderateScale(12),
+    fontWeight: "600",
+    color: "#475569",
+    marginLeft: scale(6),
+  },
+  actionsRow: {
+    flexDirection: "row",
+    gap: scale(10),
+    marginLeft: scale(8),
+  },
+  callBtn: {
+    width: scale(36),
+    height: scale(36),
+    borderRadius: scale(18),
+    backgroundColor: "#FEF2F2",
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1,
+    borderColor: "#FEE2E2",
+  },
+  whatsappBtn: {
+    width: scale(36),
+    height: scale(36),
+    borderRadius: scale(18),
+    backgroundColor: "#ECFDF5",
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1,
+    borderColor: "#D1FAE5",
+  },
+  emptyListWrapper: {
+    alignItems: "center",
+    justifyContent: "center",
+    marginTop: verticalScale(80),
+  },
+  emptyListText: {
+    color: "#94A3B8",
+    fontWeight: "600",
+    marginTop: verticalScale(12),
+    fontSize: moderateScale(13.5),
+  },
+});
 
 export default LeadsScreen;

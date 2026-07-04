@@ -1,6 +1,7 @@
 import { useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
-import { ActivityIndicator, FlatList, Image, Text, TouchableOpacity, View } from "react-native";
+import { ActivityIndicator, FlatList, Text, TouchableOpacity, View } from "react-native";
+import { Image } from "expo-image";
 import { productCache } from "@/utils/productCache";
 
 // ── TypeScript Types matching backend payload ──────────────────────────────
@@ -74,8 +75,9 @@ const ProductCard = ({ item }: { item: Product }) => {
       <View className="h-48 w-full bg-slate-100">
         <Image
           source={{ uri: primaryImage }}
-          className="w-full h-full"
-          resizeMode="cover"
+          style={{ width: "100%", height: "100%" }}
+          contentFit="cover"
+          transition={200}
         />
       </View>
 

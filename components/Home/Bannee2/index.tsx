@@ -10,7 +10,6 @@ const { width } = Dimensions.get("window");
 const CARD_WIDTH = (width - 25) / 2;
 
 const Banner2 = () => {
-  const pulseAnim = useRef(new Animated.Value(1)).current;
   const pressScaleLeft = useRef(new Animated.Value(1)).current;
   const pressScaleRight = useRef(new Animated.Value(1)).current;
   const router = useRouter();
@@ -27,23 +26,6 @@ const Banner2 = () => {
       router.push("/Seller/auth/Login");
     }
   };
-
-  useEffect(() => {
-    Animated.loop(
-      Animated.sequence([
-        Animated.timing(pulseAnim, {
-          toValue: 1.04,
-          duration: 1200,
-          useNativeDriver: true,
-        }),
-        Animated.timing(pulseAnim, {
-          toValue: 1,
-          duration: 1200,
-          useNativeDriver: true,
-        }),
-      ])
-    ).start();
-  }, [pulseAnim]);
 
   const handlePressIn = (scale: Animated.Value) => {
     Animated.spring(scale, {

@@ -2,21 +2,23 @@ import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import React, { useState } from "react";
 import {
-    ActivityIndicator,
-    Alert,
-    Image,
-    KeyboardAvoidingView,
-    Modal,
-    Platform,
-    Pressable,
-    ScrollView,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Alert,
+  Image,
+  KeyboardAvoidingView,
+  Modal,
+  Platform,
+  Pressable,
+  ScrollView,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+  StyleSheet,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import Logo from "../../../assets/images/logoo.webp";
+import { scale, verticalScale, moderateScale } from "react-native-size-matters";
+import Logo from "../../../assets/images/logoo-Photoroom.png";
 import { setGlobalRole, setGlobalBuyerId, setGlobalSellerId, setSellerSignedIn } from "../../../utils/roleCache";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
@@ -77,12 +79,10 @@ const BuyerLogin = () => {
       const json = await response.json();
       console.log("📥 POST Login Response:", json);
       if (response.ok && json.success) {
-        // Extract the user's MongoDB ID
         const loggedInUserId = json.user?.id || json.user?._id || json.userId || json.data?.user?._id || json.data?.user?.id;
         if (loggedInUserId) {
           console.log("🔑 Logged in Buyer User ID:", loggedInUserId);
           
-          // Save actual ID to AsyncStorage
           await AsyncStorage.setItem("buyerId", loggedInUserId);
           await AsyncStorage.removeItem("supplierId");
           setGlobalBuyerId(loggedInUserId);
@@ -113,19 +113,17 @@ const BuyerLogin = () => {
     <KeyboardAvoidingView
       behavior={Platform.OS === "ios" ? "padding" : "padding"}
       keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 20}
-      className="flex-1 bg-[#F8FAFC]"
-      style={{ flex: 1 }}
+      style={s.flexContainer}
     >
-
       {/* --- SUCCESS TICK MODAL --- */}
       <Modal visible={isSuccess} transparent animationType="fade">
-        <View style={{ flex: 1, backgroundColor: 'rgba(15, 23, 42, 0.6)', justifyContent: 'center', alignItems: 'center' }}>
-          <View className="bg-white rounded-[32px] p-8 items-center shadow-2xl shadow-emerald-900/50 w-[80%] max-w-[340px]">
-            <View className="bg-emerald-50 h-20 w-20 rounded-full items-center justify-center mb-5 border-[4px] border-white shadow-lg shadow-emerald-100">
-              <Ionicons name="checkmark" size={40} color="#10B981" />
+        <View style={s.modalOverlay}>
+          <View style={s.modalCard}>
+            <View style={s.modalSuccessCircle}>
+              <Ionicons name="checkmark" size={moderateScale(38)} color="#10B981" />
             </View>
-            <Text className="text-[20px] font-jakarta-bold text-slate-900 mb-2 tracking-tight">Login Successful!</Text>
-            <Text className="text-[14px] font-jakarta-medium text-slate-500 text-center leading-relaxed">
+            <Text style={s.modalTitle}>Login Successful!</Text>
+            <Text style={s.modalSubtitle}>
               Welcome back to your workspace.
             </Text>
           </View>
@@ -134,8 +132,7 @@ const BuyerLogin = () => {
 
       {/* Custom Back Header */}
       <View 
-        style={{ paddingTop: insets.top + 10, paddingBottom: 10, backgroundColor: "#F8FAFC" }}
-        className="px-4 flex-row items-center border-b border-slate-100"
+        style={[s.headerContainer, { paddingTop: insets.top + verticalScale(8) }]}
       >
         <TouchableOpacity 
           onPress={() => {
@@ -145,43 +142,41 @@ const BuyerLogin = () => {
               router.replace("/(auth)/choose-role");
             }
           }} 
-          style={{ flexDirection: "row", alignItems: "center" }}
+          style={s.backBtn}
         >
-          <Ionicons name="chevron-back" size={28} color="#007AFF" />
-          <Text style={{ color: "#007AFF", fontSize: 17, marginLeft: -6 }}>Back</Text>
+          <Ionicons name="chevron-back" size={moderateScale(26)} color="#007AFF" />
+          <Text style={s.backText}>Back</Text>
         </TouchableOpacity>
-        <Text className="text-lg font-jakarta-bold font-bold text-slate-800 ml-4">
+        <Text style={s.headerTitle}>
           Buyer Login
         </Text>
       </View>
 
-      <View className="flex-1 justify-start">
+      <View style={s.formContainer}>
         <ScrollView
-          contentContainerStyle={{ flexGrow: 1, justifyContent: "flex-start", paddingTop: 16 }}
-          className="px-4 pb-6"
+          contentContainerStyle={s.scrollContent}
           showsVerticalScrollIndicator={false}
         >
-
           {/* Main Card Element */}
-          <View className="bg-white rounded-[32px] px-6 py-9 shadow-2xl shadow-black/30 w-full min-h-[580px]">
+          <View style={s.mainCard}>
             {/* Brand Logo & Context Headers */}
-            <View className="items-center mb-6">
-              <Image source={Logo} className="w-44 h-16 mb-4" resizeMode="contain" />
-              <Text className="text-[30px] font-jakarta-bold font-extrabold text-blue-900 tracking-tight mb-1.5">
+            <View style={s.logoWrapper}>
+              <Image source={Logo} style={s.logo} resizeMode="contain" />
+              <Text style={s.title}>
                 Buyer Login
               </Text>
-              <Text className="text-[15px] font-jakarta-medium text-slate-400">
+              <Text style={s.subtitle}>
                 Access your account securely
               </Text>
             </View>
 
             {/* Inputs & Form Wrapper */}
-            <View className="w-full gap-y-4">
+            <View style={s.inputsWrapper}>
               {/* Email or Phone Number Field */}
-              <View className="flex-row items-center bg-white border-[1.5px] border-slate-200 rounded-2xl h-14 px-4">
-                <Ionicons name="person-outline" size={20} color="#64748B" className="mr-3" />
+              <View style={s.inputContainer}>
+                <Ionicons name="person-outline" size={moderateScale(18)} color="#64748B" style={s.inputIcon} />
                 <TextInput
-                  className="flex-1 h-full text-slate-900 text-[15px] font-jakarta-semibold font-semibold"
+                  style={s.textInput}
                   placeholder="Email Address or Phone Number"
                   placeholderTextColor="#94A3B8"
                   value={formdata.email}
@@ -192,10 +187,10 @@ const BuyerLogin = () => {
               </View>
 
               {/* Password Field */}
-              <View className="flex-row items-center bg-white border-[1.5px] border-slate-200 rounded-2xl h-14 px-4">
-                <Ionicons name="lock-closed-outline" size={20} color="#64748B" className="mr-3" />
+              <View style={s.inputContainer}>
+                <Ionicons name="lock-closed-outline" size={moderateScale(18)} color="#64748B" style={s.inputIcon} />
                 <TextInput
-                  className="flex-1 h-full text-slate-900 text-[15px] font-jakarta-semibold font-semibold"
+                  style={s.textInput}
                   placeholder="Password"
                   placeholderTextColor="#94A3B8"
                   value={formdata.password}
@@ -203,25 +198,25 @@ const BuyerLogin = () => {
                   secureTextEntry={!showPassword}
                   autoCapitalize="none"
                 />
-                <Pressable onPress={() => setShowPassword(!showPassword)} className="p-1">
+                <Pressable onPress={() => setShowPassword(!showPassword)} style={s.eyeButton}>
                   <Ionicons
                     name={showPassword ? "eye-off-outline" : "eye-outline"}
-                    size={20}
+                    size={moderateScale(18)}
                     color="#64748B"
                   />
                 </Pressable>
               </View>
 
               {/* Forgot Password Action Trigger */}
-              <TouchableOpacity className="items-end -mt-1 pr-1">
-                <Text className="text-blue-900 font-jakarta-bold font-bold text-xs tracking-tight">
+              <TouchableOpacity style={s.forgotPasswordBtn}>
+                <Text style={s.forgotPasswordText}>
                   Forgot Password?
                 </Text>
               </TouchableOpacity>
 
               {/* Dark Blue Main Login Action Button */}
               <TouchableOpacity
-                className="bg-blue-900 rounded-2xl h-14 items-center justify-center mt-3 shadow-lg shadow-blue-900/20 active:opacity-95"
+                style={s.loginButton}
                 onPress={handleSubmit}
                 disabled={loading}
                 activeOpacity={0.9}
@@ -229,19 +224,19 @@ const BuyerLogin = () => {
                 {loading ? (
                   <ActivityIndicator color="#FFFFFF" />
                 ) : (
-                  <Text className="text-white text-[16px] font-jakarta-bold font-bold">
+                  <Text style={s.loginButtonText}>
                     Login
                   </Text>
                 )}
               </TouchableOpacity>
             </View>
 
-            {/* Bottom Form Redirection Router Hook Placeholder */}
-            <View className="items-center mt-7">
-              <Text className="text-sm font-jakarta-medium text-slate-500">
+            {/* Bottom Form Redirection */}
+            <View style={s.signupRedirect}>
+              <Text style={s.redirectText}>
                 Don't have an account?{" "}
                 <Text
-                  className="text-blue-900 font-jakarta-bold font-bold"
+                  style={s.redirectHighlight}
                   onPress={() => router.push("/Buyer/auth/Signup")}
                 >
                   Sign Up
@@ -254,5 +249,196 @@ const BuyerLogin = () => {
     </KeyboardAvoidingView>
   );
 };
+
+const s = StyleSheet.create({
+  flexContainer: {
+    flex: 1,
+    backgroundColor: "#F8FAFC",
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(15, 23, 42, 0.6)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: moderateScale(24),
+    padding: moderateScale(24),
+    alignItems: 'center',
+    width: '80%',
+    maxWidth: scale(300),
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.1,
+    shadowRadius: 20,
+    elevation: 5,
+  },
+  modalSuccessCircle: {
+    backgroundColor: '#ECFDF5',
+    height: scale(64),
+    width: scale(64),
+    borderRadius: scale(32),
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: verticalScale(16),
+    borderWidth: 4,
+    borderColor: '#FFFFFF',
+    shadowColor: "#10B981",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 6,
+    elevation: 2,
+  },
+  modalTitle: {
+    fontSize: moderateScale(18),
+    fontWeight: "700",
+    color: '#0F172A',
+    marginBottom: verticalScale(6),
+    letterSpacing: -0.3,
+  },
+  modalSubtitle: {
+    fontSize: moderateScale(13),
+    color: '#64748B',
+    textAlign: 'center',
+    lineHeight: verticalScale(18),
+  },
+  headerContainer: {
+    paddingBottom: verticalScale(10),
+    backgroundColor: "#F8FAFC",
+    paddingHorizontal: scale(16),
+    flexDirection: "row",
+    alignItems: "center",
+    borderBottomWidth: 1,
+    borderBottomColor: "#E2E8F0",
+  },
+  backBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  backText: {
+    color: "#007AFF",
+    fontSize: moderateScale(16),
+    marginLeft: scale(-4),
+  },
+  headerTitle: {
+    fontSize: moderateScale(16),
+    fontWeight: "700",
+    color: "#1E293B",
+    marginLeft: scale(16),
+  },
+  formContainer: {
+    flex: 1,
+    justifyContent: "flex-start",
+  },
+  scrollContent: {
+    flexGrow: 1,
+    justifyContent: "flex-start",
+    paddingTop: verticalScale(12),
+    paddingHorizontal: scale(16),
+    paddingBottom: verticalScale(24),
+  },
+  mainCard: {
+    backgroundColor: "#FFFFFF",
+    borderRadius: moderateScale(24),
+    paddingHorizontal: scale(20),
+    paddingVertical: verticalScale(28),
+    shadowColor: "#0F172A",
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.05,
+    shadowRadius: 15,
+    elevation: 3,
+    width: "100%",
+    minHeight: verticalScale(480),
+  },
+  logoWrapper: {
+    alignItems: "center",
+    marginBottom: verticalScale(24),
+  },
+  logo: {
+    width: scale(140),
+    height: verticalScale(50),
+    marginBottom: verticalScale(12),
+  },
+  title: {
+    fontSize: moderateScale(24),
+    fontWeight: "800",
+    color: "#1E3A8A",
+    letterSpacing: -0.5,
+    marginBottom: verticalScale(6),
+  },
+  subtitle: {
+    fontSize: moderateScale(14),
+    color: "#94A3B8",
+  },
+  inputsWrapper: {
+    width: "100%",
+  },
+  inputContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#FFFFFF",
+    borderWidth: 1.5,
+    borderColor: "#E2E8F0",
+    borderRadius: moderateScale(16),
+    height: verticalScale(48),
+    paddingHorizontal: scale(14),
+    marginBottom: verticalScale(12),
+  },
+  inputIcon: {
+    marginRight: scale(10),
+  },
+  textInput: {
+    flex: 1,
+    height: "100%",
+    color: "#0F172A",
+    fontSize: moderateScale(14),
+    fontWeight: "600",
+  },
+  eyeButton: {
+    padding: moderateScale(4),
+  },
+  forgotPasswordBtn: {
+    alignItems: "flex-end",
+    marginTop: verticalScale(-4),
+    marginBottom: verticalScale(16),
+    paddingRight: scale(4),
+  },
+  forgotPasswordText: {
+    color: "#1E3A8A",
+    fontWeight: "700",
+    fontSize: moderateScale(11.5),
+  },
+  loginButton: {
+    backgroundColor: "#1E3A8A",
+    borderRadius: moderateScale(16),
+    height: verticalScale(48),
+    alignItems: "center",
+    justifyContent: "center",
+    marginTop: verticalScale(4),
+    shadowColor: "#1E3A8A",
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.15,
+    shadowRadius: 10,
+    elevation: 3,
+  },
+  loginButtonText: {
+    color: "#FFFFFF",
+    fontSize: moderateScale(15),
+    fontWeight: "700",
+  },
+  signupRedirect: {
+    alignItems: "center",
+    marginTop: verticalScale(24),
+  },
+  redirectText: {
+    fontSize: moderateScale(13),
+    color: "#64748B",
+  },
+  redirectHighlight: {
+    color: "#1E3A8A",
+    fontWeight: "700",
+  },
+});
 
 export default BuyerLogin;

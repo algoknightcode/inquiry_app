@@ -3,17 +3,26 @@ import { Image } from "expo-image";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
 import {
-  ActivityIndicator,
   FlatList,
   Linking,
   Platform,
   Pressable,
-  SafeAreaView,
   Text,
+  TextInput,
   TouchableOpacity,
   View,
+  InteractionManager,
+  Modal,
+  ScrollView,
+  ActivityIndicator,
+  Alert,
+  KeyboardAvoidingView,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { globalSellerId } from "@/utils/roleCache";
 import { productCache } from "@/utils/productCache";
+import { Spinner } from "@/components/ui/spinner";
 
 // ── Types ──────────────────────────────────────────────────────────────────
 type Media = {
@@ -52,20 +61,149 @@ type Product = {
   supplier?: Supplier;
 };
 
+const POPULAR_CITIES = [
+  "All India",
+  "Delhi",
+  "Mumbai",
+  "Bengaluru",
+  "Chennai",
+  "Kolkata",
+  "Ahmedabad",
+  "Pune",
+  "Surat",
+  "Hyderabad",
+  "Noida",
+  "Gurugram",
+  "Faridabad",
+  "Ghaziabad",
+  "Lucknow",
+  "Kanpur",
+  "Jaipur",
+  "Coimbatore"
+];
+
 // ── Component ──────────────────────────────────────────────────────────────
 export default function ProductListingPage() {
   const router = useRouter();
-  const { subCategoryName, subCategorySlug } =
-    useLocalSearchParams<{
-      subCategoryName?: string;
-      subCategorySlug?: string;
-      subCategoryId?: string;
-    }>();
+  const params = useLocalSearchParams<{
+    subCategoryName?: string;
+    subCategorySlug?: string;
+    subCategoryId?: string;
+    location?: string;
+    search?: string;
+  }>();
+
+  const subCategoryName = params.subCategoryName || "All Products";
+  const subCategorySlug = params.subCategorySlug || "led-display-board";
 
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [totalProducts, setTotalProducts] = useState(0);
-  const [location, setLocation] = useState("Delhi");
+  const [location, setLocation] = useState(() => {
+    const passedCity = params.location || params.search;
+    if (passedCity) {
+      const matched = POPULAR_CITIES.find(
+        (c) => c.toLowerCase() === passedCity.toLowerCase()
+      );
+      return matched || passedCity;
+    }
+    return "Delhi";
+  });
+  const [searchQuery, setSearchQuery] = useState("");
+  const [isFocused, setIsFocused] = useState(false);
+  const [cityModalVisible, setCityModalVisible] = useState(false);
+  const [citySearchQuery, setCitySearchQuery] = useState("");
+
+  // --- INQUIRY MODAL STATES ---
+  const [selectedProductForInquiry, setSelectedProductForInquiry] = useState<Product | null>(null);
+  const [isInquiryModalVisible, setInquiryModalVisible] = useState(false);
+  const [showInquirySuccessModal, setShowInquirySuccessModal] = useState(false);
+  const [inqName, setInqName] = useState("");
+  const [inqEmail, setInqEmail] = useState("");
+  const [inqPhone, setInqPhone] = useState("");
+  const [inqMessage, setInqMessage] = useState("");
+  const [isSubmittingInquiry, setIsSubmittingInquiry] = useState(false);
+
+  const handleSendInquiry = async () => {
+    if (!inqName.trim() || !inqPhone.trim() || !inqMessage.trim()) {
+      Alert.alert("Required Fields", "Please provide your Name, Phone Number, and Message.");
+      return;
+    }
+
+    setIsSubmittingInquiry(true);
+    try {
+      const globalUserId = globalSellerId || await AsyncStorage.getItem("buyerId") || await AsyncStorage.getItem("supplierId");
+
+      let supToken = typeof selectedProductForInquiry?.supplier === "string" 
+        ? selectedProductForInquiry.supplier 
+        : (selectedProductForInquiry?.supplier?._id);
+
+      if (!supToken && globalUserId) {
+        supToken = globalUserId;
+      }
+
+      const payload = {
+        supplierToken: supToken || "NA",
+        platform: "App Product Listing",
+        platformEmail: selectedProductForInquiry?.supplier?.email || "lead.inquirybazaar@gmail.com",
+        name: inqName,
+        email: inqEmail || "NA",
+        company: "NA",
+        phone: inqPhone,
+        product: selectedProductForInquiry?.name || "NA",
+        place: "NA",
+        message: inqMessage,
+      };
+
+      console.log("📤 Sending Payload:", JSON.stringify(payload, null, 2));
+
+      const res = await fetch("https://brandbnalo.com/api/form/add", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Accept": "application/json",
+          ...(globalUserId ? { "x-user-id": globalUserId } : {})
+        },
+        body: JSON.stringify(payload),
+      });
+
+      const resText = await res.text();
+      console.log("📥 Response Status:", res.status);
+      console.log("📥 Response Body:", resText);
+
+      if (res.ok) {
+        setInquiryModalVisible(false);
+        setShowInquirySuccessModal(true);
+        
+        // Reset fields
+        setInqName("");
+        setInqEmail("");
+        setInqPhone("");
+        setInqMessage("");
+      } else {
+        let errorMsg = "Failed to send inquiry.";
+        try {
+          const errorData = JSON.parse(resText);
+          errorMsg = errorData.message || errorData.error || errorMsg;
+        } catch (e) {}
+        Alert.alert("Submission Failed", errorMsg);
+      }
+    } catch (error) {
+      console.error("Inquiry Error:", error);
+      Alert.alert("Error", "A network error occurred. Please try again.");
+    } finally {
+      setIsSubmittingInquiry(false);
+    }
+  };
+
+  const filteredProducts = products.filter((product) => {
+    const query = searchQuery.toLowerCase().trim();
+    if (!query) return true;
+    const productName = product.name?.toLowerCase() || "";
+    const companyName = product.supplier?.business?.companyName?.toLowerCase() || "";
+    const supplierName = product.supplier?.name?.toLowerCase() || "";
+    return productName.includes(query) || companyName.includes(query) || supplierName.includes(query);
+  });
 
   useEffect(() => {
     if (!subCategorySlug) {
@@ -74,7 +212,8 @@ export default function ProductListingPage() {
     }
     const fetchProducts = async () => {
       try {
-        const url = `https://backend.inquirybazaar.com/api/categories/sub/${subCategorySlug}/${location}`;
+        const apiLocation = location === "All India" ? "India" : location;
+        const url = `https://backend.inquirybazaar.com/api/categories/sub/${subCategorySlug}/${apiLocation}`;
         const response = await fetch(url);
         const json = await response.json();
         if (json.success && json.data) {
@@ -87,6 +226,7 @@ export default function ProductListingPage() {
         setLoading(false);
       }
     };
+    
     fetchProducts();
   }, [subCategorySlug, location]);
 
@@ -101,7 +241,7 @@ export default function ProductListingPage() {
     return (
       <SafeAreaView className="flex-1 bg-slate-50 items-center justify-center">
         <Stack.Screen options={{ headerShown: false }} />
-        <ActivityIndicator size="large" color="#4f46e5" />
+        <Spinner size="large" color="#4f46e5" />
         <Text className="mt-4 text-slate-500 font-jakarta-medium text-[14px]">
           Finding suppliers…
         </Text>
@@ -122,6 +262,7 @@ export default function ProductListingPage() {
     const isOnRequest = item.priceType === "on_request";
 
     return (
+      <View className="bg-white rounded-[24px] p-4 mb-5 border border-slate-100 shadow-sm shadow-slate-200/60">
       <Pressable
         onPress={() => {
             productCache[item._id] = item;
@@ -134,7 +275,6 @@ export default function ProductListingPage() {
             });
           }}
         android_ripple={{ color: "#e2e8f0" }}
-        className="bg-white rounded-[24px] p-4 mb-5 border border-slate-100 shadow-sm shadow-slate-200/60"
       >
         {/* Image */}
         <View className="w-full h-48 rounded-2xl bg-slate-100 overflow-hidden mb-4">
@@ -231,8 +371,9 @@ export default function ProductListingPage() {
           </View>
         </View>
 
+        </Pressable>
         {/* Action buttons */}
-        <View className="flex-row justify-between">
+        <View className="flex-row justify-between mt-2">
           <TouchableOpacity
             onPress={() => phone && Linking.openURL(`tel:${phone}`)}
             className="flex-1 flex-row justify-center items-center py-3 rounded-xl border border-slate-200 active:bg-slate-50 mr-2"
@@ -241,12 +382,19 @@ export default function ProductListingPage() {
             <Text className="text-slate-700 font-jakarta-bold text-[12px] ml-1.5">Call</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity className="flex-[2] flex-row justify-center items-center py-3 rounded-xl bg-indigo-600 active:opacity-90 shadow-sm shadow-indigo-600/30">
+          <TouchableOpacity
+            onPress={() => {
+              setSelectedProductForInquiry(item);
+              setInqMessage(`Hi, I am interested in your product: ${item.name}. Please share pricing and details.`);
+              setInquiryModalVisible(true);
+            }}
+            className="flex-[2] flex-row justify-center items-center py-3 rounded-xl bg-indigo-600 active:opacity-90 shadow-sm shadow-indigo-600/30"
+          >
             <Ionicons name="mail-outline" size={16} color="white" />
             <Text className="text-white font-jakarta-bold text-[12px] ml-1.5">Inquiry</Text>
           </TouchableOpacity>
         </View>
-      </Pressable>
+      </View>
     );
   };
 
@@ -276,12 +424,34 @@ export default function ProductListingPage() {
           </View>
         </View>
 
+        {/* Search Bar */}
+        <View
+          className={`flex-row items-center bg-white border rounded-[16px] h-[56px] px-[18px] mb-4 ${
+            isFocused ? "border-[#4F46E5]" : "border-[#E5E7EB]"
+          }`}
+        >
+          <Ionicons name="search-outline" size={20} color="#6B7280" style={{ marginRight: 8 }} />
+          <TextInput
+            placeholder="Search shops, products, or makers"
+            placeholderTextColor="#6B7280"
+            className="flex-1 h-full text-[#111827] font-jakarta-medium text-[15px]"
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+            onFocus={() => setIsFocused(true)}
+            onBlur={() => setIsFocused(false)}
+            clearButtonMode="while-editing"
+          />
+        </View>
+
         {/* Count + Location pill row */}
         <View className="flex-row items-center justify-between">
           <Text className="text-slate-500 font-jakarta-medium text-[13px]">
-            {totalProducts} suppliers found
+            {filteredProducts.length} suppliers found
           </Text>
-          <Pressable className="flex-row items-center bg-slate-100/80 px-3 py-1.5 rounded-full border border-slate-200">
+          <Pressable 
+            onPress={() => setCityModalVisible(true)}
+            className="flex-row items-center bg-slate-100/80 px-3 py-1.5 rounded-full border border-slate-200 active:bg-slate-200"
+          >
             <Ionicons name="location-outline" size={13} color="#64748b" />
             <Text className="text-slate-700 font-jakarta-semibold text-[12px] ml-1 mr-0.5">
               {location}
@@ -293,19 +463,25 @@ export default function ProductListingPage() {
 
       {/* PRODUCT LIST */}
       <FlatList
-        data={products}
+        data={filteredProducts}
         keyExtractor={(item) => item._id}
         renderItem={renderProduct}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ padding: 16, paddingBottom: 120 }}
+        initialNumToRender={6}
+        maxToRenderPerBatch={8}
+        windowSize={5}
+        removeClippedSubviews={Platform.OS === "android"}
         ListEmptyComponent={
           <View className="flex-1 items-center justify-center mt-20">
-            <Ionicons name="cube-outline" size={56} color="#cbd5e1" />
+            <Ionicons name={searchQuery ? "search-outline" : "cube-outline"} size={56} color="#cbd5e1" />
             <Text className="text-slate-400 font-jakarta-bold text-[16px] mt-4">
-              No products found
+              {searchQuery ? "No matching products" : "No products found"}
             </Text>
             <Text className="text-slate-400 font-jakarta-medium text-[13px] mt-1 text-center px-8">
-              No suppliers for this category in {location} yet.
+              {searchQuery
+                ? "Try searching for a different keyword or category."
+                : `No suppliers for this category in ${location} yet.`}
             </Text>
           </View>
         }
@@ -339,6 +515,276 @@ export default function ProductListingPage() {
           </View>
         </TouchableOpacity>
       </View>
+
+      {/* CITY SELECTION MODAL */}
+      <Modal
+        visible={cityModalVisible}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => {
+          setCityModalVisible(false);
+          setCitySearchQuery("");
+        }}
+      >
+        <View className="flex-1 bg-black/50 justify-end">
+          <View className="bg-white rounded-t-[32px] h-[75%] px-5 pt-6 pb-8 shadow-2xl">
+            {/* Modal Header */}
+            <View className="flex-row items-center justify-between mb-5">
+              <Text className="text-[20px] font-jakarta-extrabold text-slate-900">
+                Select Location
+              </Text>
+              <TouchableOpacity
+                onPress={() => {
+                  setCityModalVisible(false);
+                  setCitySearchQuery("");
+                }}
+                className="w-8 h-8 rounded-full bg-slate-100 items-center justify-center active:bg-slate-200"
+              >
+                <Ionicons name="close" size={20} color="#475569" />
+              </TouchableOpacity>
+            </View>
+
+            {/* City Search Box */}
+            <View className="flex-row items-center bg-slate-50 border border-slate-200 rounded-[16px] h-[52px] px-4 mb-5">
+              <Ionicons name="search-outline" size={18} color="#64748b" style={{ marginRight: 6 }} />
+              <TextInput
+                placeholder="Search city..."
+                placeholderTextColor="#94a3b8"
+                className="flex-1 h-full text-slate-800 font-jakarta-semibold text-[14px]"
+                value={citySearchQuery}
+                onChangeText={setCitySearchQuery}
+                clearButtonMode="while-editing"
+              />
+            </View>
+
+            {/* Scrollable list of cities */}
+            <ScrollView showsVerticalScrollIndicator={false} className="flex-1">
+              {/* Popular Cities Grid (Only show when not searching) */}
+              {!citySearchQuery && (
+                <View className="mb-6">
+                  <Text className="text-[14px] font-jakarta-bold text-slate-400 mb-3 uppercase tracking-wider">
+                    Popular Cities
+                  </Text>
+                  <View className="flex-row flex-wrap gap-2">
+                    {POPULAR_CITIES.map((city) => {
+                      const isSelected = location.toLowerCase() === city.toLowerCase();
+                      return (
+                        <TouchableOpacity
+                          key={city}
+                          onPress={() => {
+                            setLocation(city);
+                            setCityModalVisible(false);
+                          }}
+                          className={`px-4 py-2.5 rounded-full border ${
+                            isSelected
+                              ? "bg-indigo-600 border-indigo-600"
+                              : "bg-slate-50 border-slate-200 active:bg-slate-100"
+                          }`}
+                        >
+                          <Text
+                            className={`font-jakarta-semibold text-[13px] ${
+                              isSelected ? "text-white" : "text-slate-700"
+                            }`}
+                          >
+                            {city}
+                          </Text>
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </View>
+                </View>
+              )}
+
+              {/* Matching Cities List */}
+              <View>
+                <Text className="text-[14px] font-jakarta-bold text-slate-400 mb-2 uppercase tracking-wider">
+                  {citySearchQuery ? "Search Results" : "All Cities"}
+                </Text>
+                {POPULAR_CITIES.filter((city) =>
+                  city.toLowerCase().includes(citySearchQuery.toLowerCase().trim())
+                ).map((city) => {
+                  const isSelected = location.toLowerCase() === city.toLowerCase();
+                  return (
+                    <TouchableOpacity
+                      key={city}
+                      onPress={() => {
+                        setLocation(city);
+                        setCityModalVisible(false);
+                        setCitySearchQuery("");
+                      }}
+                      className="flex-row items-center justify-between py-4 border-b border-slate-100 active:bg-slate-50"
+                    >
+                      <Text
+                        className={`font-jakarta-bold text-[15px] ${
+                          isSelected ? "text-indigo-600" : "text-slate-800"
+                        }`}
+                      >
+                        {city}
+                      </Text>
+                      {isSelected && (
+                        <Ionicons name="checkmark-circle" size={20} color="#4f46e5" />
+                      )}
+                    </TouchableOpacity>
+                  );
+                })}
+                {POPULAR_CITIES.filter((city) =>
+                  city.toLowerCase().includes(citySearchQuery.toLowerCase().trim())
+                ).length === 0 && (
+                  <View className="py-8 items-center">
+                    <Text className="text-slate-400 font-jakarta-medium text-[14px]">
+                      No matching cities found
+                    </Text>
+                  </View>
+                )}
+              </View>
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+
+      {/* INQUIRY MODAL (THE FORM) */}
+      <Modal
+        visible={isInquiryModalVisible}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setInquiryModalVisible(false)}
+      >
+        <KeyboardAvoidingView
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
+          className="flex-1 justify-end bg-black/50"
+        >
+          <View className="bg-white rounded-t-[32px] p-6 max-h-[90%] shadow-2xl">
+            <View className="flex-row justify-between items-center mb-5">
+              <Text className="text-[20px] font-jakarta-extrabold text-slate-900">Contact Supplier</Text>
+              <TouchableOpacity
+                onPress={() => setInquiryModalVisible(false)}
+                className="p-1.5 bg-slate-100 rounded-full active:bg-slate-200"
+              >
+                <Ionicons name="close" size={20} color="#64748b" />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView showsVerticalScrollIndicator={false}>
+              {selectedProductForInquiry && (
+                <View className="flex-row items-center bg-slate-50 p-3 rounded-2xl mb-6 border border-slate-200/80">
+                  {selectedProductForInquiry.media && selectedProductForInquiry.media.length > 0 ? (
+                    <Image
+                      source={{ uri: (selectedProductForInquiry.media.find((m) => m.isPrimary) || selectedProductForInquiry.media[0]).url }}
+                      style={{ width: 60, height: 60, borderRadius: 12 }}
+                      contentFit="cover"
+                    />
+                  ) : (
+                    <View className="w-[60px] h-[60px] rounded-xl bg-slate-200 items-center justify-center">
+                      <Ionicons name="image" size={24} color="#94a3b8" />
+                    </View>
+                  )}
+                  <View className="flex-1 ml-3">
+                    <Text className="text-[14px] font-jakarta-bold text-slate-900" numberOfLines={2}>
+                      {selectedProductForInquiry.name}
+                    </Text>
+                    <Text className="text-[13px] text-slate-500 mt-1 font-jakarta-semibold">
+                      {selectedProductForInquiry.supplier?.business?.companyName || selectedProductForInquiry.supplier?.name || "Supplier"}
+                    </Text>
+                  </View>
+                </View>
+              )}
+
+              <View className="flex-row items-center border border-slate-200 rounded-2xl px-4 h-[52px] mb-4 bg-slate-50">
+                <Ionicons name="person-outline" size={18} color="#64748b" style={{ marginRight: 10 }} />
+                <TextInput
+                  className="flex-1 h-full text-slate-900 font-jakarta-semibold text-[14px]"
+                  placeholder="Your Name *"
+                  placeholderTextColor="#94a3b8"
+                  value={inqName}
+                  onChangeText={setInqName}
+                  editable={!isSubmittingInquiry}
+                />
+              </View>
+
+              <View className="flex-row items-center border border-slate-200 rounded-2xl px-4 h-[52px] mb-4 bg-slate-50">
+                <Ionicons name="mail-outline" size={18} color="#64748b" style={{ marginRight: 10 }} />
+                <TextInput
+                  className="flex-1 h-full text-slate-900 font-jakarta-semibold text-[14px]"
+                  placeholder="Your Email"
+                  placeholderTextColor="#94a3b8"
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                  value={inqEmail}
+                  onChangeText={setInqEmail}
+                  editable={!isSubmittingInquiry}
+                />
+              </View>
+
+              <View className="flex-row items-center border border-slate-200 rounded-2xl px-4 h-[52px] mb-4 bg-slate-50">
+                <Ionicons name="call-outline" size={18} color="#64748b" style={{ marginRight: 10 }} />
+                <TextInput
+                  className="flex-1 h-full text-slate-900 font-jakarta-semibold text-[14px]"
+                  placeholder="Phone Number *"
+                  placeholderTextColor="#94a3b8"
+                  keyboardType="phone-pad"
+                  value={inqPhone}
+                  onChangeText={setInqPhone}
+                  editable={!isSubmittingInquiry}
+                />
+              </View>
+
+              <View className="flex-row items-start border border-slate-200 rounded-2xl px-4 py-3 h-[120px] mb-6 bg-slate-50">
+                <Ionicons name="chatbubble-outline" size={18} color="#64748b" style={{ marginRight: 10, marginTop: 2 }} />
+                <TextInput
+                  className="flex-1 h-full text-slate-900 font-jakarta-semibold text-[14px]"
+                  placeholder="Your Message *"
+                  placeholderTextColor="#94a3b8"
+                  multiline
+                  style={{ textAlignVertical: "top" }}
+                  value={inqMessage}
+                  onChangeText={setInqMessage}
+                  editable={!isSubmittingInquiry}
+                />
+              </View>
+
+              <TouchableOpacity
+                onPress={handleSendInquiry}
+                disabled={isSubmittingInquiry}
+                className="bg-indigo-600 h-[56px] rounded-2xl items-center justify-center flex-row mb-6 active:opacity-90 shadow-lg shadow-indigo-600/30"
+              >
+                {isSubmittingInquiry ? (
+                  <ActivityIndicator color="#fff" />
+                ) : (
+                  <Text className="text-white text-[16px] font-jakarta-bold">Submit Inquiry</Text>
+                )}
+              </TouchableOpacity>
+            </ScrollView>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
+
+      {/* CUSTOM SUCCESS MODAL */}
+      <Modal
+        animationType="fade"
+        transparent={true}
+        visible={showInquirySuccessModal}
+        onRequestClose={() => setShowInquirySuccessModal(false)}
+      >
+        <View className="flex-1 bg-black/60 justify-center items-center px-6">
+          <View className="w-full max-w-[320px] bg-white rounded-3xl p-6 items-center shadow-2xl">
+            <View className="w-16 h-16 rounded-full bg-emerald-100 items-center justify-center mb-4">
+              <Ionicons name="checkmark-circle" size={36} color="#10b981" />
+            </View>
+            <Text className="text-[20px] font-jakarta-extrabold text-slate-900 mb-2 text-center">
+              Inquiry Sent!
+            </Text>
+            <Text className="text-[14px] text-slate-500 font-jakarta-medium text-center mb-6 leading-relaxed">
+              Your inquiry has been successfully sent to the supplier. They will contact you shortly.
+            </Text>
+            <TouchableOpacity
+              onPress={() => setShowInquirySuccessModal(false)}
+              className="w-full bg-slate-900 h-[50px] rounded-2xl items-center justify-center active:opacity-90"
+            >
+              <Text className="text-white font-jakarta-bold text-[15px]">Great, thanks!</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }

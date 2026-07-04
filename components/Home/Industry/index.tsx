@@ -1,4 +1,3 @@
-import { BlurView } from "expo-blur";
 import { Image } from "expo-image";
 import { useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
@@ -87,17 +86,14 @@ const Top_Industries = () => {
 
             <View className={styles.contentWrapper}>
               
-              <BlurView 
-                intensity={30} 
-                tint="light" 
-                className={styles.glassPill}
-                style={{ overflow: 'hidden' }} 
+              <View 
+                className="self-start bg-slate-900/50 border border-white/20 px-2.5 py-1 rounded-lg mb-2"
               >
                 <Text className={styles.glassPillText}>
                   {/* Hardcoded fallback if your API doesn't have product counts yet */}
                   {item.productCount || "Explore Sector"} 
                 </Text>
-              </BlurView>
+              </View>
 
               {/* Industry Title */}
               <Text 

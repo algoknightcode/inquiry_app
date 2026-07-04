@@ -1,7 +1,7 @@
 import { Image } from "expo-image";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
-import { ActivityIndicator, Pressable, ScrollView, Text, View } from "react-native";
+import { ActivityIndicator, Pressable, ScrollView, Text, View, InteractionManager } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { CategoryImage } from "@/assets/images"; // Make sure your path is correct
@@ -14,7 +14,7 @@ type Category = {
 
 const Grid_mainCategory = () => {
   const router = useRouter();
-  const { id, name } = useLocalSearchParams<{ id?: string; name?: string }>();
+  const { id, name, location } = useLocalSearchParams<{ id?: string; name?: string; location?: string }>();
   const [categoriesList, setCategoriesList] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const insets = useSafeAreaInsets();
@@ -83,7 +83,7 @@ const Grid_mainCategory = () => {
                 android_ripple={{ color: "#f1f5f9", radius: 35, borderless: true }}
                 onPress={() => router.push({
                   pathname: "/SubCategory",
-                  params: { categoryId: item._id, categoryName: item.name, industryId: id }
+                  params: { categoryId: item._id, categoryName: item.name, industryId: id, location }
                 })}
               >
               {/* The Image Wrapper (Squircle) */}

@@ -3,18 +3,20 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
 import {
-    ActivityIndicator,
-    FlatList,
-    Image,
-    KeyboardAvoidingView,
-    Platform,
-    RefreshControl,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  FlatList,
+  Image,
+  KeyboardAvoidingView,
+  Platform,
+  RefreshControl,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+  StyleSheet,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { scale, verticalScale, moderateScale } from "react-native-size-matters";
 
 const ManageProducts = () => {
   const router = useRouter();
@@ -32,9 +34,7 @@ const ManageProducts = () => {
   const fetchProducts = async (showGlobalLoader = true) => {
     if (showGlobalLoader) setIsLoading(true);
     try {
-      // 🔓 Get the real logged-in ID saved during login
       const storedId = await AsyncStorage.getItem('supplierId');
-      // Fallback ID for testing if no one is logged in
       const supplierId = storedId || "6a3654577d11e405b83317c5"; 
       
       const response = await fetch(`https://seller.inquirybazaar.com/api/product?supplierId=${supplierId}`);
@@ -64,7 +64,6 @@ const ManageProducts = () => {
 
   // --- PRODUCT CARD COMPONENT ---
   const renderProductCard = ({ item }: { item: any }) => {
-    // API Fallbacks
     const displayImage = item.media?.[0]?.url || item.imageUri || item.images?.[0] || item.image || "https://images.unsplash.com/photo-1585202900225-6d3ac20a6962?q=80&w=400&auto=format&fit=crop";
     const displayName = item.productName || item.name || "Unnamed Product";
     const displayPrice = item.newPrice || item.price || "N/A";
@@ -74,31 +73,30 @@ const ManageProducts = () => {
     const displaySubCategory = item.subCategory || "Subcategory";
 
     return (
-      <View className="flex-1 m-2 bg-white rounded-[24px] overflow-hidden border border-slate-100 shadow-sm shadow-slate-200">
-        
+      <View style={s.card}>
         {/* Product Image Box */}
-        <View className="h-36 w-full bg-slate-50 relative">
+        <View style={s.imageBox}>
           <Image 
             source={{ uri: displayImage }} 
-            className="w-full h-full" 
+            style={s.image} 
             resizeMode="cover" 
           />
-          <View className="absolute inset-0 bg-black/5" />
+          <View style={s.imageOverlay} />
         </View>
 
         {/* Card Content */}
-        <View className="p-4 flex-1 justify-between">
+        <View style={s.cardContent}>
           <View>
             {/* LAYERED MICRO-TYPOGRAPHY FOR INDUSTRY, CATEGORY & SUB-CATEGORY */}
-            <View className="mb-2">
+            <View style={{ marginBottom: verticalScale(6) }}>
               <Text 
-                className="text-[9px] font-jakarta-extrabold text-blue-900 uppercase tracking-widest mb-0.5"
+                style={s.industryText}
                 numberOfLines={1}
               >
                 {displayIndustry}
               </Text>
               <Text 
-                className="text-[10px] font-jakarta-medium text-slate-500 leading-tight"
+                style={s.categoryText}
                 numberOfLines={1}
               >
                 {displayCategory} • {displaySubCategory}
@@ -107,20 +105,20 @@ const ManageProducts = () => {
 
             {/* Product Title */}
             <Text 
-              className="text-[14px] font-jakarta-bold text-slate-900 leading-tight mb-2"
+              style={s.productName}
               numberOfLines={2}
             >
               {displayName}
             </Text>
 
             {/* Price */}
-            <Text className="text-[16px] font-jakarta-extrabold text-slate-900">
-              ₹ {displayPrice} <Text className="text-[11px] font-jakarta-medium text-slate-500">/ {displayUnit}</Text>
+            <Text style={s.priceText}>
+              ₹ {displayPrice} <Text style={s.unitText}>/ {displayUnit}</Text>
             </Text>
           </View>
 
           {/* Action Buttons Row */}
-          <View className="flex-row items-center justify-end mt-4 pt-3 border-t border-slate-50 gap-x-2">
+          <View style={s.actionsRow}>
             <TouchableOpacity 
               onPress={() => router.push({
                 pathname: "/Seller/AddProduct",
@@ -148,12 +146,12 @@ const ManageProducts = () => {
                   specifications: JSON.stringify(item.specifications || []),
                 }
               })}
-              className="h-8 w-8 bg-slate-50 rounded-lg items-center justify-center active:bg-slate-200 border border-slate-100"
+              style={s.editBtn}
             >
-              <Ionicons name="create-outline" size={16} color="#1E3A8A" />
+              <Ionicons name="create-outline" size={moderateScale(15)} color="#1E3A8A" />
             </TouchableOpacity>
-            <TouchableOpacity className="h-8 w-8 bg-red-50 rounded-lg items-center justify-center active:bg-red-100 border border-red-100">
-              <Ionicons name="trash-outline" size={16} color="#EF4444" />
+            <TouchableOpacity style={s.deleteBtn}>
+              <Ionicons name="trash-outline" size={moderateScale(15)} color="#EF4444" />
             </TouchableOpacity>
           </View>
         </View>
@@ -162,41 +160,41 @@ const ManageProducts = () => {
   };
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: "#F8FAFC" }} edges={["top", "bottom"]}>
-      <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} className="flex-1 bg-slate-50" style={{ flex: 1 }}>
+    <SafeAreaView style={s.safeArea} edges={["top", "bottom"]}>
+      <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={s.flexContainer}>
         
         {/* --- PREMIUM HEADER --- */}
-        <View className="bg-white px-5 pb-5 pt-4 shadow-sm shadow-slate-100 z-20">
+        <View style={s.headerContainer}>
           
           {/* Top Row: Title, Total Count & Add Button */}
-          <View className="flex-row items-start justify-between mb-5">
+          <View style={s.headerTopRow}>
             <View>
-              <Text className="text-2xl font-jakarta-extrabold text-slate-900 tracking-tight">Products</Text>
-              <Text className="text-[13px] font-jakarta-medium text-slate-500 mt-0.5">
+              <Text style={s.headerTitle}>Products</Text>
+              <Text style={s.headerSubtitle}>
                 {isLoading ? "Loading inventory..." : `Total ${filteredProducts.length} products listed`}
               </Text>
             </View>
 
             <TouchableOpacity 
               onPress={() => router.push("/Seller/AddProduct")}
-              className="flex-row items-center bg-blue-900 px-4 py-2.5 rounded-xl shadow-md shadow-blue-900/30 active:opacity-80"
+              style={s.addNewBtn}
             >
-              <Ionicons name="add" size={18} color="#FFFFFF" className="mr-1" />
-              <Text className="text-white font-jakarta-bold text-[14px]">Add New</Text>
+              <Ionicons name="add" size={moderateScale(18)} color="#FFFFFF" style={{ marginRight: scale(4) }} />
+              <Text style={s.addNewBtnText}>Add New</Text>
             </TouchableOpacity>
           </View>
 
           {/* Bottom Row: Search & Filter */}
-          <View className="flex-row items-center gap-x-3">
-            <TouchableOpacity className="flex-row items-center bg-slate-50 border border-slate-200 rounded-xl px-3 py-3 w-1/3 active:bg-slate-100">
-              <Text className="flex-1 text-[13px] font-jakarta-semibold text-slate-700" numberOfLines={1}>Category</Text>
-              <Ionicons name="chevron-down" size={16} color="#64748B" />
+          <View style={s.searchFilterRow}>
+            <TouchableOpacity style={s.categoryFilterBtn}>
+              <Text style={s.categoryFilterText} numberOfLines={1}>Category</Text>
+              <Ionicons name="chevron-down" size={moderateScale(14)} color="#64748B" />
             </TouchableOpacity>
 
-            <View className="flex-1 flex-row items-center bg-slate-50 border border-slate-200 rounded-xl px-3 h-full">
-              <Ionicons name="search" size={18} color="#94A3B8" className="mr-2" />
+            <View style={s.searchBar}>
+              <Ionicons name="search" size={moderateScale(16)} color="#94A3B8" />
               <TextInput
-                className="flex-1 text-[14px] font-jakarta-medium text-slate-900 h-full py-3"
+                style={s.searchInput}
                 placeholder="Search products..."
                 placeholderTextColor="#94A3B8"
                 value={searchQuery}
@@ -208,9 +206,9 @@ const ManageProducts = () => {
 
         {/* --- CONTENT AREA --- */}
         {isLoading ? (
-          <View className="flex-1 items-center justify-center">
+          <View style={s.loadingWrapper}>
             <ActivityIndicator size="large" color="#1E3A8A" />
-            <Text className="mt-4 font-jakarta-medium text-slate-500">Fetching your catalog...</Text>
+            <Text style={s.loadingText}>Fetching your catalog...</Text>
           </View>
         ) : (
           <FlatList
@@ -218,8 +216,8 @@ const ManageProducts = () => {
             keyExtractor={(item, index) => item._id || item.id || index.toString()}
             renderItem={renderProductCard}
             numColumns={2}
-            contentContainerStyle={{ padding: 8, paddingBottom: 100 }}
-            columnWrapperStyle={{ justifyContent: 'space-between' }}
+            contentContainerStyle={s.listContent}
+            columnWrapperStyle={s.columnWrapper}
             showsVerticalScrollIndicator={false}
             refreshControl={
               <RefreshControl
@@ -230,12 +228,12 @@ const ManageProducts = () => {
               />
             }
             ListEmptyComponent={
-              <View className="items-center justify-center py-20 px-8 mt-10">
-                <View className="h-24 w-24 bg-slate-100 rounded-full items-center justify-center mb-6">
-                  <Ionicons name="cube-outline" size={48} color="#CBD5E1" />
+              <View style={s.emptyListWrapper}>
+                <View style={s.emptyIconWrapper}>
+                  <Ionicons name="cube-outline" size={moderateScale(42)} color="#CBD5E1" />
                 </View>
-                <Text className="text-lg font-jakarta-bold text-slate-900 mb-2">No products found</Text>
-                <Text className="text-sm font-jakarta-medium text-slate-500 text-center">
+                <Text style={s.emptyTitle}>No products found</Text>
+                <Text style={s.emptySubtitle}>
                   {searchQuery ? "No products match your search." : "You haven't added any products yet."}
                 </Text>
               </View>
@@ -246,5 +244,243 @@ const ManageProducts = () => {
     </SafeAreaView>
   );
 };
+
+const s = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+    backgroundColor: "#F8FAFC",
+  },
+  flexContainer: {
+    flex: 1,
+    backgroundColor: "#F8FAFC",
+  },
+  headerContainer: {
+    backgroundColor: "#FFFFFF",
+    paddingHorizontal: scale(16),
+    paddingBottom: verticalScale(14),
+    paddingTop: verticalScale(10),
+    borderBottomWidth: 1,
+    borderBottomColor: "#E2E8F0",
+    zIndex: 20,
+  },
+  headerTopRow: {
+    flexDirection: "row",
+    alignItems: "start",
+    justifyContent: "space-between",
+    marginBottom: verticalScale(14),
+  },
+  headerTitle: {
+    fontSize: moderateScale(22),
+    fontWeight: "800",
+    color: "#0F172A",
+    letterSpacing: -0.5,
+  },
+  headerSubtitle: {
+    fontSize: moderateScale(12),
+    color: "#64748B",
+    fontWeight: "600",
+    marginTop: verticalScale(2),
+  },
+  addNewBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#1E3A8A",
+    paddingHorizontal: scale(12),
+    paddingVertical: verticalScale(8),
+    borderRadius: moderateScale(10),
+    shadowColor: "#1E3A8A",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 5,
+    elevation: 3,
+  },
+  addNewBtnText: {
+    color: "#FFFFFF",
+    fontWeight: "700",
+    fontSize: moderateScale(13),
+  },
+  searchFilterRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: scale(10),
+  },
+  categoryFilterBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#F8FAFC",
+    borderWidth: 1.5,
+    borderColor: "#E2E8F0",
+    borderRadius: moderateScale(10),
+    paddingHorizontal: scale(10),
+    height: verticalScale(38),
+    width: "30%",
+  },
+  categoryFilterText: {
+    flex: 1,
+    fontSize: moderateScale(11.5),
+    fontWeight: "600",
+    color: "#475569",
+    marginRight: scale(4),
+  },
+  searchBar: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#F8FAFC",
+    borderWidth: 1.5,
+    borderColor: "#E2E8F0",
+    borderRadius: moderateScale(10),
+    paddingHorizontal: scale(10),
+    height: verticalScale(38),
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: moderateScale(12.5),
+    fontWeight: "600",
+    color: "#0F172A",
+    height: "100%",
+    paddingVertical: 0,
+    marginLeft: scale(6),
+  },
+  loadingWrapper: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  loadingText: {
+    marginTop: verticalScale(12),
+    fontWeight: "600",
+    color: "#64748B",
+    fontSize: moderateScale(13),
+  },
+  listContent: {
+    padding: scale(10),
+    paddingBottom: verticalScale(100),
+  },
+  columnWrapper: {
+    justifyContent: 'space-between',
+  },
+  card: {
+    flex: 0.485,
+    backgroundColor: "#FFFFFF",
+    borderRadius: moderateScale(18),
+    overflow: "hidden",
+    borderWidth: 1,
+    borderColor: "#F1F5F9",
+    marginBottom: verticalScale(12),
+    shadowColor: "#64748B",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.03,
+    shadowRadius: 6,
+    elevation: 2,
+  },
+  imageBox: {
+    height: verticalScale(110),
+    width: "100%",
+    backgroundColor: "#F8FAFC",
+    position: "relative",
+  },
+  image: {
+    width: "100%",
+    height: "100%",
+  },
+  imageOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(0, 0, 0, 0.03)",
+  },
+  cardContent: {
+    padding: moderateScale(10),
+    flex: 1,
+    justifyContent: "space-between",
+  },
+  industryText: {
+    fontSize: moderateScale(8.5),
+    fontWeight: "800",
+    color: "#1E3A8A",
+    textTransform: "uppercase",
+    letterSpacing: 0.8,
+    marginBottom: verticalScale(2),
+  },
+  categoryText: {
+    fontSize: moderateScale(9.5),
+    fontWeight: "600",
+    color: "#64748B",
+  },
+  productName: {
+    fontSize: moderateScale(12.5),
+    fontWeight: "700",
+    color: "#0F172A",
+    lineHeight: verticalScale(16),
+    marginBottom: verticalScale(6),
+  },
+  priceText: {
+    fontSize: moderateScale(13.5),
+    fontWeight: "800",
+    color: "#0F172A",
+  },
+  unitText: {
+    fontSize: moderateScale(10),
+    color: "#64748B",
+    fontWeight: "600",
+  },
+  actionsRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "flex-end",
+    marginTop: verticalScale(8),
+    paddingTop: verticalScale(6),
+    borderTopWidth: 1,
+    borderTopColor: "#F1F5F9",
+    gap: scale(8),
+  },
+  editBtn: {
+    height: scale(28),
+    width: scale(28),
+    borderRadius: moderateScale(6),
+    backgroundColor: "#F8FAFC",
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+  },
+  deleteBtn: {
+    height: scale(28),
+    width: scale(28),
+    borderRadius: moderateScale(6),
+    backgroundColor: "#FEF2F2",
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1,
+    borderColor: "#FEE2E2",
+  },
+  emptyListWrapper: {
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: verticalScale(40),
+    paddingHorizontal: scale(24),
+    marginTop: verticalScale(20),
+  },
+  emptyIconWrapper: {
+    height: scale(72),
+    width: scale(72),
+    backgroundColor: "#F8FAFC",
+    borderRadius: scale(36),
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: verticalScale(14),
+  },
+  emptyTitle: {
+    fontSize: moderateScale(15),
+    fontWeight: "700",
+    color: "#0F172A",
+    marginBottom: verticalScale(4),
+  },
+  emptySubtitle: {
+    fontSize: moderateScale(12.5),
+    color: "#64748B",
+    textAlign: "center",
+    lineHeight: verticalScale(16),
+  },
+});
 
 export default ManageProducts;

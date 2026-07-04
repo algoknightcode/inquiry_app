@@ -4,15 +4,13 @@ import {
   Text,
   Image,
   StyleSheet,
-  Dimensions,
   Animated,
   TouchableOpacity,
   StatusBar,
 } from "react-native";
 import { useRouter } from "expo-router";
-import Logo from "../assets/images/logoo.webp";
-
-const { width, height } = Dimensions.get("window");
+import { scale, verticalScale, moderateScale } from "react-native-size-matters";
+import Logo from "../assets/images/logoo-Photoroom.png";
 
 export default function Welcome() {
   const router = useRouter();
@@ -70,9 +68,9 @@ export default function Welcome() {
 
   return (
     <View style={s.container}>
-      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+      <StatusBar barStyle="dark-content" translucent backgroundColor="transparent" />
 
-      {/* Decorative background glow circles */}
+      {/* Decorative background glow circles for light theme */}
       <View style={s.glow1} />
       <View style={s.glow2} />
 
@@ -113,36 +111,36 @@ export default function Welcome() {
 const s = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#0A0F24", // Premium deep dark theme
+    backgroundColor: "#FFFFFF", // Clean premium white background
     justifyContent: "center",
     alignItems: "center",
   },
   glow1: {
     position: "absolute",
-    top: -100,
-    right: -100,
-    width: 300,
-    height: 300,
-    borderRadius: 150,
-    backgroundColor: "rgba(217, 101, 10, 0.15)", // Orange glow
+    top: verticalScale(-100),
+    right: scale(-100),
+    width: scale(300),
+    height: scale(300),
+    borderRadius: scale(150),
+    backgroundColor: "rgba(217, 101, 10, 0.07)", // Very soft signature orange brand glow
   },
   glow2: {
     position: "absolute",
-    bottom: -150,
-    left: -150,
-    width: 400,
-    height: 400,
-    borderRadius: 200,
-    backgroundColor: "rgba(27, 42, 107, 0.3)", // Deep blue glow
+    bottom: verticalScale(-150),
+    left: scale(-150),
+    width: scale(400),
+    height: scale(400),
+    borderRadius: scale(200),
+    backgroundColor: "rgba(99, 102, 241, 0.08)", // Very soft indigo/blue glow
   },
   content: {
     flex: 1,
     width: "100%",
     alignItems: "center",
     justifyContent: "center",
-    paddingHorizontal: 30,
-    paddingTop: 80,
-    paddingBottom: 60,
+    paddingHorizontal: scale(30),
+    paddingTop: verticalScale(80),
+    paddingBottom: verticalScale(60),
   },
   logoContainer: {
     flex: 2,
@@ -150,68 +148,68 @@ const s = StyleSheet.create({
     alignItems: "center",
   },
   logoShadowContainer: {
-    backgroundColor: "rgba(255, 255, 255, 0.08)",
-    padding: 30,
-    borderRadius: 50,
+    backgroundColor: "#F8FAFC", // Soft slate/white box for logo
+    padding: moderateScale(25),
+    borderRadius: moderateScale(50),
     borderWidth: 1,
-    borderColor: "rgba(255, 255, 255, 0.12)",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 20 },
-    shadowOpacity: 0.3,
-    shadowRadius: 30,
-    elevation: 10,
+    borderColor: "#E2E8F0",
+    shadowColor: "#0F172A",
+    shadowOffset: { width: 0, height: verticalScale(12) },
+    shadowOpacity: 0.06,
+    shadowRadius: moderateScale(20),
+    elevation: 4,
   },
   logo: {
-    width: 140,
-    height: 140,
+    width: scale(140),
+    height: scale(140),
   },
   textContainer: {
     flex: 1.5,
     alignItems: "center",
     justifyContent: "center",
-    marginTop: 20,
+    marginTop: verticalScale(20),
   },
   title: {
-    fontSize: 38,
+    fontSize: moderateScale(36),
     fontWeight: "900",
-    color: "#FFFFFF",
+    color: "#0F172A", // Dark theme-compliant text
     textAlign: "center",
     letterSpacing: -0.5,
     fontFamily: "PlusJakartaSans-Bold",
-    marginBottom: 16,
+    marginBottom: verticalScale(16),
   },
   highlight: {
     color: "#D9650A", // Signature orange brand color
   },
   subtitle: {
-    fontSize: 16,
-    color: "#94A3B8",
+    fontSize: moderateScale(15),
+    color: "#64748B", // Slate gray readability contrast
     textAlign: "center",
-    lineHeight: 25,
-    paddingHorizontal: 10,
+    lineHeight: verticalScale(24),
+    paddingHorizontal: scale(10),
     fontWeight: "500",
   },
   btnContainer: {
     width: "100%",
     justifyContent: "flex-end",
-    marginTop: 20,
+    marginTop: verticalScale(20),
   },
   button: {
     backgroundColor: "#D9650A",
     width: "100%",
-    height: 58,
-    borderRadius: 20,
+    height: verticalScale(54),
+    borderRadius: moderateScale(18),
     justifyContent: "center",
     alignItems: "center",
     shadowColor: "#D9650A",
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.3,
-    shadowRadius: 20,
-    elevation: 8,
+    shadowOffset: { width: 0, height: verticalScale(8) },
+    shadowOpacity: 0.25,
+    shadowRadius: moderateScale(16),
+    elevation: 6,
   },
   buttonText: {
     color: "#FFFFFF",
-    fontSize: 18,
+    fontSize: moderateScale(17),
     fontWeight: "700",
     letterSpacing: 0.5,
   },

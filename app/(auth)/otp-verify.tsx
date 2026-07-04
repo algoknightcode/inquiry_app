@@ -12,7 +12,7 @@ import {
   Platform
 } from "react-native";
 import { useRouter } from "expo-router";
-import Logo from "../../assets/images/logoo.webp";
+import Logo from "../../assets/images/logoo-Photoroom.png";
 
 const OtpVerify = () => {
   const router = useRouter();

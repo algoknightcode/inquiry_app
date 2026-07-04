@@ -22,17 +22,42 @@ import {
   View,
 } from "react-native";
 import { useSafeAreaInsets, SafeAreaView } from "react-native-safe-area-context";
+import { scale, verticalScale, moderateScale } from "react-native-size-matters";
 
 // --- REUSABLE INPUT COMPONENT ---
 const InputField = ({ label, icon, placeholder, value, onChangeText, keyboardType = "default", multiline = false }: any) => (
-  <View className="mb-4">
-    <Text className="text-[13px] font-jakarta-medium text-slate-500 mb-1.5 ml-1 uppercase tracking-wider">
+  <View style={{ marginBottom: verticalScale(14) }}>
+    <Text 
+      style={{
+        fontSize: moderateScale(11.5),
+        marginBottom: verticalScale(6),
+        marginLeft: scale(4),
+      }}
+      className="font-jakarta-medium text-slate-500 uppercase tracking-wider"
+    >
       {label}
     </Text>
-    <View className={`flex-row bg-white border border-slate-200 rounded-2xl px-4 shadow-sm shadow-slate-100 focus:border-blue-900 ${multiline ? 'py-3 min-h-[120px] items-start' : 'h-14 items-center'}`}>
-      <Ionicons name={icon} size={20} color="#64748B" className={`mr-3 ${multiline ? 'mt-1' : ''}`} />
+    <View 
+      style={[
+        {
+          borderRadius: moderateScale(14),
+          paddingHorizontal: scale(14),
+        },
+        multiline 
+          ? { paddingVertical: verticalScale(10), minHeight: verticalScale(100), alignItems: 'flex-start' }
+          : { height: verticalScale(48), alignItems: 'center' }
+      ]}
+      className="flex-row bg-white border border-slate-200 shadow-sm shadow-slate-100"
+    >
+      <Ionicons 
+        name={icon} 
+        size={moderateScale(18)} 
+        color="#64748B" 
+        style={[{ marginRight: scale(10) }, multiline ? { marginTop: verticalScale(2) } : {}]} 
+      />
       <TextInput
-        className={`flex-1 text-slate-900 text-[15px] font-jakarta-semibold ${multiline ? 'h-full text-left' : 'h-full'}`}
+        style={{ fontSize: moderateScale(14) }}
+        className="flex-1 text-slate-900 font-jakarta-semibold"
         placeholder={placeholder}
         placeholderTextColor="#94A3B8"
         value={value}
@@ -50,27 +75,47 @@ const DropdownField = ({ label, icon, placeholder, value, options, onSelect }: a
   const [modalVisible, setModalVisible] = useState(false);
 
   return (
-    <View className="mb-4">
-      <Text className="text-[13px] font-jakarta-medium text-slate-500 mb-1.5 ml-1 uppercase tracking-wider">{label}</Text>
+    <View style={{ marginBottom: verticalScale(14) }}>
+      <Text 
+        style={{
+          fontSize: moderateScale(11.5),
+          marginBottom: verticalScale(6),
+          marginLeft: scale(4),
+        }}
+        className="font-jakarta-medium text-slate-500 uppercase tracking-wider"
+      >
+        {label}
+      </Text>
       <TouchableOpacity 
         onPress={() => setModalVisible(true)}
-        className="flex-row items-center bg-white border border-slate-200 rounded-2xl h-14 px-4 shadow-sm shadow-slate-100 active:bg-slate-50"
+        style={{
+          height: verticalScale(48),
+          paddingHorizontal: scale(14),
+          borderRadius: moderateScale(14),
+        }}
+        className="flex-row items-center bg-white border border-slate-200 shadow-sm shadow-slate-100 active:bg-slate-50"
       >
-        <Ionicons name={icon} size={20} color="#64748B" className="mr-3" />
-        <Text className={value ? "flex-1 text-[15px] font-jakarta-semibold text-slate-900" : "flex-1 text-[15px] font-jakarta-semibold text-slate-400"}>
+        <Ionicons name={icon} size={moderateScale(18)} color="#64748B" style={{ marginRight: scale(10) }} />
+        <Text 
+          style={{ fontSize: moderateScale(14) }}
+          className={value ? "flex-1 font-jakarta-semibold text-slate-900" : "flex-1 font-jakarta-semibold text-slate-400"}
+        >
           {value || placeholder}
         </Text>
-        <Ionicons name="chevron-down" size={20} color="#94A3B8" />
+        <Ionicons name="chevron-down" size={moderateScale(18)} color="#94A3B8" />
       </TouchableOpacity>
 
       <Modal visible={modalVisible} transparent animationType="slide">
         <TouchableOpacity style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end' }} activeOpacity={1} onPress={() => setModalVisible(false)}>
-          <View className="bg-white rounded-t-[32px] p-6 max-h-[60%] pb-10 shadow-2xl">
-            <View className="w-12 h-1.5 bg-slate-200 rounded-full self-center mb-6" />
-            <Text className="text-lg font-jakarta-bold text-slate-900 mb-4 px-2">Select {label}</Text>
+          <View 
+            style={{ borderTopLeftRadius: moderateScale(24), borderTopRightRadius: moderateScale(24), padding: moderateScale(20), paddingBottom: verticalScale(30) }}
+            className="bg-white max-h-[60%] shadow-2xl"
+          >
+            <View style={{ width: scale(40), height: verticalScale(5), borderRadius: 10 }} className="bg-slate-200 self-center mb-6" />
+            <Text style={{ fontSize: moderateScale(16) }} className="font-jakarta-bold text-slate-900 mb-4 px-2">Select {label}</Text>
             
             {options.length === 0 ? (
-              <Text className="text-slate-500 text-center py-4 font-jakarta-medium">No options available</Text>
+              <Text style={{ fontSize: moderateScale(13) }} className="text-slate-500 text-center py-4 font-jakarta-medium">No options available</Text>
             ) : (
               <FlatList
                 data={options}
@@ -78,11 +123,17 @@ const DropdownField = ({ label, icon, placeholder, value, options, onSelect }: a
                 showsVerticalScrollIndicator={false}
                 renderItem={({ item }) => (
                   <TouchableOpacity
-                    className="py-4 px-4 border-b border-slate-100 flex-row items-center justify-between"
+                    style={{ paddingVertical: verticalScale(12), paddingHorizontal: scale(12) }}
+                    className="border-b border-slate-100 flex-row items-center justify-between"
                     onPress={() => { onSelect(item); setModalVisible(false); }}
                   >
-                    <Text className={value === item ? "text-[16px] font-jakarta-semibold text-blue-900" : "text-[16px] font-jakarta-semibold text-slate-700"}>{item}</Text>
-                    {value === item && <Ionicons name="checkmark-circle" size={24} color="#1E3A8A" />}
+                    <Text 
+                      style={{ fontSize: moderateScale(14) }}
+                      className={value === item ? "font-jakarta-semibold text-blue-900" : "font-jakarta-semibold text-slate-700"}
+                    >
+                      {item}
+                    </Text>
+                    {value === item && <Ionicons name="checkmark-circle" size={moderateScale(20)} color="#1E3A8A" />}
                   </TouchableOpacity>
                 )}
               />

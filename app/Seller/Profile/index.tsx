@@ -23,16 +23,33 @@ import {
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { scale, verticalScale, moderateScale } from "react-native-size-matters";
+
 // --- REUSABLE INPUT COMPONENT ---
 const InputField = ({ label, icon, placeholder, value, onChangeText, keyboardType = "default" }: any) => (
-  <View className="mb-4">
-    <Text className="text-[13px] font-jakarta-medium text-slate-500 mb-1.5 ml-1 uppercase tracking-wider">
+  <View style={{ marginBottom: verticalScale(14) }}>
+    <Text 
+      style={{
+        fontSize: moderateScale(11.5),
+        marginBottom: verticalScale(6),
+        marginLeft: scale(4),
+      }}
+      className="font-jakarta-medium text-slate-500 uppercase tracking-wider"
+    >
       {label}
     </Text>
-    <View className="flex-row items-center bg-white border border-slate-200 rounded-2xl h-14 px-4 shadow-sm shadow-slate-100 focus:border-blue-900">
-      <Ionicons name={icon} size={20} color="#64748B" className="mr-3" />
+    <View 
+      style={{
+        height: verticalScale(48),
+        paddingHorizontal: scale(14),
+        borderRadius: moderateScale(14),
+      }}
+      className="flex-row items-center bg-white border border-slate-200 shadow-sm shadow-slate-100"
+    >
+      <Ionicons name={icon} size={moderateScale(18)} color="#64748B" style={{ marginRight: scale(10) }} />
       <TextInput
-        className="flex-1 h-full text-slate-900 text-[15px] font-jakarta-semibold"
+        style={{ fontSize: moderateScale(14) }}
+        className="flex-1 h-full text-slate-900 font-jakarta-semibold"
         placeholder={placeholder}
         placeholderTextColor="#94A3B8"
         value={value}
@@ -49,28 +66,43 @@ const DropdownField = ({ label, icon, placeholder, value, options, onSelect }: a
   const selectedOption = options?.find((opt: any) => typeof opt === "object" && opt.name === value);
 
   return (
-    <View className="mb-4">
-      <Text className="text-[13px] font-jakarta-medium text-slate-500 mb-1.5 ml-1 uppercase tracking-wider">
+    <View style={{ marginBottom: verticalScale(14) }}>
+      <Text 
+        style={{
+          fontSize: moderateScale(11.5),
+          marginBottom: verticalScale(6),
+          marginLeft: scale(4),
+        }}
+        className="font-jakarta-medium text-slate-500 uppercase tracking-wider"
+      >
         {label}
       </Text>
 
       <TouchableOpacity
         onPress={() => setModalVisible(true)}
-        className="flex-row items-center bg-white border border-slate-200 rounded-2xl h-14 px-4 shadow-sm shadow-slate-100 active:bg-slate-50"
+        style={{
+          height: verticalScale(48),
+          paddingHorizontal: scale(14),
+          borderRadius: moderateScale(14),
+        }}
+        className="flex-row items-center bg-white border border-slate-200 shadow-sm shadow-slate-100 active:bg-slate-50"
       >
-        <Ionicons name={icon} size={20} color="#64748B" className="mr-3" />
+        <Ionicons name={icon} size={moderateScale(18)} color="#64748B" style={{ marginRight: scale(10) }} />
         {selectedOption && selectedOption.image && (
           <Image 
             source={{ uri: selectedOption.image }} 
-            style={{ width: 31, height: 31 }}
-            className="rounded-lg mr-2 bg-slate-100" 
+            style={{ width: scale(26), height: scale(26), borderRadius: moderateScale(6), marginRight: scale(8) }}
+            className="bg-slate-100" 
             resizeMode="cover"
           />
         )}
-        <Text className={value ? "flex-1 text-[15px] font-jakarta-semibold text-slate-900" : "flex-1 text-[15px] font-jakarta-semibold text-slate-400"}>
+        <Text 
+          style={{ fontSize: moderateScale(14) }}
+          className={value ? "flex-1 font-jakarta-semibold text-slate-900" : "flex-1 font-jakarta-semibold text-slate-400"}
+        >
           {value || placeholder}
         </Text>
-        <Ionicons name="chevron-down" size={20} color="#94A3B8" />
+        <Ionicons name="chevron-down" size={moderateScale(18)} color="#94A3B8" />
       </TouchableOpacity>
 
       <Modal visible={modalVisible} transparent animationType="slide">
@@ -599,37 +631,65 @@ const SellerProfileSettings = () => {
       >
 
         {/* PROFILE HEADER */}
-        {/* PROFILE HEADER */}
-        <View className="bg-white rounded-b-[40px] px-6 pt-6 pb-8 shadow-xl shadow-slate-200/50 mb-6 z-10">
+        <View 
+          style={{
+            borderBottomLeftRadius: moderateScale(32),
+            borderBottomRightRadius: moderateScale(32),
+            paddingHorizontal: scale(24),
+            paddingTop: verticalScale(24),
+            paddingBottom: verticalScale(32),
+            marginBottom: verticalScale(24),
+          }}
+          className="bg-white shadow-xl shadow-slate-200/50 mb-6 z-10"
+        >
           <View className="items-center relative">
             <TouchableOpacity
               onPress={handleLogout}
-              className="absolute top-0 right-0 h-10 w-10 bg-rose-50 rounded-full items-center justify-center border border-rose-100 shadow-sm active:bg-rose-100"
+              style={{
+                height: scale(38),
+                width: scale(38),
+                borderRadius: scale(19),
+              }}
+              className="absolute top-0 right-0 bg-rose-50 items-center justify-center border border-rose-100 shadow-sm active:bg-rose-100"
             >
-              <Ionicons name="log-out-outline" size={18} color="#E11D48" />
+              <Ionicons name="log-out-outline" size={moderateScale(18)} color="#E11D48" />
             </TouchableOpacity>
-            <View className="relative mb-4">
-              <View className="h-24 w-24 rounded-full bg-blue-50 border-2 border-blue-100 items-center justify-center">
-                <Text className="text-4xl font-jakarta-bold text-blue-900">
-                  {(profileData.ceoName || "Seller Name").charAt(0).toUpperCase()}
+            <View style={{ marginBottom: verticalScale(16) }} className="relative">
+              <View 
+                style={{
+                  height: scale(88),
+                  width: scale(88),
+                  borderRadius: scale(44),
+                }}
+                className="bg-blue-50 border-2 border-blue-100 items-center justify-center"
+              >
+                <Text style={{ fontSize: moderateScale(36) }} className="font-jakarta-bold text-blue-900">
+                  {(profileData.ceoName || "Seller").charAt(0).toUpperCase()}
                 </Text>
               </View>
-              <TouchableOpacity className="absolute bottom-0 right-0 h-8 w-8 bg-blue-900 rounded-full items-center justify-center border-2 border-white shadow-sm">
-                <Ionicons name="camera" size={14} color="#FFFFFF" />
+              <TouchableOpacity 
+                style={{
+                  height: scale(28),
+                  width: scale(28),
+                  borderRadius: scale(14),
+                }}
+                className="absolute bottom-0 right-0 bg-blue-900 items-center justify-center border-2 border-white shadow-sm"
+              >
+                <Ionicons name="camera" size={moderateScale(14)} color="#FFFFFF" />
               </TouchableOpacity>
             </View>
-            <Text className="text-2xl font-jakarta-bold text-slate-900 tracking-tight">
+            <Text style={{ fontSize: moderateScale(22) }} className="font-jakarta-bold text-slate-900 tracking-tight">
               {profileData.ceoName || "Seller Name"}
             </Text>
-            <Text className="text-[15px] font-jakarta-medium text-slate-500 mb-6">
+            <Text style={{ fontSize: moderateScale(14), marginBottom: verticalScale(6) }} className="font-jakarta-medium text-slate-500">
               {profileData.companyName || "Company Name"}
             </Text>
           </View>
         </View>
 
         {/* HORIZONTAL SCROLLING TABS */}
-        <View className="mb-6">
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 20, gap: 12 }}>
+        <View style={{ marginBottom: verticalScale(24) }}>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: scale(20), gap: scale(10) }}>
             {tabs.map((tab) => {
               const isActive = activeTab === tab.id;
 
@@ -640,7 +700,13 @@ const SellerProfileSettings = () => {
                 >
                   <View
                     style={[
-                      { flexDirection: "row", alignItems: "center", paddingHorizontal: 20, paddingVertical: 12, borderRadius: 16 },
+                      { 
+                        flexDirection: "row", 
+                        alignItems: "center", 
+                        paddingHorizontal: scale(16), 
+                        paddingVertical: verticalScale(10), 
+                        borderRadius: moderateScale(12) 
+                      },
                       isActive
                         ? { backgroundColor: "#1E3A8A", shadowColor: "#1E3A8A", shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 10, elevation: 5 }
                         : { backgroundColor: "#FFFFFF", borderWidth: 1, borderColor: "#E2E8F0" }
@@ -648,13 +714,13 @@ const SellerProfileSettings = () => {
                   >
                     <Ionicons
                       name={`${tab.icon}${isActive ? "" : "-outline"}` as any}
-                      size={18}
+                      size={moderateScale(16)}
                       color={isActive ? "#FFFFFF" : "#64748B"}
-                      style={{ marginRight: 8 }}
+                      style={{ marginRight: scale(6) }}
                     />
                     <Text
                       style={{
-                        fontSize: 14,
+                        fontSize: moderateScale(13),
                         fontWeight: "700",
                         fontFamily: "PlusJakartaSans-Bold",
                         color: isActive ? "#FFFFFF" : "#475569"

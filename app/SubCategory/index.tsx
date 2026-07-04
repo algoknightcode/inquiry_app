@@ -25,7 +25,7 @@ type SubCategory = {
 
 const SubCateGory = () => {
   const router = useRouter();
-  const { categoryId, industryId } = useLocalSearchParams<{ categoryId?: string; industryId?: string }>();
+  const { categoryId, industryId, location } = useLocalSearchParams<{ categoryId?: string; industryId?: string; location?: string }>();
   const insets = useSafeAreaInsets();
   
   // States for API Data
@@ -195,6 +195,7 @@ const SubCateGory = () => {
                       subCategoryId: item._id,
                       subCategoryName: item.name,
                       subCategorySlug: item.slug,
+                      location
                     },
                   })
                 }

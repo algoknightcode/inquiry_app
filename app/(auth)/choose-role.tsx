@@ -1,85 +1,107 @@
 import { setGlobalRole } from "@/utils/roleCache";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import React from "react";
+import React, { useState } from "react";
 import {
-    Image,
-    Pressable,
-    SafeAreaView,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
+  Image,
+  Pressable,
+  Text,
+  TouchableOpacity,
+  View,
+  StyleSheet,
 } from "react-native";
-import Logo from "../../assets/images/logoo.webp";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { scale, verticalScale, moderateScale } from "react-native-size-matters";
+import { LinearGradient } from "expo-linear-gradient";
+import Logo from "../../assets/images/logoo-Photoroom.png";
 
 const ChooseRole = () => {
   const router = useRouter();
+  const [pressedRole, setPressedRole] = useState<"buyer" | "seller" | null>(null);
 
   const handleSelectRole = (role: "buyer" | "seller") => {
-    setGlobalRole(role); 
+    setGlobalRole(role);
     console.log("Selected role:", role);
     if (role === "buyer") {
-      router.replace("/Buyer/auth/Signup");
+      router.push("/Buyer/auth/Signup");
     } else {
-      router.replace("/Seller/auth/Signup");
+      router.push("/Seller/auth/Signup");
     }
   };
 
   return (
-    <SafeAreaView style={s.safeArea}>
-      <View style={s.content}>
-
+    <SafeAreaView style={styles.safeArea}>
+      <View style={styles.container}>
+        
         {/* Header */}
-        <View style={s.header}>
-          <Image source={Logo} style={s.logo} resizeMode="contain" />
-          <Text style={s.eyebrow}>WELCOME TO INDIAMART</Text>
-          <Text style={s.title}>I want to...</Text>
-          <View style={s.titleUnderline} />
+        <View style={styles.header}>
+          <Image source={Logo} style={styles.logo} resizeMode="contain" />
+          <Text style={styles.eyebrow}>
+            Welcome to InquiryBazaar
+          </Text>
+          <Text style={styles.title}>
+            Choose Your Role
+          </Text>
+          <View style={styles.accentLine} />
         </View>
 
-
         {/* Cards Row Container */}
-        <View style={s.cardsRowContainer}>
-
+        <View style={styles.cardRow}>
+          
           {/* Buyer Card */}
           <Pressable
-            style={({ pressed }) => [
-              s.card,
-              s.buyerCard,
-              pressed && s.cardPressed,
-            ]}
+            onPressIn={() => setPressedRole("buyer")}
+            onPressOut={() => setPressedRole(null)}
             onPress={() => handleSelectRole("buyer")}
+            style={[
+              styles.cardWrapper,
+              { transform: [{ scale: pressedRole === "buyer" ? 0.96 : 1 }] }
+            ]}
           >
-            <View style={[s.medallion, s.medallionBuyer]}>
-              <View style={[s.medallionRing, s.medallionRingBuyer]} />
-              <Ionicons name="cart" size={36} color="#1B2A6B" />
-            </View>
-            <Text style={s.cardTitle}>Buy</Text>
-    
+            <LinearGradient
+              colors={["#0B2F64", "#1E40AF"]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.gradientCard}
+            >
+              <View style={styles.iconContainer}>
+                <Ionicons name="cart-outline" size={moderateScale(34)} color="#FFFFFF" />
+              </View>
+              <Text style={styles.cardTitle}>Buy</Text>
+              <Text style={styles.cardSubtitle}>Source items</Text>
+            </LinearGradient>
           </Pressable>
 
           {/* Vertical Divider */}
-          <View style={s.dividerWrap}>
-            <View style={s.divider} />
-            <View style={s.dividerDot} />
+          <View style={styles.dividerContainer}>
+            <View style={styles.dividerLine} />
+            <View style={styles.dividerDot}>
+              <Text style={styles.dividerDotText}>OR</Text>
+            </View>
           </View>
 
           {/* Seller Card */}
           <Pressable
-            style={({ pressed }) => [
-              s.card,
-              s.sellerCard,
-              pressed && s.cardPressed,
-            ]}
+            onPressIn={() => setPressedRole("seller")}
+            onPressOut={() => setPressedRole(null)}
             onPress={() => handleSelectRole("seller")}
+            style={[
+              styles.cardWrapper,
+              { transform: [{ scale: pressedRole === "seller" ? 0.96 : 1 }] }
+            ]}
           >
-            <View style={[s.medallion, s.medallionSeller]}>
-              <View style={[s.medallionRing, s.medallionRingSeller]} />
-              <Ionicons name="storefront" size={36} color="#D9650A" />
-            </View>
-            <Text style={s.cardTitle}>Sell</Text>
-        
+            <LinearGradient
+              colors={["#C2410C", "#F97316"]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.gradientCard}
+            >
+              <View style={styles.iconContainer}>
+                <Ionicons name="storefront-outline" size={moderateScale(32)} color="#FFFFFF" />
+              </View>
+              <Text style={styles.cardTitle}>Sell</Text>
+              <Text style={styles.cardSubtitle}>Grow business</Text>
+            </LinearGradient>
           </Pressable>
 
         </View>
@@ -87,9 +109,11 @@ const ChooseRole = () => {
         {/* Footer Link */}
         <TouchableOpacity
           onPress={() => router.replace("/(tabs)")}
-          style={s.footerContainer}
+          style={styles.footerLink}
         >
-          <Text style={s.footerLinkText}>Not sure? Skip for now</Text>
+          <Text style={styles.footerText}>
+            Not sure? Skip for now
+          </Text>
         </TouchableOpacity>
 
       </View>
@@ -97,146 +121,134 @@ const ChooseRole = () => {
   );
 };
 
-const s = StyleSheet.create({
+const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: "#F7F8FC",
+    backgroundColor: "#F8FAFC",
   },
-  content: {
+  container: {
     flex: 1,
-    justifyContent: "flex-start",
-    paddingTop: 24,
-    paddingBottom: 60,
-    paddingHorizontal: 24,
+    justifyContent: "space-between",
+    paddingVertical: verticalScale(32),
+    paddingHorizontal: scale(20),
   },
   header: {
     alignItems: "center",
-    marginTop: 16,
+    marginTop: verticalScale(16),
   },
   logo: {
-    width: 140,
-    height: 140,
-    marginBottom: 20,
+    width: scale(110),
+    height: scale(110),
+    marginBottom: verticalScale(16),
   },
-
-
   eyebrow: {
-    fontSize: 11,
+    fontSize: moderateScale(11),
     fontWeight: "800",
-    color: "#D9650A",
-    letterSpacing: 3,
-    marginBottom: 10,
+    color: "#4F46E5",
+    letterSpacing: 2.5,
+    marginBottom: verticalScale(6),
+    textTransform: "uppercase",
   },
   title: {
-    fontSize: 36,
+    fontSize: moderateScale(26),
     fontWeight: "800",
-    color: "#0F1535",
+    color: "#111827",
     textAlign: "center",
     letterSpacing: -0.5,
   },
-  titleUnderline: {
-    width: 48,
-    height: 3,
-    borderRadius: 2,
-    backgroundColor: "#D9650A",
-    marginTop: 14,
+  accentLine: {
+    width: scale(44),
+    height: verticalScale(4),
+    backgroundColor: "#4F46E5",
+    borderRadius: 99,
+    marginTop: verticalScale(10),
+    alignSelf: "center",
   },
-  cardsRowContainer: {
+  cardRow: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    marginTop: 36,
+    marginTop: verticalScale(10),
+    marginBottom: verticalScale(60),
+    paddingHorizontal: scale(4),
   },
-  card: {
-    width: 148,
-    height: 188,
-    borderRadius: 24,
-    alignItems: "center",
-    justifyContent: "center",
-    padding: 16,
-    borderWidth: 1,
+  cardWrapper: {
+    flex: 1,
+    maxWidth: scale(142),
+    aspectRatio: 0.78,
     backgroundColor: "#FFFFFF",
-    shadowColor: "#1B2A6B",
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.1,
-    shadowRadius: 18,
+    borderRadius: moderateScale(24),
+    shadowColor: "#0F172A",
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.12,
+    shadowRadius: 12,
     elevation: 6,
-    overflow: "hidden",
   },
-  cardPressed: {
-    transform: [{ scale: 0.96 }],
-    opacity: 0.92,
-  },
-  buyerCard: {
-    borderColor: "#DCE1F5",
-  },
-  sellerCard: {
-    borderColor: "#F7DCC6",
-  },
-  medallion: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
+  gradientCard: {
+    flex: 1,
+    borderRadius: moderateScale(24),
+    padding: moderateScale(16),
     alignItems: "center",
     justifyContent: "center",
-    marginBottom: 22,
-    position: "relative",
+    borderWidth: 1,
+    borderColor: "rgba(255, 255, 255, 0.12)",
   },
-  medallionBuyer: {
-    backgroundColor: "#EAEEFB",
-  },
-  medallionSeller: {
-    backgroundColor: "#FCE9DA",
-  },
-  medallionRing: {
-    position: "absolute",
-    width: 72,
-    height: 72,
-    borderRadius: 36,
-    borderWidth: 1.5,
-  },
-  medallionRingBuyer: {
-    borderColor: "rgba(27,42,107,0.25)",
-  },
-  medallionRingSeller: {
-    borderColor: "rgba(217,101,10,0.25)",
+  iconContainer: {
+    width: scale(56),
+    height: scale(56),
+    borderRadius: scale(28),
+    backgroundColor: "rgba(255, 255, 255, 0.18)",
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: verticalScale(12),
   },
   cardTitle: {
-    fontSize: 22,
+    color: "#FFFFFF",
     fontWeight: "800",
-    color: "#0F1535",
-    marginBottom: 4,
-    letterSpacing: -0.3,
+    fontSize: moderateScale(22),
+    letterSpacing: 0.5,
   },
   cardSubtitle: {
-    fontSize: 13,
-    color: "#6B7290",
+    color: "rgba(255, 255, 255, 0.85)",
+    fontWeight: "600",
+    fontSize: moderateScale(11),
+    marginTop: verticalScale(4),
+    textAlign: "center",
   },
-  dividerWrap: {
+  dividerContainer: {
     alignItems: "center",
     justifyContent: "center",
-    marginHorizontal: 14,
+    marginHorizontal: scale(15),
   },
-  divider: {
+  dividerLine: {
     width: 1,
-    height: 140,
-    backgroundColor: "#E2E5F0",
+    height: verticalScale(110),
+    backgroundColor: "#E2E8F0",
   },
   dividerDot: {
     position: "absolute",
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: "#C7CBDE",
-  },
-  footerContainer: {
+    width: scale(26),
+    height: scale(26),
+    borderRadius: scale(13),
+    backgroundColor: "#F8FAFC",
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
     alignItems: "center",
-    marginTop: 40,
+    justifyContent: "center",
   },
-  footerLinkText: {
-    fontSize: 14,
+  dividerDotText: {
+    fontSize: moderateScale(9),
+    fontWeight: "800",
+    color: "#94A3B8",
+  },
+  footerLink: {
+    alignItems: "center",
+    marginTop: verticalScale(16),
+  },
+  footerText: {
+    fontSize: moderateScale(13),
     fontWeight: "700",
-    color: "#6B7290",
+    color: "#6B7280",
     textDecorationLine: "underline",
   },
 });

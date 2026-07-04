@@ -4,7 +4,7 @@ import { StatusBar } from "expo-status-bar";
 import React from "react";
 import { Image, Platform, Pressable, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import Logo from "../../../assets/images/logoo.webp";
+import Logo from "../../../assets/images/logoo-Photoroom.png";
 
 const Navbar = ({ onMenuPress }: { onMenuPress?: () => void }) => {
   const insets = useSafeAreaInsets();

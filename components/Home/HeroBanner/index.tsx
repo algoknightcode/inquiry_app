@@ -1,6 +1,7 @@
 import { Image } from "expo-image";
 import React, { useState, useEffect, useRef } from "react";
 import { Animated, Dimensions, View } from "react-native";
+import { useIsFocused } from "@react-navigation/native";
 
 import HomeImage1 from "../../../assets/images/mob1.jpeg";
 import HomeImage2 from "../../../assets/images/mob2.jpeg";
@@ -8,6 +9,7 @@ import HomeImage2 from "../../../assets/images/mob2.jpeg";
 const { width } = Dimensions.get("window");
 
 const HeroBanner = () => {
+  const isFocused = useIsFocused();
   const data = [HomeImage1, HomeImage2];
   const [activeIndex, setActiveIndex] = useState(0);
 
@@ -15,6 +17,8 @@ const HeroBanner = () => {
   const fadeAnims = useRef(data.map((_, i) => new Animated.Value(i === 0 ? 1 : 0))).current;
 
   useEffect(() => {
+    if (!isFocused) return;
+
     const interval = setInterval(() => {
       const nextIndex = (activeIndex + 1) % data.length;
 
@@ -36,7 +40,7 @@ const HeroBanner = () => {
     }, 4000);
 
     return () => clearInterval(interval);
-  }, [activeIndex]);
+  }, [activeIndex, isFocused]);
 
   return (
     <View className="h-[360px] w-full relative bg-slate-900">

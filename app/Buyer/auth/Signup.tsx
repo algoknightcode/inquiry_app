@@ -13,9 +13,11 @@ import {
   TextInput,
   TouchableOpacity,
   View,
+  StyleSheet,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import Logo from "../../../assets/images/logoo.webp";
+import { scale, verticalScale, moderateScale } from "react-native-size-matters";
+import Logo from "../../../assets/images/logoo-Photoroom.png";
 
 const API_BASE_URL = "https://buyer.inquirybazaar.com"; 
 
@@ -97,13 +99,11 @@ const BuyerSignUp = () => {
     <KeyboardAvoidingView
       behavior={Platform.OS === "ios" ? "padding" : "padding"}
       keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 20}
-      className="flex-1 bg-[#F8FAFC]"
-      style={{ flex: 1 }}
+      style={s.flexContainer}
     >
       {/* Custom Back Header */}
       <View 
-        style={{ paddingTop: insets.top + 10, paddingBottom: 10, backgroundColor: "#F8FAFC" }}
-        className="px-4 flex-row items-center border-b border-slate-100"
+        style={[s.headerContainer, { paddingTop: insets.top + verticalScale(8) }]}
       >
         <TouchableOpacity 
           onPress={() => {
@@ -113,44 +113,43 @@ const BuyerSignUp = () => {
               router.replace("/(auth)/choose-role");
             }
           }} 
-          style={{ flexDirection: "row", alignItems: "center" }}
+          style={s.backBtn}
         >
-          <Ionicons name="chevron-back" size={28} color="#007AFF" />
-          <Text style={{ color: "#007AFF", fontSize: 17, marginLeft: -6 }}>Back</Text>
+          <Ionicons name="chevron-back" size={moderateScale(26)} color="#007AFF" />
+          <Text style={s.backText}>Back</Text>
         </TouchableOpacity>
-        <Text className="text-lg font-jakarta-bold font-bold text-slate-800 ml-4">
+        <Text style={s.headerTitle}>
           Buyer Registration
         </Text>
       </View>
 
-      <View className="flex-1 justify-start">
+      <View style={s.formContainer}>
         <ScrollView
-          contentContainerStyle={{ flexGrow: 1, justifyContent: "flex-start", paddingTop: 16 }}
-          className="px-4 pb-6"
+          contentContainerStyle={s.scrollContent}
           showsVerticalScrollIndicator={false}
         >
           {/* Main Card Canvas */}
-          <View className="bg-white rounded-[32px] px-6 py-9 shadow-2xl shadow-black/30 w-full min-h-[580px]">
+          <View style={s.mainCard}>
             
             {/* Brand Header */}
-            <View className="items-center mb-8">
-              <Image source={Logo} className="w-44 h-16 mb-4" resizeMode="contain" />
-              <Text className="text-[26px] font-jakarta-bold font-extrabold text-blue-900 tracking-tight mb-1.5">
+            <View style={s.brandWrapper}>
+              <Image source={Logo} style={s.logo} resizeMode="contain" />
+              <Text style={s.title}>
                 Buyer Registration
               </Text>
-              <Text className="text-[15px] font-jakarta-medium text-slate-500">
+              <Text style={s.subtitle}>
                 Create your buyer account
               </Text>
             </View>
 
             {/* Input Form Wrapper */}
-            <View className="w-full gap-y-4">
+            <View style={s.inputsWrapper}>
               
               {/* Full Name Input Container */}
-              <View className="flex-row items-center bg-white border-[1.5px] border-slate-200 rounded-2xl h-14 px-4">
-                <Ionicons name="person-outline" size={20} color="#64748B" className="mr-3" />
+              <View style={s.inputContainer}>
+                <Ionicons name="person-outline" size={moderateScale(18)} color="#64748B" style={s.inputIcon} />
                 <TextInput
-                  className="flex-1 h-full text-slate-900 text-[15px] font-jakarta-semibold font-semibold"
+                  style={s.textInput}
                   placeholder="Full Name"
                   placeholderTextColor="#94A3B8"
                   value={formdata.name}
@@ -161,10 +160,10 @@ const BuyerSignUp = () => {
               </View>
 
               {/* Email Address Input Container */}
-              <View className="flex-row items-center bg-white border-[1.5px] border-slate-200 rounded-2xl h-14 px-4">
-                <Ionicons name="mail-outline" size={20} color="#64748B" className="mr-3" />
+              <View style={s.inputContainer}>
+                <Ionicons name="mail-outline" size={moderateScale(18)} color="#64748B" style={s.inputIcon} />
                 <TextInput
-                  className="flex-1 h-full text-slate-900 text-[15px] font-jakarta-semibold font-semibold"
+                  style={s.textInput}
                   placeholder="Email Address"
                   placeholderTextColor="#94A3B8"
                   value={formdata.email}
@@ -176,10 +175,10 @@ const BuyerSignUp = () => {
               </View>
 
               {/* Phone Number Input Container */}
-              <View className="flex-row items-center bg-white border-[1.5px] border-slate-200 rounded-2xl h-14 px-4">
-                <Ionicons name="call-outline" size={20} color="#64748B" className="mr-3" />
+              <View style={s.inputContainer}>
+                <Ionicons name="call-outline" size={moderateScale(18)} color="#64748B" style={s.inputIcon} />
                 <TextInput
-                  className="flex-1 h-full text-slate-900 text-[15px] font-jakarta-semibold font-semibold"
+                  style={s.textInput}
                   placeholder="Phone Number"
                   placeholderTextColor="#94A3B8"
                   value={formdata.phone}
@@ -190,10 +189,10 @@ const BuyerSignUp = () => {
               </View>
 
               {/* Password Input Container */}
-              <View className="flex-row items-center bg-white border-[1.5px] border-slate-200 rounded-2xl h-14 px-4">
-                <Ionicons name="lock-closed-outline" size={20} color="#64748B" className="mr-3" />
+              <View style={s.inputContainer}>
+                <Ionicons name="lock-closed-outline" size={moderateScale(18)} color="#64748B" style={s.inputIcon} />
                 <TextInput
-                  className="flex-1 h-full text-slate-900 text-[15px] font-jakarta-semibold font-semibold"
+                  style={s.textInput}
                   placeholder="Password"
                   placeholderTextColor="#94A3B8"
                   value={formdata.password}
@@ -202,10 +201,10 @@ const BuyerSignUp = () => {
                   autoCapitalize="none"
                   editable={!loading}
                 />
-                <Pressable onPress={() => setShowPassword(!showPassword)} className="p-1">
+                <Pressable onPress={() => setShowPassword(!showPassword)} style={s.eyeButton}>
                   <Ionicons
                     name={showPassword ? "eye-off-outline" : "eye-outline"}
-                    size={20}
+                    size={moderateScale(18)}
                     color="#64748B"
                   />
                 </Pressable>
@@ -213,7 +212,7 @@ const BuyerSignUp = () => {
 
               {/* Branded Orange CTA Button */}
               <TouchableOpacity 
-                className="bg-orange-600 rounded-2xl h-14 items-center justify-center mt-3 shadow-lg shadow-orange-600/30 active:opacity-90 flex-row gap-x-2"
+                style={s.registerBtn}
                 onPress={handleSubmit} 
                 activeOpacity={0.9}
                 disabled={loading}
@@ -221,7 +220,7 @@ const BuyerSignUp = () => {
                 {loading ? (
                   <ActivityIndicator color="#fff" size="small" />
                 ) : (
-                  <Text className="text-white text-[16px] font-jakarta-bold font-bold">
+                  <Text style={s.registerBtnText}>
                     Register Buyer
                   </Text>
                 )}
@@ -230,11 +229,11 @@ const BuyerSignUp = () => {
             </View>
 
             {/* Account Switch Redirect */}
-            <View className="items-center mt-7">
-              <Text className="text-sm font-jakarta-medium text-slate-500">
+            <View style={s.loginRedirect}>
+              <Text style={s.redirectText}>
                 Already have an account?{" "}
                 <Text 
-                  className="text-blue-900 font-jakarta-bold font-bold" 
+                  style={s.redirectHighlight} 
                   onPress={() => router.push("/Buyer/auth/Login")}
                 >
                   Login
@@ -248,5 +247,137 @@ const BuyerSignUp = () => {
     </KeyboardAvoidingView>
   );
 };
+
+const s = StyleSheet.create({
+  flexContainer: {
+    flex: 1,
+    backgroundColor: "#F8FAFC",
+  },
+  headerContainer: {
+    paddingBottom: verticalScale(10),
+    backgroundColor: "#F8FAFC",
+    paddingHorizontal: scale(16),
+    flexDirection: "row",
+    alignItems: "center",
+    borderBottomWidth: 1,
+    borderBottomColor: "#E2E8F0",
+  },
+  backBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  backText: {
+    color: "#007AFF",
+    fontSize: moderateScale(16),
+    marginLeft: scale(-4),
+  },
+  headerTitle: {
+    fontSize: moderateScale(16),
+    fontWeight: "700",
+    color: "#1E293B",
+    marginLeft: scale(16),
+  },
+  formContainer: {
+    flex: 1,
+    justifyContent: "flex-start",
+  },
+  scrollContent: {
+    flexGrow: 1,
+    justifyContent: "flex-start",
+    paddingTop: verticalScale(12),
+    paddingHorizontal: scale(16),
+    paddingBottom: verticalScale(24),
+  },
+  mainCard: {
+    backgroundColor: "#FFFFFF",
+    borderRadius: moderateScale(24),
+    paddingHorizontal: scale(20),
+    paddingVertical: verticalScale(28),
+    shadowColor: "#0F172A",
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.05,
+    shadowRadius: 15,
+    elevation: 3,
+    width: "100%",
+    minHeight: verticalScale(500),
+  },
+  brandWrapper: {
+    alignItems: "center",
+    marginBottom: verticalScale(24),
+  },
+  logo: {
+    width: scale(140),
+    height: verticalScale(50),
+    marginBottom: verticalScale(12),
+  },
+  title: {
+    fontSize: moderateScale(22),
+    fontWeight: "800",
+    color: "#1E3A8A",
+    letterSpacing: -0.5,
+    marginBottom: verticalScale(6),
+  },
+  subtitle: {
+    fontSize: moderateScale(14),
+    color: "#64748B",
+  },
+  inputsWrapper: {
+    width: "100%",
+  },
+  inputContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#FFFFFF",
+    borderWidth: 1.5,
+    borderColor: "#E2E8F0",
+    borderRadius: moderateScale(16),
+    height: verticalScale(48),
+    paddingHorizontal: scale(14),
+    marginBottom: verticalScale(12),
+  },
+  inputIcon: {
+    marginRight: scale(10),
+  },
+  textInput: {
+    flex: 1,
+    height: "100%",
+    color: "#0F172A",
+    fontSize: moderateScale(14),
+    fontWeight: "600",
+  },
+  eyeButton: {
+    padding: moderateScale(4),
+  },
+  registerBtn: {
+    backgroundColor: "#EA580C",
+    borderRadius: moderateScale(16),
+    height: verticalScale(48),
+    alignItems: "center",
+    justifyContent: "center",
+    marginTop: verticalScale(4),
+    shadowColor: "#EA580C",
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.15,
+    shadowRadius: 10,
+    elevation: 3,
+  },
+  registerBtnText: {
+    color: "#FFFFFF",
+    fontSize: moderateScale(15),
+    fontWeight: "700",
+  },
+  loginRedirect: {
+    alignItems: "center",
+    marginTop: verticalScale(24),
+  },
+  redirectText: {
+    fontSize: moderateScale(13),
+    color: "#64748B",
+  },
+  redirectHighlight: {
+    color: "#1E3A8A",
+    fontWeight: "700",
+  },
+});
 
 export default BuyerSignUp;

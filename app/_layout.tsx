@@ -5,7 +5,8 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import 'react-native-reanimated';
 import "../global.css";
 import { Ionicons } from '@expo/vector-icons';
-import { Text, TouchableOpacity } from 'react-native';
+import { Text, TouchableOpacity, View } from 'react-native';
+import CustomTabBar from '@/components/Home/Footer';
 
 const CustomBackButton = () => {
   return (
@@ -34,7 +35,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 export default function RootLayout() {
   const colorScheme = useColorScheme();
-  // usePushNotifications();
+  usePushNotifications();
 
   useEffect(() => {
     const restoreSession = async () => {
@@ -57,125 +58,127 @@ export default function RootLayout() {
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
         <ThemeProvider value={DefaultTheme}>
+        <View style={{ flex: 1 }}>
           <Stack>
-
-          <Stack.Screen name="welcome" options={{ headerShown: false }} />
-          <Stack.Screen name="(auth)" options={{ headerShown: false }} />
-          <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-          <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
-          <Stack.Screen name="Products_Page/index" options={{ headerShown: false }} />
-          <Stack.Screen name="Products_Page/[slug]/index" options={{ headerShown: false }} />
-          <Stack.Screen name="SubCategory/index" options={{ headerShown: false }} />
-          <Stack.Screen 
-            name="Industries/index" 
-            options={{ 
-              headerShown: false, 
-              animation: "slide_from_bottom" 
-            }} 
-          />
-          <Stack.Screen name="GrId_MainCategory/index" options={{ headerShown: false }} />
-          <Stack.Screen name="AllCities/index" options={{ headerShown: false }} />
-          <Stack.Screen name="PostRequirenmentForm/index" options={{ headerShown: false }} />
-          <Stack.Screen name="NotificationPanel/index" options={{ headerShown: false }} />
-          <Stack.Screen 
-            name="Account/index" 
-            options={{ 
-              headerShown: false, 
-              animation: "slide_from_bottom" 
-            }} 
-          />
-          <Stack.Screen 
-            name="Wishlist/index" 
-            options={{ 
-              headerShown: false, 
-              animation: "slide_from_bottom" 
-            }} 
-          />
-          <Stack.Screen 
-            name="Buyer/profile/index" 
+            <Stack.Screen name="welcome" options={{ headerShown: false }} />
+            <Stack.Screen name="(auth)" options={{ headerShown: false }} />
+            <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+            <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
+            <Stack.Screen name="Products_Page/index" options={{ headerShown: false }} />
+            <Stack.Screen name="Products_Page/[slug]/index" options={{ headerShown: false }} />
+            <Stack.Screen name="SubCategory/index" options={{ headerShown: false }} />
+            <Stack.Screen 
+              name="Industries/index" 
+              options={{ 
+                headerShown: false, 
+                animation: "slide_from_bottom" 
+              }} 
+            />
+            <Stack.Screen name="GrId_MainCategory/index" options={{ headerShown: false }} />
+            <Stack.Screen name="AllCities/index" options={{ headerShown: false }} />
+            <Stack.Screen name="PostRequirenmentForm/index" options={{ headerShown: false }} />
+            <Stack.Screen name="NotificationPanel/index" options={{ headerShown: false }} />
+            <Stack.Screen 
+              name="Account/index" 
+              options={{ 
+                headerShown: false, 
+                animation: "slide_from_bottom" 
+              }} 
+            />
+            <Stack.Screen 
+              name="Wishlist/index" 
+              options={{ 
+                headerShown: false, 
+                animation: "slide_from_bottom" 
+              }} 
+            />
+            <Stack.Screen 
+              name="Buyer/profile/index" 
+              options={{ 
+                headerShown: false,
+                animation: "slide_from_right"
+              }} 
+            />
+            <Stack.Screen 
+              name="Buyer/PostRFQ/index" 
+              options={{ 
+                headerShown: false,
+                animation: "slide_from_right"
+              }} 
+            />
+            <Stack.Screen 
+              name="Seller/Profile/index" 
+              options={{ 
+                headerShown: false,
+                animation: "slide_from_right"
+              }} 
+            />
+            <Stack.Screen 
+              name="Seller/auth/Login" 
+              options={{ 
+                headerShown: false,
+                animation: "slide_from_right"
+              }} 
+            />
+            <Stack.Screen 
+              name="Seller/auth/Signup" 
+              options={{ 
+                headerShown: false,
+                animation: "slide_from_right"
+              }} 
+            />
+            <Stack.Screen 
+              name="Buyer/auth/Login" 
+              options={{ 
+                headerShown: false,
+                animation: "slide_from_right"
+              }} 
+            />
+            <Stack.Screen 
+              name="Buyer/auth/Signup" 
+              options={{ 
+                headerShown: false,
+                animation: "slide_from_right"
+              }} 
+            />
+            <Stack.Screen 
+              name="Seller/AddProduct/index" 
+              options={{ 
+                headerShown: false,
+                animation: "slide_from_right"
+              }} 
+            />
+            <Stack.Screen 
+              name="Seller/ViewAllProduct/index" 
+              options={{ 
+                headerShown: false,
+                animation: "slide_from_right"
+              }} 
+            />
+            <Stack.Screen 
+              name="Seller/dashboard/index" 
             options={{ 
               headerShown: false,
               animation: "slide_from_right"
             }} 
           />
           <Stack.Screen 
-            name="Buyer/PostRFQ/index" 
+            name="Seller/Lead/index" 
             options={{ 
               headerShown: false,
               animation: "slide_from_right"
             }} 
           />
           <Stack.Screen 
-            name="Seller/Profile/index" 
+            name="HelpSupport/index" 
             options={{ 
               headerShown: false,
               animation: "slide_from_right"
             }} 
           />
-          <Stack.Screen 
-            name="Seller/auth/Login" 
-            options={{ 
-              headerShown: false,
-              animation: "slide_from_right"
-            }} 
-          />
-          <Stack.Screen 
-            name="Seller/auth/Signup" 
-            options={{ 
-              headerShown: false,
-              animation: "slide_from_right"
-            }} 
-          />
-          <Stack.Screen 
-            name="Buyer/auth/Login" 
-            options={{ 
-              headerShown: false,
-              animation: "slide_from_right"
-            }} 
-          />
-          <Stack.Screen 
-            name="Buyer/auth/Signup" 
-            options={{ 
-              headerShown: false,
-              animation: "slide_from_right"
-            }} 
-          />
-          <Stack.Screen 
-            name="Seller/AddProduct/index" 
-            options={{ 
-              headerShown: false,
-              animation: "slide_from_right"
-            }} 
-          />
-          <Stack.Screen 
-            name="Seller/ViewAllProduct/index" 
-            options={{ 
-              headerShown: false,
-              animation: "slide_from_right"
-            }} 
-          />
-          <Stack.Screen 
-            name="Seller/dashboard/index" 
-          options={{ 
-            headerShown: false,
-            animation: "slide_from_right"
-          }} 
-        />
-        <Stack.Screen 
-          name="Seller/Lead/index" 
-          options={{ 
-            headerShown: false,
-            animation: "slide_from_right"
-          }} 
-        />
-        <Stack.Screen 
-          name="HelpSupport/index" 
-          options={{ 
-            headerShown: false,
-            animation: "slide_from_right"
-          }} 
-        />
-      </Stack>
+        </Stack>
+        <CustomTabBar />
+      </View>
         <StatusBar style="dark" />
       </ThemeProvider>
       </SafeAreaProvider>
