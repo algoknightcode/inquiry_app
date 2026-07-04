@@ -21,6 +21,14 @@ export function usePushNotifications() {
     // Dynamically require only when running outside of Expo Go (e.g. in development build APK)
     const Notifications = require('expo-notifications');
 
+    Notifications.setNotificationHandler({
+      handleNotification: async () => ({
+        shouldShowAlert: true,
+        shouldPlaySound: true,
+        shouldSetBadge: false,
+      }),
+    });
+
     async function registerForPushNotificationsAsync() {
       try {
         const { status: existingStatus } = await Notifications.getPermissionsAsync();

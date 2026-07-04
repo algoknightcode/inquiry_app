@@ -48,7 +48,15 @@ const MemoizedWeConnectBuyerSeller = React.memo(WeConnectBuyerSeller);
 
 export default function HomeScreen() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [renderBelowFold, setRenderBelowFold] = useState(false);
   const scrollViewRef = useRef<ScrollView>(null);
+
+  React.useEffect(() => {
+    const timer = setTimeout(() => {
+      setRenderBelowFold(true);
+    }, 350);
+    return () => clearTimeout(timer);
+  }, []);
 
   return (
     <SafeAreaView style={styles.container}>
@@ -76,24 +84,29 @@ export default function HomeScreen() {
         <MemoizedTop_Industries />
         <MemoizedMoreValueAdds />
         <MemoizedTrendingBrandsCarousel />
-        <MemoizedHorizontalProductList />
-        <MemoizedIndustryTreeCarousel />
-        <MemoizedSellersByCityGrid />
-        <MemoizedNewOnes />
-        <MemoizedWeConnectBuyerSeller />
-        <MemoizedTrustedBy />
-        <MemoizedMoreForYou />
-        <MemoizedVideoSection />
-        <MemoizedLeadGenCard />
-        <MemoizedTestimonialComponent />
-        <MemoizedFaqSection />
         
-        <MemoizedHomeFooterHelp
-          facebookUrl="https://facebook.com/inquirybazaar"
-          instagramUrl="https://instagram.com/inquirybazaar"
-          linkedinUrl="https://linkedin.com/company/inquirybazaar"
-          youtubeUrl="https://youtube.com/inquirybazaar"
-        />
+        {renderBelowFold && (
+          <>
+            <MemoizedHorizontalProductList />
+            <MemoizedIndustryTreeCarousel />
+            <MemoizedSellersByCityGrid />
+            <MemoizedNewOnes />
+            <MemoizedWeConnectBuyerSeller />
+            <MemoizedTrustedBy />
+            <MemoizedMoreForYou />
+            <MemoizedVideoSection />
+            <MemoizedLeadGenCard />
+            <MemoizedTestimonialComponent />
+            <MemoizedFaqSection />
+            
+            <MemoizedHomeFooterHelp
+              facebookUrl="https://facebook.com/inquirybazaar"
+              instagramUrl="https://instagram.com/inquirybazaar"
+              linkedinUrl="https://linkedin.com/company/inquirybazaar"
+              youtubeUrl="https://youtube.com/inquirybazaar"
+            />
+          </>
+        )}
       </ScrollView>
 
       <Sidebar 
