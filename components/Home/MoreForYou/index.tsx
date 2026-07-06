@@ -1,4 +1,6 @@
-import React, { useRef, useState } from "react";
+import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
+import { useRouter } from "expo-router";
+import React from "react";
 import {
   FlatList,
   Linking,
@@ -7,8 +9,6 @@ import {
   useWindowDimensions,
   View,
 } from "react-native";
-import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
-import { useRouter } from "expo-router";
 
 export interface MoreForYouCard {
   id: string;
@@ -16,13 +16,21 @@ export interface MoreForYouCard {
   desc: string;
   icon: keyof typeof Ionicons.glyphMap;
   buttonText: string;
-  route: string; // Internal route (e.g. "/Pricing") or External link (e.g. "https://...")
+  route: string;
   isPopular?: boolean;
 }
 
 const cardsData: MoreForYouCard[] = [
   {
     id: "1",
+    title: "Connect with Verified Suppliers",
+    desc: "Find trusted & verified manufacturers, wholesalers, and exporters across India. Share your requirement and get the best quotes instantly.",
+    icon: "receipt-outline",
+    buttonText: "Get Verified Suppliers",
+    route: "https://dir.inquirybazaar.com/",
+  },
+  {
+    id: "2",
     title: "Sell on Inquiry Bazaar for Free",
     desc: "Expand your business reach and connect with high-intent buyers. Generate quality B2B leads without upfront cost.",
     icon: "storefront-outline",
@@ -31,7 +39,7 @@ const cardsData: MoreForYouCard[] = [
     isPopular: true,
   },
   {
-    id: "2",
+    id: "3",
     title: "Get Instant Business Enquiries",
     desc: "Receive real-time enquiries directly on your mobile & dashboard. Never miss a potential deal with instant alerts.",
     icon: "phone-portrait-outline",
@@ -39,7 +47,7 @@ const cardsData: MoreForYouCard[] = [
     route: "/PostRequirenmentForm",
   },
   {
-    id: "3",
+    id: "4",
     title: "Legal Compliance",
     desc: "Verified Goods & Service Tax Identification Number (GSTIN) indicates a registered business that complies with Indian tax regulations.",
     icon: "shield-checkmark-outline",
@@ -52,15 +60,21 @@ export default function MoreForYou() {
   const { width: screenWidth } = useWindowDimensions();
   const router = useRouter();
 
+  // Responsive configurations
+  const isTablet = screenWidth >= 768;
+  const scale = isTablet ? 1.15 : Math.max(0.85, Math.min(1.1, screenWidth / 375));
+  
   const containerPadding = 16;
-  const cardGap = 12;
-  const cardWidth = (screenWidth - containerPadding * 2 - cardGap) / 2;
+  
+  // Calculate exact half width for the combined block structure in Image 1
+  const cardWidth = isTablet 
+    ? (screenWidth - containerPadding * 2) / 2 
+    : (screenWidth - containerPadding * 2);
 
-  const scale = Math.max(0.85, Math.min(1.1, screenWidth / 375));
   const sectionTitleSize = 22 * scale;
-  const cardTitleSize = 14 * scale;
-  const descSize = 11.5 * scale;
-  const buttonTextSize = 12 * scale;
+  const cardTitleSize = 15 * scale;
+  const descSize = 12 * scale;
+  const buttonTextSize = 13 * scale;
 
   const handlePress = (route: string) => {
     if (route.startsWith("http://") || route.startsWith("https://")) {
@@ -72,83 +86,92 @@ export default function MoreForYou() {
     }
   };
 
-  const renderItem = ({ item, index }: { item: MoreForYouCard; index: number }) => {
-    const isLastItem = index === cardsData.length - 1;
-    const isPopular = item.isPopular;
+  // Grouping cards into pairs of 2 to match the layout style of Image 1
+  const chunkedData = [];
+  for (let i = 0; i < cardsData.length; i += 2) {
+    chunkedData.push(cardsData.slice(i, i + 2));
+  }
 
+  const renderCombinedBlock = ({ item: pair }: { item: MoreForYouCard[] }) => {
     return (
-      <View
-        style={{
-          width: cardWidth,
-          marginRight: isLastItem ? 0 : cardGap,
-        }}
-        className={`rounded-2xl border p-4 justify-between min-h-[300px] ${
-          isPopular
-            ? "bg-[#0f172a] border-[#1e293b]"
-            : "bg-[#ffffff] border-[#e2e8f0]"
-        }`}
+      <View 
+        style={{ width: cardWidth }}
+        className="flex-row border border-[#e2e8f0] rounded-sm overflow-hidden bg-white"
       >
-        {/* Top Section */}
-        <View className="flex-1">
-          {isPopular ? (
-            <View className="flex-row items-center bg-[#ea580c] px-2 py-0.5 rounded-full self-start mb-3 gap-0.5">
-              <MaterialCommunityIcons name="flash" size={10} color="#ffffff" />
-              <Text className="text-[9px] font-jakarta-bold text-white uppercase tracking-wider">
-                Most Popular
-              </Text>
+        {pair.map((item, idx) => {
+          const isPopular = item.isPopular;
+          // Split widths perfectly half-and-half inside the container
+          return (
+            <View
+              key={item.id}
+              className={`flex-1 p-5 justify-between min-h-[340px] ${
+                isPopular ? "bg-[#0E2347]" : "bg-white"
+              } ${idx === 0 ? "border-r border-[#e2e8f0]" : ""}`}
+            >
+              {/* Top Section */}
+              <View className="flex-1">
+                {isPopular ? (
+                  <View className="flex-row items-center bg-[#ec771c] px-2.5 py-1 rounded-sm self-start mb-4 gap-1">
+                    <MaterialCommunityIcons name="flash" size={10} color="#ffffff" />
+                    <Text className="text-[9px] font-jakarta-bold text-white uppercase tracking-wider">
+                      Most Popular
+                    </Text>
+                  </View>
+                ) : (
+                  <View className="h-[22px] mb-4" /> // Seamless visual layout baseline alignment
+                )}
+
+                {/* Icon */}
+                <View className="mb-4 self-start">
+                  <Ionicons
+                    name={item.icon}
+                    size={28 * scale}
+                    color={isPopular ? "#ffffff" : "#10316C"}
+                  />
+                </View>
+
+                {/* Title */}
+                <Text
+                  style={{ fontSize: cardTitleSize, lineHeight: cardTitleSize * 1.3 }}
+                  className={`font-jakarta-bold mb-3 ${
+                    isPopular ? "text-white" : "text-[#10316C]"
+                  }`}
+                >
+                  {item.title}
+                </Text>
+
+                {/* Description */}
+                <Text
+                  style={{ fontSize: descSize, lineHeight: descSize * 1.4 }}
+                  className={`font-jakarta-medium ${
+                    isPopular ? "text-[#e2e8f0]" : "text-[#64748b]"
+                  }`}
+                >
+                  {item.desc}
+                </Text>
+              </View>
+
+              {/* Bottom Button */}
+              <Pressable
+                onPress={() => handlePress(item.route)}
+                className={`mt-5 py-2.5 px-4 rounded-full items-center justify-center border active:scale-[0.98] ${
+                  isPopular
+                    ? "bg-transparent border-white"
+                    : "bg-transparent border-[#10316C]"
+                }`}
+              >
+                <Text
+                  style={{ fontSize: buttonTextSize }}
+                  className={`font-jakarta-bold ${
+                    isPopular ? "text-white" : "text-[#10316C]"
+                  }`}
+                >
+                  {item.buttonText}
+                </Text>
+              </Pressable>
             </View>
-          ) : (
-            <View className="h-5 mb-3" /> // spacing helper
-          )}
-
-          {/* Icon */}
-          <View className="mb-3 self-start">
-            <Ionicons
-              name={item.icon}
-              size={28 * scale}
-              color={isPopular ? "#ffffff" : "#0f172a"}
-            />
-          </View>
-
-          {/* Title */}
-          <Text
-            style={{ fontSize: cardTitleSize, lineHeight: cardTitleSize * 1.3 }}
-            className={`font-jakarta-bold mb-2 ${
-              isPopular ? "text-white" : "text-[#0f172a]"
-            }`}
-          >
-            {item.title}
-          </Text>
-
-          {/* Description */}
-          <Text
-            style={{ fontSize: descSize, lineHeight: descSize * 1.4 }}
-            className={`font-jakarta-medium ${
-              isPopular ? "text-[#94a3b8]" : "text-[#64748b]"
-            }`}
-          >
-            {item.desc}
-          </Text>
-        </View>
-
-        {/* Bottom Button */}
-        <Pressable
-          onPress={() => handlePress(item.route)}
-          className={`mt-4 py-2.5 px-3 rounded-full items-center justify-center border active:scale-[0.97] transition-transform ${
-            isPopular
-              ? "bg-transparent border-white"
-              : "bg-transparent border-[#0f172a]"
-          }`}
-        >
-          <Text
-            style={{ fontSize: buttonTextSize }}
-            className={`font-jakarta-bold ${
-              isPopular ? "text-white" : "text-[#0f172a]"
-            }`}
-          >
-            {item.buttonText}
-          </Text>
-        </Pressable>
+          );
+        })}
       </View>
     );
   };
@@ -167,16 +190,17 @@ export default function MoreForYou() {
 
       {/* Cards List */}
       <FlatList
-        data={cardsData}
-        keyExtractor={(item) => item.id}
-        renderItem={renderItem}
+        data={chunkedData}
+        keyExtractor={(_, index) => index.toString()}
+        renderItem={renderCombinedBlock}
         horizontal
         showsHorizontalScrollIndicator={false}
-        snapToInterval={cardWidth + cardGap}
+        snapToInterval={cardWidth + 12}
         decelerationRate="fast"
         contentContainerStyle={{
           paddingHorizontal: containerPadding,
           paddingBottom: 8,
+          gap: 12
         }}
       />
     </View>

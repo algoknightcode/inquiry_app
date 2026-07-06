@@ -13,3 +13,8 @@ When writing or modifying the UI of any component, ensure it is fully responsive
 5. **Flexible Sizing & Widths**: Avoid arbitrary fixed minimum widths (e.g., `min-w-[100px]`). Use flexible sizing like `flex-1` or percentage-based widths where appropriate.
 6. **Tablet & Landscape Optimization**: Check device screen dimensions (`useWindowDimensions()`) to detect tablets and orientation changes, tailoring the layout structure accordingly (e.g., displaying multi-column grids on wider screens).
 7. **Centralized Responsive Constants**: Wherever possible, store and import responsive layout tokens (typography, spacing, sizing constants) rather than hardcoding arbitrary pixel values throughout the UI files.
+
+# CRITICAL MANDATE: Screen Optimization & Responsiveness
+
+Every single UI component, page, layout, or container created or modified in this project **MUST** be fully optimized and tested to be completely responsive across all screen form factors (small phones, large phones, tablets, and landscape/portrait orientations). Never assume a fixed layout or screen size. Always ensure layouts use fluid/flex configurations, leverage `useWindowDimensions()` to scale content dynamically, and use proper horizontal and vertical safe area offsets to prevent shifting or cutting off elements.
+
