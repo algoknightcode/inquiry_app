@@ -32,3 +32,11 @@ export async function fetchWithCache(url: string): Promise<any> {
 
   return pending[url];
 }
+
+/**
+ * Instantly retrieves cached data synchronously. Used to initialize 
+ * component states during construction to avoid a 1-frame flickering loader.
+ */
+export function getCacheSync(url: string): any | null {
+  return cache[url] || null;
+}

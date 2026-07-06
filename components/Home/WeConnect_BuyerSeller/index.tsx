@@ -60,7 +60,8 @@ export default function WeConnectBuyerSeller() {
     <View 
       style={{ 
         paddingHorizontal: containerPaddingHorizontal, 
-        paddingVertical: containerPaddingVertical,
+        paddingTop: containerPaddingVertical,
+        paddingBottom: 4 * scale,
         backgroundColor: "#fff"
       }}
     >
@@ -75,66 +76,69 @@ export default function WeConnectBuyerSeller() {
       >
         We connect <Text className="text-[#EA580C]">Buyers & Sellers</Text>
       </Text>
-
+ 
       {/* Grid Layout (Responsive column count based on width) */}
       <View className="flex-row flex-wrap justify-between">
-        {features.map((item) => (
-          <View
-            key={item.id}
-            style={{ 
-              width: columnWidth, 
-              marginBottom: itemMarginBottom,
-              flexDirection: isTablet ? "column" : "row",
-              alignItems: isTablet ? "center" : "flex-start",
-            }}
-          >
-            {/* Responsive Icon Box */}
+        {features.map((item, index) => {
+          const isLastRow = isTablet ? true : index >= 2;
+          return (
             <View
+              key={item.id}
               style={{ 
-                width: iconBoxSize, 
-                height: iconBoxSize, 
-                borderRadius: iconBoxSize / 4,
-                marginBottom: isTablet ? 10 : 0,
-                marginRight: isTablet ? 0 : 12,
-              }}
-              className="bg-[#EAF2F5] items-center justify-center shadow-xs"
-            >
-              {item.iconProvider === "ionicons" ? (
-                <Ionicons name={item.iconName as any} size={iconSize} color="#0F172A" />
-              ) : (
-                <MaterialCommunityIcons name={item.iconName as any} size={iconSize} color="#0F172A" />
-              )}
-            </View>
-
-            {/* Content Container */}
-            <View 
-              style={{ 
-                flex: 1, 
+                width: columnWidth, 
+                marginBottom: isLastRow ? 0 : itemMarginBottom,
+                flexDirection: isTablet ? "column" : "row",
                 alignItems: isTablet ? "center" : "flex-start",
-                justifyContent: "center"
               }}
             >
-              <Text
+              {/* Responsive Icon Box */}
+              <View
                 style={{ 
-                  fontSize: itemTitleSize,
-                  textAlign: isTablet ? "center" : "left"
+                  width: iconBoxSize, 
+                  height: iconBoxSize, 
+                  borderRadius: iconBoxSize / 4,
+                  marginBottom: isTablet ? 10 : 0,
+                  marginRight: isTablet ? 0 : 12,
                 }}
-                className="font-jakarta-bold text-slate-900 leading-snug"
+                className="bg-[#EAF2F5] items-center justify-center shadow-xs"
               >
-                {item.title}
-              </Text>
-              <Text
+                {item.iconProvider === "ionicons" ? (
+                  <Ionicons name={item.iconName as any} size={iconSize} color="#0F172A" />
+                ) : (
+                  <MaterialCommunityIcons name={item.iconName as any} size={iconSize} color="#0F172A" />
+                )}
+              </View>
+ 
+              {/* Content Container */}
+              <View 
                 style={{ 
-                  fontSize: itemSubtitleSize,
-                  textAlign: isTablet ? "center" : "left"
+                  flex: 1, 
+                  alignItems: isTablet ? "center" : "flex-start",
+                  justifyContent: "center"
                 }}
-                className="font-jakarta-medium text-slate-500 mt-1"
               >
-                {item.subtitle}
-              </Text>
+                <Text
+                  style={{ 
+                    fontSize: itemTitleSize,
+                    textAlign: isTablet ? "center" : "left"
+                  }}
+                  className="font-jakarta-bold text-slate-900 leading-snug"
+                >
+                  {item.title}
+                </Text>
+                <Text
+                  style={{ 
+                    fontSize: itemSubtitleSize,
+                    textAlign: isTablet ? "center" : "left"
+                  }}
+                  className="font-jakarta-medium text-slate-500 mt-1"
+                >
+                  {item.subtitle}
+                </Text>
+              </View>
             </View>
-          </View>
-        ))}
+          );
+        })}
       </View>
     </View>
   );

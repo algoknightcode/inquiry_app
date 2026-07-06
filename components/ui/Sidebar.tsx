@@ -1,9 +1,8 @@
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState, useMemo } from "react";
 import {
   Animated,
-  Dimensions,
   Easing,
   LayoutAnimation,
   Modal,
@@ -15,19 +14,16 @@ import {
   TouchableOpacity,
   UIManager,
   View,
+  useWindowDimensions,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { isSellerSignedIn, setGlobalRole, setSellerSignedIn, setGlobalSellerId, userRole, setGlobalBuyerId } from "@/utils/roleCache";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
-
 // Enable LayoutAnimation for Android
 if (Platform.OS === "android" && UIManager.setLayoutAnimationEnabledExperimental) {
   UIManager.setLayoutAnimationEnabledExperimental(true);
 }
-
-const { width } = Dimensions.get("window");
-const SIDEBAR_WIDTH = width * 0.72; // Adjusted slightly for robust menu padding
 
 type SidebarProps = {
   visible: boolean;
@@ -52,7 +48,7 @@ const baseMenuItems: MenuItem[] = [
   { icon: "help-circle-outline", title: "Help & Support", route: "/HelpSupport" },
 ];
 
-// Seller dashboard specific sub-items pulled from image_b2b71e.png (excluding Website Page)
+// Seller dashboard specific sub-items
 const sellerSubMenuItems: MenuItem[] = [
   { icon: "speedometer-outline", title: "Dashboard", route: "/Seller/dashboard" },
   { icon: "person-outline", title: "Profile", route: "/Seller/Profile" },
@@ -63,14 +59,83 @@ const sellerSubMenuItems: MenuItem[] = [
 
 export default function Sidebar({ visible, onClose, currentRole }: SidebarProps) {
   const insets = useSafeAreaInsets();
-  
+  const { width: screenWidth, height: screenHeight } = useWindowDimensions();
+
   const [sellerMenuExpanded, setSellerMenuExpanded] = useState(true);
   const [activeRole, setActiveRole] = useState<"buyer" | "seller">(currentRole);
   const [logoutConfirmVisible, setLogoutConfirmVisible] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+  
+  // Track modal rendering state internally to run close animation before unmounting/hiding
+  const [showModal, setShowModal] = useState(false);
+
+  // 1. CPU/Memory Optimized Layout Math for any screen height and width (AGENTS.md guidelines)
+  const metrics = useMemo(() => {
+    const isTablet = screenWidth >= 768;
+    const baseScale = isTablet ? 1.15 : Math.max(0.85, Math.min(1.1, screenWidth / 375));
+    
+    // Scale down layout if height is extremely short (landscape mode / small phones)
+    const isShortScreen = screenHeight < 680;
+    const hScale = isShortScreen ? 0.78 : 1.0;
+
+    // Responsive width capped on tablets to prevent stretched layouts
+    const sidebarWidth = isTablet ? 320 : Math.min(screenWidth * 0.76, 290 * baseScale);
+
+    return {
+      sidebarWidth,
+      scale: baseScale,
+      
+      // Header Section
+      headerPaddingHorizontal: 20 * baseScale,
+      headerPaddingTop: 12 * hScale,
+      headerPaddingBottom: 16 * hScale,
+      logoSize: 40 * baseScale,
+      logoTextSize: 17 * baseScale,
+      logoSubTextSize: 11 * baseScale,
+      closeBtnSize: 32 * baseScale,
+      closeIconSize: 18 * baseScale,
+
+      // ScrollView & Spacing
+      scrollPaddingHorizontal: 12 * baseScale,
+      scrollPaddingTop: 12 * hScale,
+
+      // Core Menu Items
+      itemMarginBottom: 8 * hScale,
+      itemPaddingVertical: 12 * hScale,
+      itemPaddingHorizontal: 14 * baseScale,
+      itemIconBoxSize: 36 * baseScale,
+      itemIconSize: 18 * baseScale,
+      itemTextSize: 14.5 * baseScale,
+      chevronSize: 15 * baseScale,
+
+      // Sub-items Accordion
+      subItemPaddingVertical: 9 * hScale,
+      subItemPaddingHorizontal: 10 * baseScale,
+      subItemIconBoxSize: 28 * baseScale,
+      subItemIconSize: 14 * baseScale,
+      subItemTextSize: 13 * baseScale,
+
+      // Plan card inside ScrollView
+      planCardPadding: 12 * baseScale,
+      planCardMarginBottom: 16 * hScale,
+
+      // Logout / Footer Section
+      logoutPaddingHorizontal: 16 * baseScale,
+      logoutPaddingVertical: 10 * hScale,
+      logoutButtonPaddingVertical: 12 * hScale,
+      logoutTextSize: 13.5 * baseScale,
+      logoutIconSize: 17 * baseScale,
+
+      footerPaddingHorizontal: 24 * baseScale,
+      footerPaddingTop: 10 * hScale,
+      footerPaddingBottom: 8 * hScale,
+      footerTextSize: 10 * baseScale,
+    };
+  }, [screenWidth, screenHeight]);
 
   const handleLogout = async () => {
     setLogoutConfirmVisible(false);
+    setShowModal(false);
     onClose();
     setGlobalRole("buyer");
     setSellerSignedIn(false);
@@ -89,27 +154,14 @@ export default function Sidebar({ visible, onClose, currentRole }: SidebarProps)
     }, 250);
   };
 
-  // Main Drawer Animations
-  const slideAnim = useRef(new Animated.Value(-SIDEBAR_WIDTH)).current;
+  // Safe default off-screen initialization of drawer
+  const slideAnim = useRef(new Animated.Value(-400)).current;
   const fadeAnim = useRef(new Animated.Value(0)).current;
 
+  // Sync prop 'visible' to internal modal visibility and animate in
   useEffect(() => {
     if (visible) {
-      const checkRoleAndLogin = async () => {
-        const supplierId = await AsyncStorage.getItem("supplierId");
-        const buyerId = await AsyncStorage.getItem("buyerId");
-        
-        if (supplierId || isSellerSignedIn) {
-          setActiveRole("seller");
-          setIsLoggedIn(true);
-        } else {
-          const activeUserRole = userRole || currentRole;
-          setActiveRole(activeUserRole);
-          setIsLoggedIn(!!buyerId);
-        }
-      };
-      checkRoleAndLogin();
-
+      setShowModal(true);
       Animated.parallel([
         Animated.spring(slideAnim, {
           toValue: 0,
@@ -123,22 +175,28 @@ export default function Sidebar({ visible, onClose, currentRole }: SidebarProps)
           useNativeDriver: true,
         }),
       ]).start();
-    } else {
-      Animated.parallel([
-        Animated.timing(slideAnim, {
-          toValue: -SIDEBAR_WIDTH,
-          duration: 200,
-          easing: Easing.in(Easing.ease),
-          useNativeDriver: true,
-        }),
-        Animated.timing(fadeAnim, {
-          toValue: 0,
-          duration: 200,
-          useNativeDriver: true,
-        }),
-      ]).start();
     }
-  }, [visible, currentRole]);
+  }, [visible]);
+
+  // Run slide-out animation smoothly before notifying parent to close and unmount
+  const handleClose = () => {
+    Animated.parallel([
+      Animated.timing(slideAnim, {
+        toValue: -metrics.sidebarWidth,
+        duration: 220,
+        easing: Easing.in(Easing.ease),
+        useNativeDriver: true,
+      }),
+      Animated.timing(fadeAnim, {
+        toValue: 0,
+        duration: 200,
+        useNativeDriver: true,
+      }),
+    ]).start(() => {
+      setShowModal(false);
+      onClose(); // Notify parent component to update state to false
+    });
+  };
 
   const toggleSellerMenu = () => {
     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
@@ -146,6 +204,7 @@ export default function Sidebar({ visible, onClose, currentRole }: SidebarProps)
   };
 
   const handleNavigation = async (route: string) => {
+    setShowModal(false);
     onClose();
     const supplierId = await AsyncStorage.getItem("supplierId");
     setTimeout(() => {
@@ -178,13 +237,18 @@ export default function Sidebar({ visible, onClose, currentRole }: SidebarProps)
     activeMenuItems = activeMenuItems.filter(item => item.title !== "Free Listing");
   }
 
-  if (!visible) return null;
+  if (!showModal && !visible) return null;
 
   return (
-    <View style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, zIndex: 9999 }}>
+    <Modal
+      visible={showModal}
+      transparent
+      animationType="none"
+      onRequestClose={handleClose}
+    >
       <View style={{ flex: 1 }}>
-        {/* Backdrop */}
-        <TouchableWithoutFeedback onPress={onClose}>
+        {/* Backdrop overlay */}
+        <TouchableWithoutFeedback onPress={handleClose}>
           <Animated.View
             style={{
               position: "absolute",
@@ -195,12 +259,12 @@ export default function Sidebar({ visible, onClose, currentRole }: SidebarProps)
           />
         </TouchableWithoutFeedback>
 
-        {/* Sliding Sidebar */}
+        {/* Sliding Sidebar Drawer */}
         <Animated.View
           style={{
             position: "absolute",
             top: 0, left: 0, bottom: 0,
-            width: SIDEBAR_WIDTH,
+            width: metrics.sidebarWidth,
             backgroundColor: "#ffffff",
             shadowColor: "#0F172A",
             shadowOffset: { width: 6, height: 0 },
@@ -208,40 +272,68 @@ export default function Sidebar({ visible, onClose, currentRole }: SidebarProps)
             shadowRadius: 24,
             elevation: 24,
             transform: [{ translateX: slideAnim }],
-            paddingTop: insets.top + 16,
-            paddingBottom: Math.max(insets.bottom, 16),
+            paddingTop: insets.top + (metrics.scale * 12),
+            paddingBottom: Math.max(insets.bottom, 12 * metrics.scale),
           }}
         >
           {/* Header Section */}
-          <View className="px-5 pb-5 pt-2 border-b border-slate-100 flex-row items-center justify-between">
+          <View 
+            style={{ 
+              paddingHorizontal: metrics.headerPaddingHorizontal,
+              paddingBottom: metrics.headerPaddingBottom,
+              paddingTop: metrics.headerPaddingTop,
+            }}
+            className="border-b border-slate-100 flex-row items-center justify-between"
+          >
             <View className="flex-row items-center">
-              <View className="h-10 w-10 rounded-xl bg-slate-900 items-center justify-center mr-3 shadow-sm">
+              <View 
+                style={{ width: metrics.logoSize, height: metrics.logoSize }}
+                className="rounded-xl bg-slate-900 items-center justify-center mr-3 shadow-sm"
+              >
                 <Text className="text-white font-jakarta-bold text-lg">IB</Text>
               </View>
               <View>
-                <Text className="text-[17px] font-jakarta-bold text-slate-900 tracking-tight">
+                <Text 
+                  style={{ fontSize: metrics.logoTextSize }}
+                  className="font-jakarta-bold text-slate-900 tracking-tight"
+                >
                   Inquiry Bazaar
                 </Text>
-                <Text className="text-[11px] font-jakarta-medium text-slate-400 uppercase tracking-wider">
+                <Text 
+                  style={{ fontSize: metrics.logoSubTextSize }}
+                  className="font-jakarta-medium text-slate-400 uppercase tracking-wider"
+                >
                   {activeRole === "seller" ? "Seller Workspace" : "B2B Marketplace"}
                 </Text>
               </View>
             </View>
             
             <Pressable
-              onPress={onClose}
-              className="h-8 w-8 items-center justify-center rounded-full bg-slate-50 active:bg-slate-200"
+              onPress={handleClose}
+              style={{ width: metrics.closeBtnSize, height: metrics.closeBtnSize }}
+              className="items-center justify-center rounded-full bg-slate-50 active:bg-slate-200"
             >
-              <Ionicons name="close" size={18} color="#64748b" />
+              <Ionicons name="close" size={metrics.closeIconSize} color="#64748b" />
             </Pressable>
           </View>
 
           {/* Menu Scroller */}
-          <ScrollView className="flex-1 px-3 pt-4" showsVerticalScrollIndicator={false}>
+          <ScrollView 
+            style={{ paddingHorizontal: metrics.scrollPaddingHorizontal, paddingTop: metrics.scrollPaddingTop }}
+            className="flex-1" 
+            showsVerticalScrollIndicator={false}
+          >
             
             {/* STANDARD PLAN SMALL CARD */}
             {activeRole === "seller" && (
-              <View className="mx-1 mb-4 p-3.5 rounded-2xl bg-emerald-50 border border-emerald-100 flex-row items-center">
+              <View 
+                style={{ 
+                  marginHorizontal: 4, 
+                  marginBottom: metrics.planCardMarginBottom, 
+                  padding: metrics.planCardPadding 
+                }}
+                className="rounded-2xl bg-emerald-50 border border-emerald-100 flex-row items-center"
+              >
                 <View className="h-9 w-9 rounded-xl bg-emerald-500 items-center justify-center mr-3 shadow-sm">
                   <Ionicons name="shield-checkmark" size={18} color="#ffffff" />
                 </View>
@@ -261,46 +353,69 @@ export default function Sidebar({ visible, onClose, currentRole }: SidebarProps)
               </View>
             )}
 
-            {/* SELLER DROPDOWN SECTION (Only renders if user selected Seller) */}
+            {/* SELLER DROPDOWN SECTION */}
             {activeRole === "seller" && (
               <View className="mb-4 rounded-2xl overflow-hidden border border-slate-100" style={{ backgroundColor: 'rgba(248, 250, 252, 0.7)' }}>
                 {/* Dropdown Header Trigger */}
                 <Pressable
                   onPress={toggleSellerMenu}
-                  className="flex-row items-center justify-between px-4 py-3.5"
-                  style={{ backgroundColor: 'rgba(241, 245, 249, 0.6)' }}
+                  className="flex-row items-center justify-between"
+                  style={{ 
+                    paddingHorizontal: metrics.itemPaddingHorizontal, 
+                    paddingVertical: metrics.itemPaddingVertical,
+                    backgroundColor: 'rgba(241, 245, 249, 0.6)' 
+                  }}
                 >
                   <View className="flex-row items-center">
-                    <View className="h-8 w-8 rounded-lg bg-blue-900 items-center justify-center mr-3" style={{ shadowColor: '#bfdbfe', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.5, shadowRadius: 2, elevation: 2 }}>
-                      <Ionicons name="ribbon" size={16} color="#ffffff" />
+                    <View 
+                      style={{ 
+                        width: metrics.itemIconBoxSize - 2, 
+                        height: metrics.itemIconBoxSize - 2,
+                        shadowColor: '#bfdbfe', 
+                        shadowOffset: { width: 0, height: 1 }, 
+                        shadowOpacity: 0.5, 
+                        shadowRadius: 2, 
+                        elevation: 2 
+                      }}
+                      className="rounded-lg bg-blue-900 items-center justify-center mr-3" 
+                    >
+                      <Ionicons name="ribbon" size={metrics.itemIconSize - 2} color="#ffffff" />
                     </View>
-                    <Text className="text-[14px] font-jakarta-bold text-slate-800">
+                    <Text style={{ fontSize: metrics.itemTextSize - 0.5 }} className="font-jakarta-bold text-slate-800">
                       Seller Central
                     </Text>
                   </View>
                   <Ionicons 
                     name={sellerMenuExpanded ? "chevron-up" : "chevron-down"} 
-                    size={16} 
+                    size={metrics.chevronSize} 
                     color="#475569" 
                   />
                 </Pressable>
 
                 {/* Dropdown Sub-Items Accordion */}
                 {sellerMenuExpanded && (
-                  <View className="py-1 px-2">
+                  <View style={{ paddingVertical: 4, paddingHorizontal: 8 }}>
                     {sellerSubMenuItems.map((subItem, idx) => (
                       <Pressable
                         key={idx}
                         onPress={() => handleNavigation(subItem.route)}
-                        className="flex-row items-center px-3 py-2.5 rounded-xl mb-1 active:bg-white active:scale-[0.99] transition-all"
+                        style={{ 
+                          paddingVertical: metrics.subItemPaddingVertical, 
+                          paddingHorizontal: metrics.subItemPaddingHorizontal, 
+                          marginBottom: 4 
+                        }}
+                        className="flex-row items-center rounded-xl active:bg-white active:scale-[0.99] transition-all"
                       >
-                        <View className="h-7 w-7 rounded-lg bg-white border border-slate-100 items-center justify-center mr-3">
-                          <Ionicons name={subItem.icon} size={15} color="#1b2a6b" />
+                        <View 
+                          style={{ width: metrics.subItemIconBoxSize, height: metrics.subItemIconBoxSize }}
+                          className="rounded-lg bg-white border border-slate-100 items-center justify-center mr-3"
+                        >
+                          <Ionicons name={subItem.icon} size={metrics.subItemIconSize} color="#1b2a6b" />
                         </View>
-                        <Text className="text-[13.5px] font-jakarta-semibold text-slate-700 flex-1">
+                        <Text style={{ fontSize: metrics.subItemTextSize }} className="font-jakarta-semibold text-slate-700 flex-1">
                           {subItem.title}
                         </Text>
-                        <Ionicons name="chevron-forward" size={14} color="#cbd5e1" />
+                        <Ionicons name="chevron-forward" size={metrics.chevronSize - 2} color="#cbd5e1" />
                       </Pressable>
                     ))}
                   </View>
@@ -313,30 +428,41 @@ export default function Sidebar({ visible, onClose, currentRole }: SidebarProps)
               <View key={index}>
                 <Pressable
                   onPress={() => handleNavigation(item.route)}
-                  className={`flex-row items-center px-4 py-3.5 rounded-[16px] mb-2 active:scale-[0.97] transition-all ${
+                  className={`flex-row items-center rounded-[16px] active:scale-[0.97] transition-all ${
                     item.highlight ? 'border border-blue-100' : 'active:bg-slate-50'
                   }`}
-                  style={item.highlight ? { backgroundColor: 'rgba(239, 246, 255, 0.5)' } : {}}
+                  style={{
+                    paddingHorizontal: metrics.itemPaddingHorizontal,
+                    paddingVertical: metrics.itemPaddingVertical,
+                    marginBottom: metrics.itemMarginBottom,
+                    backgroundColor: item.highlight ? 'rgba(239, 246, 255, 0.5)' : 'transparent',
+                  }}
                   android_ripple={{ color: item.highlight ? "#dbeafe" : "#f1f5f9" }}
                 >
                   <View 
-                    className={`h-9 w-9 rounded-xl items-center justify-center mr-4 ${item.highlight ? 'bg-blue-900' : 'bg-slate-50'}`}
-                    style={item.highlight ? { shadowColor: '#bfdbfe', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.5, shadowRadius: 2, elevation: 2 } : {}}
+                    style={[
+                      { width: metrics.itemIconBoxSize, height: metrics.itemIconBoxSize },
+                      item.highlight ? { shadowColor: '#bfdbfe', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.5, shadowRadius: 2, elevation: 2 } : {}
+                    ]}
+                    className={`rounded-xl items-center justify-center mr-4 ${item.highlight ? 'bg-blue-900' : 'bg-slate-50'}`}
                   >
                     <Ionicons 
                       name={item.icon} 
-                      size={18} 
+                      size={metrics.itemIconSize} 
                       color={item.highlight ? "#ffffff" : "#475569"} 
                     />
                   </View>
-                  <Text className={`text-[15px] flex-1 tracking-tight ${
-                    item.highlight ? 'font-jakarta-bold text-blue-900' : 'font-jakarta-semibold text-slate-700'
-                  }`}>
+                  <Text 
+                    style={{ fontSize: metrics.itemTextSize }}
+                    className={`flex-1 tracking-tight ${
+                      item.highlight ? 'font-jakarta-bold text-blue-900' : 'font-jakarta-semibold text-slate-700'
+                    }`}
+                  >
                     {item.title}
                   </Text>
                   <Ionicons 
                     name="chevron-forward" 
-                    size={16} 
+                    size={metrics.chevronSize} 
                     color={item.highlight ? "#1b2a6b" : "#cbd5e1"} 
                   />
                 </Pressable>
@@ -345,21 +471,38 @@ export default function Sidebar({ visible, onClose, currentRole }: SidebarProps)
           </ScrollView>
 
           {/* Logout / Reset Button */}
-          <View className="px-4 py-2 border-t border-slate-100">
+          <View 
+            style={{ 
+              paddingHorizontal: metrics.logoutPaddingHorizontal,
+              paddingVertical: metrics.logoutPaddingVertical,
+            }}
+            className="border-t border-slate-100"
+          >
             <Pressable
               onPress={() => setLogoutConfirmVisible(true)}
+              style={{ paddingVertical: metrics.logoutButtonPaddingVertical }}
               className="flex-row items-center justify-center bg-rose-50 border border-rose-100 py-3 rounded-xl active:scale-[0.98] transition-all"
             >
-              <Ionicons name="log-out-outline" size={18} color="#e11d48" style={{ marginRight: 6 }} />
-              <Text className="text-[14px] font-jakarta-bold text-rose-600">
+              <Ionicons name="log-out-outline" size={metrics.logoutIconSize} color="#e11d48" style={{ marginRight: 6 }} />
+              <Text style={{ fontSize: metrics.logoutTextSize }} className="font-jakarta-bold text-rose-600">
                 Log Out / Switch Account
               </Text>
             </Pressable>
           </View>
 
           {/* Footer Section */}
-          <View className="px-6 pt-4 pb-2 border-t border-slate-100">
-            <Text className="text-slate-400 text-[10px] font-jakarta-medium text-center uppercase tracking-widest">
+          <View 
+            style={{ 
+              paddingHorizontal: metrics.footerPaddingHorizontal,
+              paddingTop: metrics.footerPaddingTop,
+              paddingBottom: metrics.footerPaddingBottom,
+            }}
+            className="border-t border-slate-100"
+          >
+            <Text 
+              style={{ fontSize: metrics.footerTextSize }}
+              className="text-slate-400 font-jakarta-medium text-center uppercase tracking-widest"
+            >
               Version 1.0.0
             </Text>
           </View>
@@ -374,7 +517,7 @@ export default function Sidebar({ visible, onClose, currentRole }: SidebarProps)
         onRequestClose={() => setLogoutConfirmVisible(false)}
       >
         <View style={{ flex: 1, backgroundColor: "rgba(15, 23, 42, 0.55)", justifyContent: "center", alignItems: "center" }}>
-          <View style={{ width: width * 0.8, backgroundColor: "#ffffff", borderRadius: 24, padding: 24, alignItems: "center", shadowColor: "#0F172A", shadowOffset: { width: 0, height: 12 }, shadowOpacity: 0.15, shadowRadius: 24, elevation: 8 }}>
+          <View style={{ width: screenWidth * 0.8, backgroundColor: "#ffffff", borderRadius: 24, padding: 24, alignItems: "center", shadowColor: "#0F172A", shadowOffset: { width: 0, height: 12 }, shadowOpacity: 0.15, shadowRadius: 24, elevation: 8 }}>
             <View style={{ width: 56, height: 56, borderRadius: 28, backgroundColor: "#FFF1F2", alignItems: "center", justifyContent: "center", marginBottom: 16, flexDirection: "row" }}>
               <Ionicons name="log-out" size={28} color="#E11D48" />
             </View>
@@ -405,6 +548,6 @@ export default function Sidebar({ visible, onClose, currentRole }: SidebarProps)
           </View>
         </View>
       </Modal>
-    </View>
+    </Modal>
   );
 }

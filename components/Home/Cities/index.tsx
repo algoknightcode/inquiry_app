@@ -1,5 +1,5 @@
-import React from "react";
-import { View, Text, Pressable, useWindowDimensions } from "react-native";
+import React, { useMemo } from "react";
+import { View, Text, Pressable, StyleSheet, useWindowDimensions } from "react-native";
 import { useRouter } from "expo-router";
 import { Image } from "expo-image";
 
@@ -72,49 +72,49 @@ export default function SellersByCityGrid() {
     });
   };
 
+  // Memoize styles that depend on scale — stops new objects being allocated in every .map() iteration
+  const circleStyle = useMemo(() => ({
+    width: circleSize,
+    height: circleSize,
+    borderRadius: circleSize / 2,
+  }), [circleSize]);
+
+  const imageStyle = useMemo(() => ({
+    width: imageSize,
+    height: imageSize,
+  }), [imageSize]);
+
+  const titleStyle = useMemo(() => ({ fontSize: titleSize }), [titleSize]);
+  const labelStyle = useMemo(() => ({ fontSize: textFontSize }), [textFontSize]);
+
   return (
-    <View className="px-4 mt-8">
-      {/* Title */}
+    <View style={cityStyles.wrapper}>
       <Text
-        style={{ fontSize: titleSize }}
-        className="font-jakarta-extrabold text-slate-900 tracking-tight mb-6 px-1"
+        style={[cityStyles.title, titleStyle]}
       >
         Find Suppliers from Top Cities
       </Text>
 
-      {/* Grid container with 4 columns per row */}
-      <View className="flex-row flex-wrap justify-between">
+      <View style={cityStyles.grid}>
         {citiesData.map((city) => (
           <Pressable
             key={city.id}
             onPress={() => handleCityPress(city.name)}
-            style={{ width: "23.5%" }}
-            className="items-center mb-6 active:scale-95 transition-all"
+            style={cityStyles.gridItem}
+            activeOpacity={0.75}
           >
-            {/* Circle backdrop containing the local monument image */}
             <View
-              style={{
-                width: circleSize,
-                height: circleSize,
-                borderRadius: circleSize / 2,
-              }}
-              className="bg-[#F4F6F9] border border-slate-200/60 items-center justify-center mb-2 shadow-xs shadow-slate-100"
+              style={[cityStyles.circle, circleStyle]}
             >
               <Image
                 source={city.source}
-                style={{
-                  width: imageSize,
-                  height: imageSize,
-                }}
+                style={imageStyle}
                 contentFit="contain"
                 transition={200}
               />
             </View>
-
-            {/* City Label */}
             <Text
-              style={{ fontSize: textFontSize }}
-              className="text-slate-800 font-jakarta-semibold text-center tracking-tight"
+              style={[cityStyles.label, labelStyle]}
               numberOfLines={1}
             >
               {city.name}
@@ -125,3 +125,12 @@ export default function SellersByCityGrid() {
     </View>
   );
 }
+
+const cityStyles = StyleSheet.create({
+  wrapper: { paddingHorizontal: 16, marginTop: 32 },
+  title: { fontFamily: "PlusJakartaSans-ExtraBold", color: "#0f172a", letterSpacing: -0.5, marginBottom: 24, paddingHorizontal: 4 },
+  grid: { flexDirection: "row", flexWrap: "wrap", justifyContent: "space-between" },
+  gridItem: { width: "23.5%", alignItems: "center", marginBottom: 24 },
+  circle: { backgroundColor: "#F4F6F9", borderWidth: 1, borderColor: "rgba(226,232,240,0.6)", alignItems: "center", justifyContent: "center", marginBottom: 8 },
+  label: { color: "#1e293b", fontFamily: "PlusJakartaSans-SemiBold", textAlign: "center", letterSpacing: -0.3 },
+});

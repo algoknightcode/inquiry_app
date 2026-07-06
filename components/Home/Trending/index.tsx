@@ -3,8 +3,8 @@ import React, { useEffect, useState } from "react";
 import { ActivityIndicator, FlatList, Text, TouchableOpacity, View } from "react-native";
 import { Image } from "expo-image";
 import { productCache } from "@/utils/productCache";
+import { fetchWithCache, getCacheSync } from "@/utils/apiCache";
 
-// ── TypeScript Types matching backend payload ──────────────────────────────
 type Media = {
   _id: string;
   url: string;
@@ -46,7 +46,6 @@ const CARD_MARGIN = 20;
 const ProductCard = ({ item }: { item: Product }) => {
   const router = useRouter();
   
-  // Find primary image url
   const primaryImage = item.media && item.media.length > 0
     ? (item.media.find((m) => m.isPrimary) || item.media[0]).url
     : "https://images.unsplash.com/photo-1618366712010-f4ae9c647dcb?q=80&w=400";
@@ -71,7 +70,6 @@ const ProductCard = ({ item }: { item: Product }) => {
       activeOpacity={0.7}
       onPress={handlePress}
     >
-      {/* 1. Full-Bleed Image Container */}
       <View className="h-48 w-full bg-slate-100">
         <Image
           source={{ uri: primaryImage }}
@@ -81,10 +79,7 @@ const ProductCard = ({ item }: { item: Product }) => {
         />
       </View>
 
-      {/* 2. Streamlined Content Container */}
       <View className="p-4 flex-1 justify-between bg-white">
-        
-        {/* Title */}
         <Text 
           className="text-slate-800 font-jakarta-bold text-sm leading-snug mb-2" 
           numberOfLines={2}
@@ -92,7 +87,6 @@ const ProductCard = ({ item }: { item: Product }) => {
           {item.name}
         </Text>
 
-        {/* Clean, bold price */}
         <View className="flex-col mt-auto">
           {isPriceOnRequest ? (
             <Text className="text-amber-600 font-jakarta-bold text-xs">
@@ -110,25 +104,31 @@ const ProductCard = ({ item }: { item: Product }) => {
             </Text>
           ) : null}
         </View>
-        
       </View>
     </TouchableOpacity>
   );
 };
 
-import { fetchWithCache } from "@/utils/apiCache";
+const API_URL = "https://backend.inquirybazaar.com/api/categories/sub/led-display-board/Delhi";
 
 export default function HorizontalProductList() {
   const router = useRouter();
-  const [products, setProducts] = useState<Product[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+
+  // Instantly load data synchronously from cached tree to avoid one-frame loaders
+  const cached = getCacheSync(API_URL);
+  const [products, setProducts] = useState<Product[]>(
+    cached?.success && Array.isArray(cached.data?.products) 
+      ? cached.data.products.slice(0, 10) 
+      : []
+  );
+  const [isLoading, setIsLoading] = useState(!cached);
 
   useEffect(() => {
     const fetchTrendingProducts = async () => {
       try {
-        const json = await fetchWithCache("https://backend.inquirybazaar.com/api/categories/sub/led-display-board/Delhi");
+        const json = await fetchWithCache(API_URL);
         if (json.success && json.data && json.data.products) {
-          setProducts(json.data.products.slice(0, 10)); // Limit to top 10 items
+          setProducts(json.data.products.slice(0, 10));
         }
       } catch (error) {
         console.error("Error fetching trending products:", error);
@@ -142,8 +142,6 @@ export default function HorizontalProductList() {
 
   return (
     <View className="mt-8">
-
-      {/* Section Header */}
       <View className="flex flex-row justify-between items-end px-5">
         <View className="flex-col">
           <Text className="text-[10px] font-jakarta-bold text-slate-400 tracking-[0.15em] mb-1 uppercase">
@@ -171,7 +169,6 @@ export default function HorizontalProductList() {
         </TouchableOpacity>
       </View>
 
-      {/* Horizontal List or Spinner */}
       {isLoading ? (
         <View className="py-12 justify-center items-center">
           <ActivityIndicator size="small" color="#2563eb" />

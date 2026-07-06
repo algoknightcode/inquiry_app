@@ -1,7 +1,7 @@
 import { Image } from "expo-image";
 import { useRouter } from "expo-router";
-import React, { useEffect, useState } from "react";
-import { Pressable, ScrollView, Text, View } from "react-native";
+import React, { useCallback, useEffect, useState } from "react";
+import { FlatList, Pressable, Text, useWindowDimensions, View } from "react-native";
 // Keep this as a fallback just in case an industry has no image
 import { CategoryImage } from "../../../assets/images";
 
@@ -17,8 +17,15 @@ import { fetchWithCache } from "@/utils/apiCache";
 
 const Top_Industries = () => {
     const router = useRouter();
+    const { width } = useWindowDimensions();
     const [industriesList, setIndustriesList] = useState<Industry[]>([]);
     const [loading, setloading] = useState(true);
+
+    // Responsive Card Math:
+    // Takes 65% of screen width so the next card peeks out, but caps at 300px for tablets
+    const CARD_WIDTH = Math.min(width * 0.65, 300);
+    // Maintains your original 140/240 aspect ratio
+    const CARD_HEIGHT = CARD_WIDTH * 0.583; 
 
     useEffect(() => {
         const fetchIndustries = async () => {
@@ -36,6 +43,43 @@ const Top_Industries = () => {
 
         fetchIndustries();
     }, []); 
+
+    const renderIndustryCard = useCallback(({ item }: { item: Industry }) => (
+      <Pressable
+        className={styles.card}
+        style={{ width: CARD_WIDTH, height: CARD_HEIGHT }} // Applies dynamic responsive sizing
+        onPress={() => router.push({
+          pathname: "/GrId_MainCategory",
+          params: { id: item._id, name: item.name }
+        })}
+      >
+        <Image
+          source={item.imageUrl ? { uri: item.imageUrl } : CategoryImage}
+          style={styles.image}
+          contentFit="cover"
+          transition={200}
+          cachePolicy="memory-disk" 
+        />
+
+        <View className={styles.contentWrapper}>
+          <View className="self-start bg-slate-900/50 border border-white/20 px-2.5 py-1 rounded-lg mb-2">
+            <Text className={styles.glassPillText}>
+              {item.productCount || "Explore Sector"} 
+            </Text>
+          </View>
+
+          <View className="bg-black/50 px-2.5 py-1 rounded-lg self-start max-w-[90%]">
+            <Text 
+              className={styles.cardText}
+              numberOfLines={2}
+              style={styles.textShadow}
+            >
+              {item.name}
+            </Text>
+          </View>
+        </View>
+      </Pressable>
+    ), [router, CARD_WIDTH, CARD_HEIGHT]); // Added dimensions to dependency array
     
   return (
     <View className={styles.container}>
@@ -59,55 +103,20 @@ const Top_Industries = () => {
         </Pressable>
       </View>
 
-      {/* Horizontal Cinematic Carousel */}
-      <ScrollView
+      {/* Optimized FlatList */}
+      <FlatList
         horizontal
         showsHorizontalScrollIndicator={false}
+        data={industriesList}
+        keyExtractor={(item) => item._id}
+        renderItem={renderIndustryCard}
         className={styles.cardsContainer}
         contentContainerStyle={styles.scrollContent}
-      >
-        {industriesList.map((item) => (
-          <Pressable
-            // 3. THE FIX: MongoDB uses _id, not id
-            key={item._id}
-            className={styles.card}
-            onPress={() => router.push({
-              pathname: "/GrId_MainCategory",
-              params: { id: item._id, name: item.name }
-            })}
-          >
-            {/* 4. THE FIX: Pass the dynamic network image URL */}
-            <Image
-              source={item.imageUrl ? { uri: item.imageUrl } : CategoryImage}
-              style={styles.image}
-              contentFit="cover"
-              transition={200} // Adds a nice smooth fade-in when the network image loads
-            />
-
-            <View className={styles.contentWrapper}>
-              
-              <View 
-                className="self-start bg-slate-900/50 border border-white/20 px-2.5 py-1 rounded-lg mb-2"
-              >
-                <Text className={styles.glassPillText}>
-                  {/* Hardcoded fallback if your API doesn't have product counts yet */}
-                  {item.productCount || "Explore Sector"} 
-                </Text>
-              </View>
-
-              {/* Industry Title */}
-              <Text 
-                className={styles.cardText}
-                numberOfLines={2}
-                style={styles.textShadow}
-              >
-                {item.name}
-              </Text>
-            </View>
-
-          </Pressable>
-        ))}
-      </ScrollView>
+        initialNumToRender={4} 
+        maxToRenderPerBatch={4} 
+        windowSize={5} 
+        removeClippedSubviews={true} 
+      />
 
     </View>
   );
@@ -132,10 +141,11 @@ const styles = {
   cardsContainer: "mt-4 pl-4",
 
   scrollContent: {
-    paddingRight: 16, 
+    paddingRight: 32, 
   },
 
-  card: "mr-4 w-[240px] h-[140px] rounded-[24px] overflow-hidden active:scale-95 transition-all shadow-sm shadow-slate-200", 
+  // Removed static w-[240px] h-[140px] -> Replaced with inline styles above
+  card: "mr-4 rounded-[24px] overflow-hidden active:scale-95 transition-all shadow-sm shadow-slate-200", 
 
   image: {
     width: "100%" as const,
@@ -155,10 +165,10 @@ const styles = {
   glassPillText:
     "text-white font-jakarta-bold text-[10px] tracking-widest uppercase",
 
+  // Added dynamic scaling safeguards for text
   cardText:
-    "text-white font-jakarta-bold text-[18px] leading-[22px] tracking-tight w-[90%]",
+    "text-white font-jakarta-bold text-[16px] sm:text-[18px] leading-[20px] sm:leading-[22px] tracking-tight",
 
-  // High-performance text shadow for contrast
   textShadow: {
     textShadowColor: "rgba(0, 0, 0, 0.75)",
     textShadowOffset: { width: 0, height: 1 },

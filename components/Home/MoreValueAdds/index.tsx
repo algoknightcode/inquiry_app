@@ -47,6 +47,7 @@ export default function MoreValueAdds() {
   const { width: screenWidth } = useWindowDimensions();
   const flatListRef = useRef<FlatList>(null);
   const [currentIndex, setCurrentIndex] = useState(0);
+  const currentIndexRef = useRef(0); // Ref so interval doesn't need currentIndex in deps
   const router = useRouter();
 
   const containerPadding = 16;
@@ -64,19 +65,22 @@ export default function MoreValueAdds() {
 
   useEffect(() => {
     const interval = setInterval(() => {
-      let nextIndex = currentIndex + 1;
+      // Use ref so we never need currentIndex in the dependency array
+      let nextIndex = currentIndexRef.current + 1;
       if (nextIndex > maxScrollIndex) nextIndex = 0;
       flatListRef.current?.scrollToIndex({ index: nextIndex, animated: true });
+      currentIndexRef.current = nextIndex;
       setCurrentIndex(nextIndex);
     }, 4500);
 
     return () => clearInterval(interval);
-  }, [currentIndex, maxScrollIndex]);
+  }, [maxScrollIndex]); // ✅ No currentIndex here — timer no longer restarts on every tick
 
   const handleScroll = (event: any) => {
     const scrollPosition = event.nativeEvent.contentOffset.x;
     const index = Math.round(scrollPosition / (cardWidth + cardGap));
-    if (index !== currentIndex && index <= maxScrollIndex) {
+    if (index !== currentIndexRef.current && index <= maxScrollIndex) {
+      currentIndexRef.current = index;
       setCurrentIndex(index);
     }
   };

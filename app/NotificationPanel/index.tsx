@@ -6,13 +6,13 @@ import {
   ActivityIndicator,
   Dimensions,
   RefreshControl,
-  SafeAreaView,
   ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 // ── Types ──────────────────────────────────────────────────────────────────
 type Media = {
@@ -68,6 +68,7 @@ const timeAgo = (dateString?: string) => {
 
 export default function NotificationScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -175,7 +176,7 @@ export default function NotificationScreen() {
   };
 
   return (
-    <SafeAreaView style={s.container}>
+    <View style={[s.container, { paddingTop: insets.top }]}>
       {/* Header */}
       <View style={s.header}>
         <TouchableOpacity onPress={() => router.back()} style={s.backBtn}>
@@ -249,7 +250,7 @@ export default function NotificationScreen() {
           })}
         </ScrollView>
       )}
-    </SafeAreaView>
+    </View>
   );
 }
 

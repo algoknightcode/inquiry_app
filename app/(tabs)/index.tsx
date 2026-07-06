@@ -1,5 +1,5 @@
-import React, { useRef, useState } from 'react';
-import { Platform, SafeAreaView, ScrollView, StyleSheet } from 'react-native';
+import React, { useRef, useState, useCallback, useMemo } from 'react';
+import { FlatList, Platform, SafeAreaView, StyleSheet } from 'react-native';
 import Banner2 from '@/components/Home/Bannee2';
 import CategoryMarquee from '@/components/Home/CategoryMarquee';
 import SellersByCityGrid from '@/components/Home/Cities';
@@ -49,65 +49,130 @@ const MemoizedWeConnectBuyerSeller = React.memo(WeConnectBuyerSeller);
 export default function HomeScreen() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [renderBelowFold, setRenderBelowFold] = useState(false);
-  const scrollViewRef = useRef<ScrollView>(null);
+  const flatListRef = useRef<FlatList>(null);
 
   React.useEffect(() => {
     const timer = setTimeout(() => {
       setRenderBelowFold(true);
-    }, 350);
+    }, 700); // Wait 700ms to let first frame paint smoothly
     return () => clearTimeout(timer);
   }, []);
+
+  // Handler for Search Bar focus
+  const handleSearchBarFocus = useCallback(() => {
+    const scrollOffset = Platform.OS === 'ios' ? 120 : 60;
+    setTimeout(() => {
+      flatListRef.current?.scrollToOffset({ offset: scrollOffset, animated: true });
+    }, 150);
+  }, []);
+
+  // Data keys only - keeps the data array extremely lightweight and static
+  const data = useMemo(() => {
+    const list = [
+      'marquee',
+      'hero',
+      'searchbar',
+      'category',
+      'banner2',
+      'industries',
+      'valueadds',
+      'brands',
+    ];
+    if (renderBelowFold) {
+      list.push(
+        'products',
+        'indusTree',
+        'cities',
+        'newones',
+        'connect',
+        'trusted',
+        'moreForYou',
+        'video',
+        'leadform',
+        'testimonials',
+        'faq',
+        'footer'
+      );
+    }
+    return list;
+  }, [renderBelowFold]);
+
+  // Static renderer - ensures React.memo works perfectly because JSX elements are not re-allocated in values
+  const renderItem = useCallback(({ item }: { item: string }) => {
+    switch (item) {
+      case 'marquee':
+        return <MemoizedCategoryMarquee />;
+      case 'hero':
+        return <MemoizedHeroBanner />;
+      case 'searchbar':
+        return <MemoizedSearchBar onFocus={handleSearchBarFocus} />;
+      case 'category':
+        return <MemoizedMain_Category />;
+      case 'banner2':
+        return <MemoizedBanner2 />;
+      case 'industries':
+        return <MemoizedTop_Industries />;
+      case 'valueadds':
+        return <MemoizedMoreValueAdds />;
+      case 'brands':
+        return <MemoizedTrendingBrandsCarousel />;
+      case 'products':
+        return <MemoizedHorizontalProductList />;
+      case 'indusTree':
+        return <MemoizedIndustryTreeCarousel />;
+      case 'cities':
+        return <MemoizedSellersByCityGrid />;
+      case 'newones':
+        return <MemoizedNewOnes />;
+      case 'connect':
+        return <MemoizedWeConnectBuyerSeller />;
+      case 'trusted':
+        return <MemoizedTrustedBy />;
+      case 'moreForYou':
+        return <MemoizedMoreForYou />;
+      case 'video':
+        return <MemoizedVideoSection />;
+      case 'leadform':
+        return <MemoizedLeadGenCard />;
+      case 'testimonials':
+        return <MemoizedTestimonialComponent />;
+      case 'faq':
+        return <MemoizedFaqSection />;
+      case 'footer':
+        return (
+          <MemoizedHomeFooterHelp
+            facebookUrl="https://facebook.com/inquirybazaar"
+            instagramUrl="https://instagram.com/inquirybazaar"
+            linkedinUrl="https://linkedin.com/company/inquirybazaar"
+            youtubeUrl="https://youtube.com/inquirybazaar"
+          />
+        );
+      default:
+        return null;
+    }
+  }, [handleSearchBarFocus]);
+
+  const keyExtractor = useCallback((item: string) => item, []);
 
   return (
     <SafeAreaView style={styles.container}>
       <Navbar onMenuPress={() => setIsSidebarOpen(true)} />
-      
-      <ScrollView
-        ref={scrollViewRef}
+
+      <FlatList
+        ref={flatListRef}
+        data={data}
+        keyExtractor={keyExtractor}
+        renderItem={renderItem}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="always"
-      >
-        <MemoizedCategoryMarquee />
-        <MemoizedHeroBanner />
-        
-        <MemoizedSearchBar
-          onFocus={() => {
-            const scrollOffset = Platform.OS === 'ios' ? 120 : 60;
-            setTimeout(() => {
-              scrollViewRef.current?.scrollTo({ y: scrollOffset, animated: true });
-            }, 150);
-          }}
-        />
-
-        <MemoizedMain_Category />
-        <MemoizedBanner2 />
-        <MemoizedTop_Industries />
-        <MemoizedMoreValueAdds />
-        <MemoizedTrendingBrandsCarousel />
-        
-        {renderBelowFold && (
-          <>
-            <MemoizedHorizontalProductList />
-            <MemoizedIndustryTreeCarousel />
-            <MemoizedSellersByCityGrid />
-            <MemoizedNewOnes />
-            <MemoizedWeConnectBuyerSeller />
-            <MemoizedTrustedBy />
-            <MemoizedMoreForYou />
-            <MemoizedVideoSection />
-            <MemoizedLeadGenCard />
-            <MemoizedTestimonialComponent />
-            <MemoizedFaqSection />
-            
-            <MemoizedHomeFooterHelp
-              facebookUrl="https://facebook.com/inquirybazaar"
-              instagramUrl="https://instagram.com/inquirybazaar"
-              linkedinUrl="https://linkedin.com/company/inquirybazaar"
-              youtubeUrl="https://youtube.com/inquirybazaar"
-            />
-          </>
-        )}
-      </ScrollView>
+        removeClippedSubviews={Platform.OS === 'android'} // Android handles native view recycling beautifully
+        windowSize={11} // Compact rendering window to prevent CPU layout overhead on Android
+        maxToRenderPerBatch={2} // Fewer items per batch keeps the JS thread free
+        initialNumToRender={4}
+        updateCellsBatchingPeriod={100} // More delay between batched layout updates
+        overScrollMode="never"
+        decelerationRate={Platform.OS === 'android' ? 0.985 : 'normal'} // High-precision smooth deceleration on Android
+      />
 
       <Sidebar 
         visible={isSidebarOpen} 

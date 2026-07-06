@@ -1,28 +1,27 @@
-import { FontAwesome5, Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
+import { Spinner } from "@/components/ui/spinner";
+import { productCache } from "@/utils/productCache";
+import { globalSellerId } from "@/utils/roleCache";
+import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Image } from "expo-image";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
 import {
+  ActivityIndicator,
+  Alert,
   FlatList,
+  KeyboardAvoidingView,
   Linking,
+  Modal,
   Platform,
   Pressable,
+  ScrollView,
   Text,
   TextInput,
   TouchableOpacity,
-  View,
-  InteractionManager,
-  Modal,
-  ScrollView,
-  ActivityIndicator,
-  Alert,
-  KeyboardAvoidingView,
+  View
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import AsyncStorage from "@react-native-async-storage/async-storage";
-import { globalSellerId } from "@/utils/roleCache";
-import { productCache } from "@/utils/productCache";
-import { Spinner } from "@/components/ui/spinner";
 
 // ── Types ──────────────────────────────────────────────────────────────────
 type Media = {
@@ -295,7 +294,7 @@ export default function ProductListingPage() {
           {businessType ? (
             <View className="absolute top-3 left-3 bg-indigo-600/90 px-2.5 py-1 rounded-md">
               <Text className="text-white font-jakarta-bold text-[10px] tracking-widest uppercase">
-                {businessType}
+                 VERIFIED
               </Text>
             </View>
           ) : null}

@@ -81,7 +81,7 @@ export default function ContactUs() {
     >
       <ScrollView
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: 40 }}
+        contentContainerStyle={{ paddingBottom: insets.bottom + 90 }}
         bounces={false}
       >
         {/* ── HERO SECTION ── */}

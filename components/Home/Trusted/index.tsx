@@ -3,6 +3,7 @@ import { useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
 import { ActivityIndicator, Pressable, ScrollView, Text, View } from "react-native";
 import { productCache } from "@/utils/productCache";
+import { fetchWithCache, getCacheSync } from "@/utils/apiCache";
 
 // ── TypeScript Types matching B2B response payload ─────────────────────────
 type Media = {
@@ -35,17 +36,24 @@ type Product = {
   supplier?: Supplier;
 };
 
-import { fetchWithCache } from "@/utils/apiCache";
+const API_URL = "https://backend.inquirybazaar.com/api/categories/sub/titanium-dioxide/Delhi";
 
 const IBTrusted = () => {
   const router = useRouter();
-  const [products, setProducts] = useState<Product[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+
+  // Try to load cached data instantly to prevent loading animation on scroll/load
+  const cached = getCacheSync(API_URL);
+  const [products, setProducts] = useState<Product[]>(
+    cached?.success && Array.isArray(cached.data?.products) 
+      ? cached.data.products.slice(0, 10) 
+      : []
+  );
+  const [isLoading, setIsLoading] = useState(!cached);
 
   useEffect(() => {
     const fetchTrustedProducts = async () => {
       try {
-        const json = await fetchWithCache("https://backend.inquirybazaar.com/api/categories/sub/led-display-board/Delhi");
+        const json = await fetchWithCache(API_URL);
         if (json.success && json.data && json.data.products) {
           setProducts(json.data.products.slice(0, 10)); // Limit to 10 products
         }
@@ -88,8 +96,8 @@ const IBTrusted = () => {
           onPress={() => router.push({
             pathname: "/Products_Page",
             params: {
-              subCategorySlug: "led-display-board",
-              subCategoryName: "LED Display Board",
+              subCategorySlug: "titanium-dioxide",
+              subCategoryName: "Titanium Dioxide",
             }
           })}
         >
@@ -177,7 +185,7 @@ export default IBTrusted;
 
 // --- STYLES ---
 const styles = {
-  container: "mt-8 bg-slate-50 py-6", 
+  container: "mt-3 bg-slate-50 py-6", 
 
   outer: "flex flex-row justify-between items-end px-5",
 

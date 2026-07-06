@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from "react";
-import { View, Text, Pressable, ActivityIndicator, useWindowDimensions } from "react-native";
+import React, { useEffect, useMemo, useState } from "react";
+import { View, Text, Pressable, ActivityIndicator, StyleSheet, useWindowDimensions } from "react-native";
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -32,6 +32,14 @@ const CategoryMarquee = () => {
   const itemPaddingHorizontal = isTablet ? 20 : 16;
   const itemPaddingVertical = isTablet ? 8 : 6;
   const fontSize = isTablet ? 15 : 13;
+
+  // Memoize item style so .map() doesn't create a new object every render
+  const itemStyle = useMemo(() => ({
+    paddingHorizontal: itemPaddingHorizontal,
+    paddingVertical: itemPaddingVertical,
+  }), [itemPaddingHorizontal, itemPaddingVertical]);
+
+  const textStyle = useMemo(() => ({ fontSize }), [fontSize]);
 
   const translateX = useSharedValue(0);
   const startX = useSharedValue(0);
@@ -175,13 +183,9 @@ const CategoryMarquee = () => {
               <Pressable
                 key={`ind-1-${ind._id}-${idx}`}
                 onPress={() => handlePress(ind)}
-                style={{
-                  paddingHorizontal: itemPaddingHorizontal,
-                  paddingVertical: itemPaddingVertical,
-                }}
-                className="bg-slate-50/80 border border-slate-100 rounded-full mr-3 shadow-xs shadow-slate-100/50 active:bg-slate-100 active:scale-95"
+                style={[mqs.pill, itemStyle]}
               >
-                <Text style={{ fontSize }} className="text-slate-700 font-jakarta-semibold tracking-tight">
+                <Text style={[mqs.pillText, textStyle]}>
                   {ind.name}
                 </Text>
               </Pressable>
@@ -194,13 +198,9 @@ const CategoryMarquee = () => {
               <Pressable
                 key={`ind-2-${ind._id}-${idx}`}
                 onPress={() => handlePress(ind)}
-                style={{
-                  paddingHorizontal: itemPaddingHorizontal,
-                  paddingVertical: itemPaddingVertical,
-                }}
-                className="bg-slate-50/80 border border-slate-100 rounded-full mr-3 shadow-xs shadow-slate-100/50 active:bg-slate-100 active:scale-95"
+                style={[mqs.pill, itemStyle]}
               >
-                <Text style={{ fontSize }} className="text-slate-700 font-jakarta-semibold tracking-tight">
+                <Text style={[mqs.pillText, textStyle]}>
                   {ind.name}
                 </Text>
               </Pressable>
@@ -213,3 +213,18 @@ const CategoryMarquee = () => {
 };
 
 export default React.memo(CategoryMarquee);
+
+const mqs = StyleSheet.create({
+  pill: {
+    backgroundColor: "rgba(248,250,252,0.8)",
+    borderWidth: 1,
+    borderColor: "#f1f5f9",
+    borderRadius: 999,
+    marginRight: 12,
+  },
+  pillText: {
+    color: "#475569",
+    fontFamily: "PlusJakartaSans-SemiBold",
+    letterSpacing: -0.3,
+  },
+});

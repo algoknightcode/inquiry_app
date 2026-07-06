@@ -1,5 +1,5 @@
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
-import React from "react";
+import React, { useCallback, useMemo } from "react";
 import { Linking, Pressable, Text, useWindowDimensions, View } from "react-native";
 
 // ── Interface Props ────────────────────────────────────────────────────────
@@ -22,23 +22,26 @@ export default function HomeFooterHelp({
 }: HomeFooterHelpProps) {
   const { width: screenWidth } = useWindowDimensions();
 
-  // 1. Responsive Screen Calculations
-  const isTablet = screenWidth >= 768;
-  const scale = isTablet ? 1.2 : Math.max(0.85, Math.min(1.1, screenWidth / 375));
+  // 1. CPU/Memory Optimized Layout Math
+  // Prevents recalculating layout scale on every render unless screen rotates
+  const metrics = useMemo(() => {
+    const isTablet = screenWidth >= 768;
+    const scale = isTablet ? 1.2 : Math.max(0.85, Math.min(1.1, screenWidth / 375));
 
-  // 2. Adaptive Spacing & Sizing
-  const containerPadding = 18 * scale;
-  const iconSize = 22 * scale;
-  const itemTitleSize = 13.5 * scale;
-  const itemDescSize = 11 * scale;
-  const headingSize = 15 * scale;
+    return {
+      containerPadding: 20 * scale,
+      iconSize: 22 * scale,
+      itemTitleSize: 13.5 * scale,
+      itemDescSize: 11 * scale,
+      headingSize: 15 * scale,
+      itemWidth: isTablet ? "31.5%" : "48%",
+      columnGap: isTablet ? 12 : 8,
+    };
+  }, [screenWidth]);
 
-  // Layout adjusts: 3 columns on tablet, 2 columns on mobile (to keep it compact and reduce height)
-  const itemWidth = isTablet ? "31.5%" : "48%";
-  const columnGap = isTablet ? 10 : 6;
-
-  // Features list structured for clean loops
-  const helpFeatures = [
+  // 2. Optimized Data Array
+  // Prevents the array from being recreated in memory 60 times a second
+  const helpFeatures = useMemo(() => [
     {
       id: "support",
       title: "Dedicated Support",
@@ -58,8 +61,8 @@ export default function HomeFooterHelp({
       id: "response",
       title: "Quick Response",
       description: "Get multiple quotations within hours of posting requirement.",
-      iconProvider: "material",
-      iconName: "package-variant-closed-refresh",
+      iconProvider: "ionicons",
+      iconName: "help", // Matches the "?" from your design
     },
     {
       id: "categories",
@@ -82,40 +85,40 @@ export default function HomeFooterHelp({
       iconProvider: "ionicons",
       iconName: "shield-checkmark-outline",
     },
-  ];
+  ], [phoneNumber, supportHours]);
 
-  // Helper to open links safely
-  const handleLinkPress = (url: string) => {
+  // 3. Memoized handlers
+  const handleLinkPress = useCallback((url: string) => {
     Linking.openURL(url).catch((err) => console.error("Couldn't load page", err));
-  };
+  }, []);
 
   return (
     <View 
-      style={{ padding: containerPadding }}
-      className="bg-[#112240] rounded-[24px] my-3 mx-4 shadow-lg"
+      style={{ padding: metrics.containerPadding }}
+      className="bg-[#0f172a] rounded-[24px] my-4 mx-4 shadow-lg"
     >
       {/* Features Grid */}
-      <View className="flex-row flex-wrap justify-between" style={{ gap: columnGap }}>
+      <View className="flex-row flex-wrap justify-between" style={{ gap: metrics.columnGap }}>
         {helpFeatures.map((feat) => (
           <Pressable
             key={feat.id}
             onPress={() => feat.isCall && handleLinkPress(`tel:${phoneNumber}`)}
-            style={{ width: itemWidth }}
-            className={`mb-4 items-start active:opacity-80 p-2 rounded-xl bg-white/5 border border-white/5`}
+            style={{ width: metrics.itemWidth }}
+            className="mb-3 items-start active:scale-[0.98] transition-transform p-3 rounded-xl bg-white/5 border border-white/5"
           >
-            {/* Icon Header Row */}
-            <View className="flex-row items-center mb-1.5">
-              <View className="bg-white/10 p-1.5 rounded-lg mr-2 items-center justify-center">
+            {/* Icon Header Row - Switched to items-start for wrapped text alignment */}
+            <View className="flex-row items-start mb-2 w-full">
+              <View className="bg-white/10 p-1.5 rounded-lg mr-2.5 items-center justify-center">
                 {feat.iconProvider === "ionicons" ? (
-                  <Ionicons name={feat.iconName as any} size={iconSize} color="#38BDF8" />
+                  <Ionicons name={feat.iconName as any} size={metrics.iconSize} color="#38BDF8" />
                 ) : (
-                  <MaterialCommunityIcons name={feat.iconName as any} size={iconSize} color="#38BDF8" />
+                  <MaterialCommunityIcons name={feat.iconName as any} size={metrics.iconSize} color="#38BDF8" />
                 )}
               </View>
               <Text 
-                style={{ fontSize: itemTitleSize }}
-                className="font-jakarta-bold text-white flex-1 leading-tight"
-                numberOfLines={1}
+                style={{ fontSize: metrics.itemTitleSize }}
+                className="font-jakarta-bold text-white flex-1 leading-snug pt-0.5"
+                numberOfLines={2} // Allows text to wrap perfectly without truncating
               >
                 {feat.title}
               </Text>
@@ -123,9 +126,9 @@ export default function HomeFooterHelp({
 
             {/* Description Text */}
             <Text 
-              style={{ fontSize: itemDescSize }}
+              style={{ fontSize: metrics.itemDescSize }}
               className="font-jakarta-medium text-slate-300 leading-normal"
-              numberOfLines={3}
+              numberOfLines={4} // Increased just in case description gets long on small screens
             >
               {feat.description}
             </Text>
@@ -134,20 +137,20 @@ export default function HomeFooterHelp({
       </View>
 
       {/* Divider */}
-      <View className="h-[1px] bg-white/10 my-3 w-full" />
+      <View className="h-[1px] bg-white/10 my-4 w-full" />
 
       {/* Follow Us Footer */}
-      <View className="flex-row items-center justify-between flex-wrap gap-2 px-1">
-        <Text style={{ fontSize: headingSize }} className="font-jakarta-bold text-white">
+      <View className="flex-row items-center justify-between flex-wrap gap-3 px-1">
+        <Text style={{ fontSize: metrics.headingSize }} className="font-jakarta-bold text-white">
           Follow us on
         </Text>
 
         {/* Social Icons row */}
-        <View className="flex-row items-center" style={{ gap: 10 }}>
+        <View className="flex-row items-center gap-3">
           {facebookUrl && (
             <Pressable 
               onPress={() => handleLinkPress(facebookUrl)}
-              className="w-10 h-10 rounded-full bg-white/10 items-center justify-center active:bg-white/20"
+              className="w-10 h-10 rounded-full bg-white/10 items-center justify-center active:bg-white/20 transition-colors"
             >
               <Ionicons name="logo-facebook" size={18} color="white" />
             </Pressable>
@@ -156,7 +159,7 @@ export default function HomeFooterHelp({
           {instagramUrl && (
             <Pressable 
               onPress={() => handleLinkPress(instagramUrl)}
-              className="w-10 h-10 rounded-full bg-white/10 items-center justify-center active:bg-white/20"
+              className="w-10 h-10 rounded-full bg-white/10 items-center justify-center active:bg-white/20 transition-colors"
             >
               <Ionicons name="logo-instagram" size={18} color="white" />
             </Pressable>
@@ -165,7 +168,7 @@ export default function HomeFooterHelp({
           {linkedinUrl && (
             <Pressable 
               onPress={() => handleLinkPress(linkedinUrl)}
-              className="w-10 h-10 rounded-full bg-white/10 items-center justify-center active:bg-white/20"
+              className="w-10 h-10 rounded-full bg-white/10 items-center justify-center active:bg-white/20 transition-colors"
             >
               <Ionicons name="logo-linkedin" size={18} color="white" />
             </Pressable>
@@ -174,7 +177,7 @@ export default function HomeFooterHelp({
           {youtubeUrl && (
             <Pressable 
               onPress={() => handleLinkPress(youtubeUrl)}
-              className="w-10 h-10 rounded-full bg-white/10 items-center justify-center active:bg-white/20"
+              className="w-10 h-10 rounded-full bg-white/10 items-center justify-center active:bg-white/20 transition-colors"
             >
               <Ionicons name="logo-youtube" size={18} color="white" />
             </Pressable>
