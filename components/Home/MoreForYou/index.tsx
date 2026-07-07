@@ -1,15 +1,15 @@
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import React, { useEffect, useRef } from "react";
+import React, { useCallback, useEffect, useMemo, useRef } from "react";
 import {
-    FlatList,
-    Linking,
-    NativeScrollEvent,
-    NativeSyntheticEvent,
-    Pressable,
-    Text,
-    useWindowDimensions,
-    View,
+  FlatList,
+  Linking,
+  NativeScrollEvent,
+  NativeSyntheticEvent,
+  Pressable,
+  Text,
+  useWindowDimensions,
+  View,
 } from "react-native";
 
 export interface MoreForYouCard {
@@ -61,15 +61,14 @@ const cardsData: MoreForYouCard[] = [
 export default function MoreForYou() {
   const { width: screenWidth } = useWindowDimensions();
   const router = useRouter();
-  
+
   const flatListRef = useRef<FlatList>(null);
   const activeIndexRef = useRef(0);
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // Responsive configurations
   const isTablet = screenWidth >= 768;
   const scale = isTablet ? 1.15 : Math.max(0.85, Math.min(1.1, screenWidth / 375));
-  
-  // FIXED: Calculate exactly 50% of the FULL screen width (no padding subtracted)
   const cardWidth = isTablet ? screenWidth / 4 : screenWidth / 2;
 
   const sectionTitleSize = 22 * scale;
@@ -77,41 +76,34 @@ export default function MoreForYou() {
   const descSize = 11.5 * scale;
   const buttonTextSize = 12 * scale;
 
-  // Replicate flat data to allow smooth 1-by-1 infinite scrolling
-  const replicatedData = React.useMemo(() => {
-    return Array(10).fill(cardsData).flat(); // 40 items — enough for infinite feel, 10× lighter than 400
+  // INCREASED TO 250 (1000 items). CPU/Mem is safe because of FlatList Virtualization props.
+  const replicatedData = useMemo(() => {
+    return Array(250).fill(cardsData).flat();
   }, []);
 
-  // Initial scroll to the middle on mount
-  useEffect(() => {
-    if (replicatedData.length > 0) {
-      const middleIndex = Math.floor(replicatedData.length / 2);
-      activeIndexRef.current = middleIndex;
-      setTimeout(() => {
-        flatListRef.current?.scrollToIndex({
-          index: middleIndex,
-          animated: false,
-        });
-      }, 200);
-    }
-  }, [replicatedData]);
+  // Base middle index calculated to perfectly align with index 0 of cardsData
+  const baseMiddleIndex = useMemo(() => {
+    const middle = Math.floor(replicatedData.length / 2);
+    return middle - (middle % cardsData.length); 
+  }, [replicatedData.length]);
 
-  // --- AUTOPLAY / AUTO SWIPE LOGIC ---
-  useEffect(() => {
-    const totalItems = replicatedData.length;
-    if (totalItems <= 1) return;
-
-    const interval = setInterval(() => {
+  // --- PLAYBACK CONTROLS ---
+  const startAutoPlay = useCallback(() => {
+    stopAutoPlay(); // Prevent duplicate intervals
+    timerRef.current = setInterval(() => {
       let nextIndex = activeIndexRef.current + 1;
-      
-      if (nextIndex >= totalItems) {
-        // Instantly reset to middle to keep the infinite loop seamless
-        nextIndex = Math.floor(totalItems / 2);
+
+      // INVISIBLE RESET: If we get too close to the end, silently jump to the middle
+      if (nextIndex >= replicatedData.length - 5) {
+        // Calculate the exact matching card in the middle to make the jump invisible
+        const remainder = nextIndex % cardsData.length;
+        const safeMiddleIndex = baseMiddleIndex + remainder;
+
         flatListRef.current?.scrollToIndex({
-          index: nextIndex,
-          animated: false,
+          index: safeMiddleIndex,
+          animated: false, // Turn off animation for the reset
         });
-        activeIndexRef.current = nextIndex;
+        activeIndexRef.current = safeMiddleIndex;
       } else {
         activeIndexRef.current = nextIndex;
         flatListRef.current?.scrollToIndex({
@@ -119,16 +111,52 @@ export default function MoreForYou() {
           animated: true,
         });
       }
-    }, 2500); // 2500ms delay matches Web
+    }, 2500);
+  }, [baseMiddleIndex, replicatedData.length]);
 
-    return () => clearInterval(interval);
-  }, [replicatedData.length]);
+  const stopAutoPlay = useCallback(() => {
+    if (timerRef.current) clearInterval(timerRef.current);
+  }, []);
 
-  // Sync manual swipes
+  // --- INITIALIZATION ---
+  useEffect(() => {
+    if (replicatedData.length > 0) {
+      activeIndexRef.current = baseMiddleIndex;
+      
+      // Delay ensures layout has mounted before calculating offsets
+      const initTimer = setTimeout(() => {
+        flatListRef.current?.scrollToIndex({
+          index: baseMiddleIndex,
+          animated: false,
+        });
+        startAutoPlay();
+      }, 300);
+
+      return () => {
+        clearTimeout(initTimer);
+        stopAutoPlay();
+      };
+    }
+  }, [replicatedData, baseMiddleIndex, startAutoPlay, stopAutoPlay]);
+
+  // --- MANUAL SWIPE SYNCING ---
   const handleMomentumScrollEnd = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
     const scrollOffset = event.nativeEvent.contentOffset.x;
-    const currentIndex = Math.round(scrollOffset / cardWidth);
+    let currentIndex = Math.round(scrollOffset / cardWidth);
+
+    // If user manually swipes too far left or right, invisibly snap them back to the middle
+    if (currentIndex < 5 || currentIndex > replicatedData.length - 5) {
+      const remainder = currentIndex % cardsData.length;
+      currentIndex = baseMiddleIndex + remainder;
+      
+      flatListRef.current?.scrollToIndex({
+        index: currentIndex,
+        animated: false,
+      });
+    }
+
     activeIndexRef.current = currentIndex;
+    startAutoPlay(); // Resume auto-play after user finishes swiping
   };
 
   const handlePress = (route: string) => {
@@ -141,10 +169,21 @@ export default function MoreForYou() {
     }
   };
 
-  // Render a Single Card
+  // Prevent crash if auto-scroll triggers before an off-screen item is rendered
+  const handleScrollToIndexFailed = (info: {
+    index: number;
+    highestMeasuredFrameIndex: number;
+    averageItemLength: number;
+  }) => {
+    const wait = new Promise((resolve) => setTimeout(resolve, 500));
+    wait.then(() => {
+      flatListRef.current?.scrollToIndex({ index: info.index, animated: true });
+    });
+  };
+
   const renderCard = ({ item }: { item: MoreForYouCard }) => {
     const isPopular = item.isPopular;
-    
+
     return (
       <View
         style={{ width: cardWidth }}
@@ -152,12 +191,11 @@ export default function MoreForYou() {
           isPopular ? "bg-[#0E2347]" : "bg-white"
         }`}
       >
-        {/* Most Popular Tag */}
         {isPopular && (
           <View className="absolute top-2 left-2 bg-[#ec771c] px-2 py-0.5 rounded-full flex-row items-center gap-0.5 z-10">
             <MaterialCommunityIcons name="flash" size={8} color="#ffffff" />
-            <Text 
-              style={{ fontFamily: "PlusJakartaSans-Bold" }} 
+            <Text
+              style={{ fontFamily: "PlusJakartaSans-Bold" }}
               className="text-[8px] text-white uppercase tracking-wider"
             >
               Most Popular
@@ -165,7 +203,6 @@ export default function MoreForYou() {
           </View>
         )}
 
-        {/* Central Content */}
         <View className="flex-1 justify-center items-center w-full mt-1">
           <View className="mb-2">
             <Ionicons
@@ -176,10 +213,10 @@ export default function MoreForYou() {
           </View>
 
           <Text
-            style={{ 
-              fontSize: cardTitleSize, 
+            style={{
+              fontSize: cardTitleSize,
               lineHeight: cardTitleSize * 1.3,
-              fontFamily: "PlusJakartaSans-Bold"
+              fontFamily: "PlusJakartaSans-Bold",
             }}
             className={`text-center mb-1 px-1 ${
               isPopular ? "text-white" : "text-gray-800"
@@ -189,10 +226,10 @@ export default function MoreForYou() {
           </Text>
 
           <Text
-            style={{ 
-              fontSize: descSize, 
+            style={{
+              fontSize: descSize,
               lineHeight: descSize * 1.4,
-              fontFamily: "PlusJakartaSans-Medium"
+              fontFamily: "PlusJakartaSans-Medium",
             }}
             className={`text-center opacity-90 mb-3 ${
               isPopular ? "text-[#e2e8f0]" : "text-gray-600"
@@ -202,7 +239,6 @@ export default function MoreForYou() {
           </Text>
         </View>
 
-        {/* Action Button */}
         <Pressable
           onPress={() => handlePress(item.route)}
           className={`mt-auto px-4 py-1.5 rounded-full items-center justify-center border active:opacity-70 transition-opacity ${
@@ -212,9 +248,9 @@ export default function MoreForYou() {
           }`}
         >
           <Text
-            style={{ 
+            style={{
               fontSize: buttonTextSize,
-              fontFamily: "PlusJakartaSans-Bold"
+              fontFamily: "PlusJakartaSans-Bold",
             }}
             className={isPopular ? "text-white" : "text-[#10316C]"}
           >
@@ -227,13 +263,11 @@ export default function MoreForYou() {
 
   return (
     <View className="w-full bg-[#f5f5f5] py-4 mt-2 mb-0">
-      {/* Section Header */}
-      {/* Kept padding here so the title text doesn't touch the very edge of the phone */}
       <View className="px-4 mb-3">
         <Text
-          style={{ 
+          style={{
             fontSize: sectionTitleSize,
-            fontFamily: "PlusJakartaSans-Bold"
+            fontFamily: "PlusJakartaSans-Bold",
           }}
           className="text-gray-800"
         >
@@ -241,9 +275,7 @@ export default function MoreForYou() {
         </Text>
       </View>
 
-      {/* FIXED: Removed marginHorizontal so the container is full bleed */}
       <View className="border-y border-gray-200 overflow-hidden bg-white w-full">
-        {/* Cards Scrollable List */}
         <FlatList
           ref={flatListRef}
           data={replicatedData}
@@ -251,9 +283,17 @@ export default function MoreForYou() {
           renderItem={renderCard}
           horizontal
           showsHorizontalScrollIndicator={false}
-          snapToInterval={cardWidth} // Snaps exactly 1 card width at a time
+          snapToInterval={cardWidth}
           decelerationRate="fast"
-          onMomentumScrollEnd={handleMomentumScrollEnd}
+          // Memory and CPU optimizations
+          removeClippedSubviews={true}
+          initialNumToRender={4}
+          maxToRenderPerBatch={3}
+          windowSize={5} 
+          // Event Listeners
+          onScrollBeginDrag={stopAutoPlay} // Pause when user touches
+          onMomentumScrollEnd={handleMomentumScrollEnd} // Resume when user lets go
+          onScrollToIndexFailed={handleScrollToIndexFailed} // Prevents rare crashes
           getItemLayout={(_, index) => ({
             length: cardWidth,
             offset: cardWidth * index,

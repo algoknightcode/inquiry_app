@@ -3,6 +3,7 @@ import { View, ActivityIndicator } from "react-native";
 import { useRouter } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { setGlobalSellerId, setSellerSignedIn, setGlobalBuyerId, setGlobalRole } from "../utils/roleCache";
+import { prefetchHomeData } from "../utils/prefetchHome";
 
 let sessionWelcomeShown = false;
 
@@ -22,19 +23,23 @@ export default function Index() {
           setGlobalSellerId(supplierId);
           setSellerSignedIn(true);
           setGlobalRole("seller");
-          // Redirect to Home page
+          // Pre-warm home data so tabs load instantly (no loaders)
+          prefetchHomeData().catch(() => {});
           router.replace("/(tabs)");
         } else if (buyerId) {
           // Restore buyer session in cache
           setGlobalBuyerId(buyerId);
           setGlobalRole("buyer");
-          // Redirect to buyer Home/tabs
+          // Pre-warm home data so tabs load instantly
+          prefetchHomeData().catch(() => {});
           router.replace("/(tabs)");
         } else if (hasSkipped === "true") {
-          // Permitted skip state - go directly to tabs
+          // Permitted skip state — pre-warm then go to tabs
+          prefetchHomeData().catch(() => {});
           router.replace("/(tabs)");
         } else if (!sessionWelcomeShown) {
           // First launch of this app session - show welcome screen
+          // (welcome.tsx handles its own prefetchHomeData call)
           sessionWelcomeShown = true;
           router.replace("/welcome");
         } else {
