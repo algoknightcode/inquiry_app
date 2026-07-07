@@ -13,6 +13,7 @@ import {
   Modal,
   Platform,
   ScrollView,
+  Share,
   Text,
   TextInput,
   TouchableOpacity,
@@ -82,6 +83,24 @@ export default function ProductDetailPage() {
       await AsyncStorage.setItem("wishlist", JSON.stringify(list));
     } catch (err) {
       console.error("Error toggling wishlist:", err);
+    }
+  };
+
+  // Handle product sharing
+  const handleShare = async () => {
+    if (!product) return;
+    try {
+      const priceStr = product.priceType === "on_request" || !product.price
+        ? "Price on Request"
+        : `₹${product.price.toLocaleString()}`;
+      
+      const shareMessage = `Check out this product on InquiryBazaar:\n\n${product.name}\nPrice: ${priceStr}\n\nLink: https://dir.inquirybazaar.com/products/${product.slug}`;
+      
+      await Share.share({
+        message: shareMessage,
+      });
+    } catch (err) {
+      console.error("Error sharing product:", err);
     }
   };
 
@@ -237,6 +256,18 @@ export default function ProductDetailPage() {
 
   const specs: any[] = product.specifications || [];
 
+  const plainTextDescription = product.description
+    ? (product.description as string)
+        .replace(/<[^>]*>/g, " ")
+        .replace(/&nbsp;/g, " ")
+        .replace(/&amp;/g, "&")
+        .replace(/&lt;/g, "<")
+        .replace(/&gt;/g, ">")
+        .replace(/\s+/g, " ")
+        .trim()
+    : "";
+  const hasDescription = plainTextDescription.length > 0;
+
   return (
     <View style={{ flex: 1, backgroundColor: "#fff" }}>
       <Stack.Screen options={{ headerShown: false }} />
@@ -255,7 +286,7 @@ export default function ProductDetailPage() {
           <TouchableOpacity onPress={handleToggleWishlist} style={{ padding: 4, marginRight: 8 }} activeOpacity={0.7}>
             <Ionicons name={isWishlisted ? "heart" : "heart-outline"} size={24} color={isWishlisted ? "#8b5cf6" : "#64748b"} />
           </TouchableOpacity>
-          <TouchableOpacity style={{ padding: 4 }}>
+          <TouchableOpacity onPress={handleShare} style={{ padding: 4 }} activeOpacity={0.7}>
             <Ionicons name="share-social-outline" size={22} color="#64748b" />
           </TouchableOpacity>
         </View>
@@ -327,19 +358,16 @@ export default function ProductDetailPage() {
         </View>
 
         {/* DESCRIPTION */}
-        {product.description ? (() => {
-          const plainText = (product.description as string).replace(/<[^>]*>/g, " ").replace(/&nbsp;/g, " ").replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/\s+/g, " ").trim();
-          return plainText.length > 0 ? (
-            <View style={{ marginTop: 12, backgroundColor: "#fff", paddingHorizontal: 24, paddingVertical: 28 }}>
-              <Text style={{ fontSize: 17, fontWeight: "800", color: "#0f172a", marginBottom: 16 }}>Product Description</Text>
-              <Text style={{ color: "#475569", fontSize: 14, lineHeight: 24, fontWeight: "400" }}>{plainText}</Text>
-            </View>
-          ) : null;
-        })() : null}
+        {hasDescription ? (
+          <View style={{ marginTop: 12, backgroundColor: "#fff", paddingHorizontal: 24, paddingVertical: 28 }}>
+            <Text style={{ fontSize: 17, fontWeight: "800", color: "#0f172a", marginBottom: 16 }}>Product Description</Text>
+            <Text style={{ color: "#475569", fontSize: 14, lineHeight: 24, fontWeight: "400" }}>{plainTextDescription}</Text>
+          </View>
+        ) : null}
 
         {/* SPECIFICATIONS */}
         {specs.length > 0 ? (
-          <View style={{ marginTop: 12, backgroundColor: "#fff", paddingHorizontal: 24, paddingVertical: 32 }}>
+          <View style={{ marginTop: hasDescription ? 0 : 12, borderTopWidth: hasDescription ? 1 : 0, borderTopColor: "#f1f5f9", backgroundColor: "#fff", paddingHorizontal: 24, paddingVertical: 32 }}>
             <Text style={{ fontSize: 17, fontWeight: "800", color: "#0f172a", marginBottom: 20 }}>Specifications & Details</Text>
             <View style={{ borderWidth: 1, borderColor: "#e2e8f0", borderRadius: 16, overflow: "hidden", marginBottom: 16 }}>
               {specs.map((spec, idx) => (
@@ -363,7 +391,7 @@ export default function ProductDetailPage() {
         ) : null}
 
         {/* SUPPLIER */}
-        <View style={{ marginTop: 12, backgroundColor: "#fff", paddingHorizontal: 24, paddingVertical: 32, marginBottom: 24 }}>
+        <View style={{ marginTop: (hasDescription || specs.length > 0) ? 0 : 12, borderTopWidth: (hasDescription || specs.length > 0) ? 1 : 0, borderTopColor: "#f1f5f9", backgroundColor: "#fff", paddingHorizontal: 24, paddingVertical: 32, marginBottom: 24 }}>
           <Text style={{ fontSize: 17, fontWeight: "800", color: "#0f172a", marginBottom: 20 }}>Supplier Details</Text>
           <View style={{ backgroundColor: "#f8fafc", borderWidth: 1, borderColor: "#e2e8f0", borderRadius: 20, padding: 20 }}>
             <View style={{ flexDirection: "row", alignItems: "center", paddingBottom: 16, marginBottom: 16, borderBottomWidth: 1, borderBottomColor: "#e2e8f0" }}>

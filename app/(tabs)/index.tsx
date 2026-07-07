@@ -165,13 +165,13 @@ export default function HomeScreen() {
         renderItem={renderItem}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="always"
-        removeClippedSubviews={Platform.OS === 'android'} // Android handles native view recycling beautifully
-        windowSize={11} // Compact rendering window to prevent CPU layout overhead on Android
-        maxToRenderPerBatch={2} // Fewer items per batch keeps the JS thread free
-        initialNumToRender={4}
-        updateCellsBatchingPeriod={100} // More delay between batched layout updates
+        removeClippedSubviews={false} // Disable aggressive clipping to prevent flashing/missing views on scroll-up
+        windowSize={15} // Increase window size to keep more items rendered in memory
+        maxToRenderPerBatch={8} // Batch more items to avoid white-box/pop-in visual glitching
+        initialNumToRender={8} // Pre-render initial fold components
         overScrollMode="never"
         decelerationRate={Platform.OS === 'android' ? 0.985 : 'normal'} // High-precision smooth deceleration on Android
+        contentContainerStyle={{ paddingBottom: 100 }}
       />
 
       <Sidebar 

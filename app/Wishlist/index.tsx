@@ -17,10 +17,17 @@ import {
   View,
 } from "react-native";
 
+import { fetchWithCache } from "@/utils/apiCache";
+import EnquiryModal from "@/components/EnquiryModal";
+
 export default function B2BWishlist() {
   const router = useRouter();
   const [wishlist, setWishlist] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  
+  // States for EnquiryModal
+  const [selectedProduct, setSelectedProduct] = useState<any | null>(null);
+  const [isEnquiryVisible, setIsEnquiryVisible] = useState(false);
 
   const loadWishlist = async () => {
     try {
@@ -158,7 +165,10 @@ export default function B2BWishlist() {
         <View className="flex-row mt-4 border-t border-slate-100 pt-4 gap-x-3">
           <TouchableOpacity 
             activeOpacity={0.8}
-            onPress={() => handleEmail(item)}
+            onPress={() => {
+              setSelectedProduct(item);
+              setIsEnquiryVisible(true);
+            }}
             className="flex-1 bg-blue-600 py-3 rounded-xl flex-row items-center justify-center shadow-md shadow-blue-600/30"
           >
             <Ionicons name="mail" size={18} color="white" />
@@ -222,6 +232,13 @@ export default function B2BWishlist() {
           ListEmptyComponent={ListEmptyComponent}
         />
       )}
+
+      {/* Reusable Enquiry Modal */}
+      <EnquiryModal 
+        visible={isEnquiryVisible} 
+        onClose={() => setIsEnquiryVisible(false)} 
+        product={selectedProduct} 
+      />
     </SafeAreaView>
   );
 }

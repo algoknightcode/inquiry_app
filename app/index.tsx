@@ -15,6 +15,7 @@ export default function Index() {
       try {
         const supplierId = await AsyncStorage.getItem("supplierId");
         const buyerId = await AsyncStorage.getItem("buyerId");
+        const hasSkipped = await AsyncStorage.getItem("hasSkippedRole");
 
         if (supplierId) {
           // Restore seller session in cache
@@ -28,6 +29,9 @@ export default function Index() {
           setGlobalBuyerId(buyerId);
           setGlobalRole("buyer");
           // Redirect to buyer Home/tabs
+          router.replace("/(tabs)");
+        } else if (hasSkipped === "true") {
+          // Permitted skip state - go directly to tabs
           router.replace("/(tabs)");
         } else if (!sessionWelcomeShown) {
           // First launch of this app session - show welcome screen

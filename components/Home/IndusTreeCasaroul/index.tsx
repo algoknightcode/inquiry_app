@@ -1,8 +1,8 @@
+import { fetchWithCache } from "@/utils/apiCache";
 import { Ionicons } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import { useRouter } from "expo-router";
 import React, { useEffect, useRef, useState } from "react";
-import { fetchWithCache } from "@/utils/apiCache";
 import {
   ActivityIndicator,
   Dimensions,
@@ -407,7 +407,7 @@ const s = StyleSheet.create({
     gap: 6,
     paddingTop: 0,
     paddingBottom: 0,
-    marginTop: -28,
+    marginTop: 0,
     backgroundColor: WHITE,
   },
   dotIndicator: {

@@ -105,7 +105,7 @@ const catStyles = StyleSheet.create({
   cardsContainer: { marginTop: 12 },
   scrollContent: { paddingLeft: 16, paddingRight: 16 },
   card: { width: 90, marginRight: 16, alignItems: "center" },
-  imageWrapper: { width: 80, height: 80, borderRadius: 40, overflow: "hidden", backgroundColor: "#f1f5f9" },
+  imageWrapper: { width: 80, height: 80, borderRadius: 16, overflow: "hidden", backgroundColor: "#f1f5f9" },
   image: { width: "100%", height: "100%" },
   cardText: { marginTop: 8, fontSize: 12, fontFamily: "PlusJakartaSans-SemiBold", color: "#334155", textAlign: "center", width: "100%" }
 });

@@ -1,6 +1,6 @@
 import { useRouter } from "expo-router";
 import React, { useCallback, useMemo } from "react";
-import { Pressable, StyleSheet, Text, View, useWindowDimensions } from "react-native";
+import { Pressable, Text, View, useWindowDimensions } from "react-native";
 import Carousel from "react-native-reanimated-carousel";
 
 type Brand = {
@@ -22,30 +22,49 @@ const mockBrands: Brand[] = [
 
 const BrandCard = React.memo(({ brand, dynamicStyles }: { brand: Brand; dynamicStyles: any }) => {
   return (
-    <View style={[styles.brandContainer, { width: dynamicStyles.itemWidth }]}>
-      <Pressable style={styles.brandPressable}>
-        <View style={[
-          dynamicStyles.avatar, 
-          styles.avatarCenter, 
-          { backgroundColor: brand.colors[0] } 
-        ]}>
-          <Text style={[dynamicStyles.avatarText, styles.avatarTextBase]}>
+    <View 
+      style={{ width: dynamicStyles.itemWidth }} 
+      className="flex-row items-center justify-between pr-1.5"
+    >
+      <Pressable className="flex-row items-center py-1 flex-1">
+        <View 
+          style={[
+            dynamicStyles.avatar, 
+            { backgroundColor: brand.colors[0] }
+          ]}
+          className="items-center justify-center"
+        >
+          <Text 
+            style={dynamicStyles.avatarText} 
+            className="font-jakarta-bold text-white tracking-wide"
+          >
             {brand.initials}
           </Text>
         </View>
         
-        <View style={[dynamicStyles.infoWrapper, styles.infoWrapperBase]}>
-          <Text style={[dynamicStyles.brandName, styles.brandNameBase]} numberOfLines={1}>
+        <View 
+          style={dynamicStyles.infoWrapper} 
+          className="ml-3 justify-center shrink"
+        >
+          <Text 
+            style={dynamicStyles.brandName} 
+            className="text-slate-800 font-jakarta-bold tracking-tight" 
+            numberOfLines={1}
+          >
             {brand.name}
           </Text>
-          <Text style={[dynamicStyles.category, styles.categoryBase]} numberOfLines={1}>
+          <Text 
+            style={dynamicStyles.category} 
+            className="text-slate-400 font-jakarta mt-0.5" 
+            numberOfLines={1}
+          >
             {brand.category}
           </Text>
         </View>
       </Pressable>
       
-      {/* Brought the divider back to separate the two visible items */}
-      <View style={styles.divider} />
+      {/* Divider */}
+      <View className="h-9 w-[1px] bg-slate-200/50" />
     </View>
   );
 });
@@ -63,9 +82,19 @@ function TrendingBrandsCarousel() {
     const avatarSize = 52 * scale;
     const paddingHorizontal = 16 * scale;
     
-    // Total width available for the carousel
     const carouselWidth = screenWidth - (paddingHorizontal * 2);
     
+    let itemsPerView = 2;
+    if (screenWidth >= 1024) {
+      itemsPerView = 4;
+    } else if (screenWidth >= 768) {
+      itemsPerView = 3;
+    } else if (screenWidth >= 480) {
+      itemsPerView = 2.5;
+    } else if (screenWidth < 350) {
+      itemsPerView = 1.7;
+    }
+
     return {
       paddingHorizontal,
       cardPaddingTop: 22 * scale,
@@ -75,13 +104,12 @@ function TrendingBrandsCarousel() {
       subtitleSize: 12 * scale,
       bottomTextSize: 12.5 * scale,
       
-      // DIVIDED BY 2: This ensures exactly two items fit on the screen at once
-      itemWidth: carouselWidth / 2, 
+      itemWidth: carouselWidth / itemsPerView, 
       
       avatarText: { fontSize: 16 * scale },
       brandName: { fontSize: 14.5 * scale },
       category: { fontSize: 11.5 * scale },
-      infoWrapper: { minWidth: 90 * scale }, // Slightly reduced to ensure it fits comfortably in half-screen
+      infoWrapper: { minWidth: 90 * scale },
       avatar: {
         width: avatarSize,
         height: avatarSize,
@@ -90,15 +118,16 @@ function TrendingBrandsCarousel() {
     };
   }, [scale, screenWidth]);
 
-  // Buffer data for infinite scrolling
-  const bufferedData = useMemo(() => [...mockBrands, ...mockBrands, ...mockBrands, ...mockBrands], []);
-
   const handleFreeListingPress = useCallback(() => {
     router.push("/Seller/auth/Signup");
   }, [router]);
 
+  const renderItem = useCallback(({ item }: { item: Brand }) => (
+    <BrandCard brand={item} dynamicStyles={dynamicStyles} />
+  ), [dynamicStyles]);
+
   return (
-    <View style={{ paddingHorizontal: dynamicStyles.paddingHorizontal }} className="my-4">
+    <View style={{ paddingHorizontal: dynamicStyles.paddingHorizontal }} className="mt-1 mb-4">
       {/* Title & Header Section */}
       <View className="flex-row justify-between items-end mb-3.5 px-1">
         <View className="flex-1">
@@ -128,20 +157,22 @@ function TrendingBrandsCarousel() {
         className="bg-white border border-slate-100 rounded-[28px] shadow-lg shadow-slate-100/50"
       >
         
-        {/* Reanimated Carousel */}
         <View style={{ height: dynamicStyles.marqueeHeight, width: '100%' }}>
           <Carousel
-            loop
+            loop={true}
             width={dynamicStyles.itemWidth}
             style={{ width: '100%' }}
             height={dynamicStyles.marqueeHeight}
             autoPlay={true}
             autoPlayInterval={2500}
-            scrollAnimationDuration={1000} // Increased duration for a slower, smoother glide
-            data={bufferedData} 
-            renderItem={({ item, index }) => (
-              <BrandCard key={`${item.id}-${index}`} brand={item} dynamicStyles={dynamicStyles} />
-            )}
+            scrollAnimationDuration={1000}
+            data={mockBrands} 
+            renderItem={renderItem}
+            windowSize={3} 
+            onConfigurePanGesture={(panGesture) => {
+              'worklet';
+              panGesture.activeOffsetX([-10, 10]);
+            }}
           />
         </View>
 
@@ -167,49 +198,5 @@ function TrendingBrandsCarousel() {
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  brandContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between", // Pushes the divider to the edge of the width
-    paddingRight: 6, // Prevents the divider from touching the very edge
-  },
-  brandPressable: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingVertical: 4,
-    flex: 1, // Ensures the pressable takes up available space
-  },
-  avatarCenter: {
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  avatarTextBase: {
-    fontFamily: "jakarta-bold",
-    color: "#ffffff",
-    letterSpacing: 0.5,
-  },
-  infoWrapperBase: {
-    marginLeft: 12,
-    justifyContent: "center",
-    flexShrink: 1, // Prevents text from pushing out of bounds if it's too long
-  },
-  brandNameBase: {
-    color: "#1e293b",
-    fontFamily: "jakarta-bold",
-    letterSpacing: -0.5,
-  },
-  categoryBase: {
-    color: "#94a3b8",
-    fontFamily: "jakarta",
-    marginTop: 2,
-  },
-  divider: {
-    height: 36,
-    width: 1,
-    backgroundColor: "rgba(226, 232, 240, 0.5)",
-  }
-});
 
 export default React.memo(TrendingBrandsCarousel);

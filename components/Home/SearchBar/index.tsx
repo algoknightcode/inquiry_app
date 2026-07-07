@@ -113,6 +113,14 @@ export default function SearchBar({ onFocus }: SearchBarProps) {
     setSelectedSubCategory(sub);
     setInputText(sub.name);
     setShowRecommendations(false);
+    router.push({
+      pathname: "/Products_Page",
+      params: {
+        subCategoryId: sub._id,
+        subCategoryName: sub.name,
+        subCategorySlug: sub.slug,
+      },
+    });
   };
 
   const handleSearchSubmit = () => {

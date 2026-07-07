@@ -2,14 +2,14 @@ import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import React, { useEffect, useRef } from "react";
 import {
-  FlatList,
-  Linking,
-  NativeScrollEvent,
-  NativeSyntheticEvent,
-  Pressable,
-  Text,
-  useWindowDimensions,
-  View,
+    FlatList,
+    Linking,
+    NativeScrollEvent,
+    NativeSyntheticEvent,
+    Pressable,
+    Text,
+    useWindowDimensions,
+    View,
 } from "react-native";
 
 export interface MoreForYouCard {
@@ -226,7 +226,7 @@ export default function MoreForYou() {
   };
 
   return (
-    <View className="w-full bg-[#f5f5f5] pt-4 pb-0 mt-2 mb-0">
+    <View className="w-full bg-[#f5f5f5] py-4 mt-2 mb-0">
       {/* Section Header */}
       {/* Kept padding here so the title text doesn't touch the very edge of the phone */}
       <View className="px-4 mb-3">

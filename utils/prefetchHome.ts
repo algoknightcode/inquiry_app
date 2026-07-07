@@ -13,8 +13,7 @@ export async function prefetchHomeData(): Promise<void> {
     `${BASE}/industries/tree`,      // CategoryMarquee, IndusTreeCasaroul, SearchBar, NewOnes
     `${BASE}/industries`,           // Industry
     `${BASE}/categories/main`,      // TopCategory
-    `${BASE}/categories/sub/led-display-board/Delhi`, // Trending
-    `${BASE}/categories/sub/titanium-dioxide/Delhi`, // Trusted
+    `${BASE}/categories/sub/led-display-board/Delhi`, // Trending, Trusted
   ];
 
   await Promise.allSettled(topLevel.map((url) => fetchWithCache(url)));

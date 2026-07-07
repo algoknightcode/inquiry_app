@@ -14,6 +14,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { moderateScale, scale, verticalScale } from "react-native-size-matters";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import Logo from "../../assets/images/logoo-Photoroom.png";
 
 const ChooseRole = () => {
@@ -27,6 +28,16 @@ const ChooseRole = () => {
       router.push("/Buyer/auth/Signup");
     } else {
       router.push("/Seller/auth/Signup");
+    }
+  };
+
+  const handleSkip = async () => {
+    try {
+      await AsyncStorage.setItem("hasSkippedRole", "true");
+      router.replace("/(tabs)");
+    } catch (e) {
+      console.log("Error saving skip state", e);
+      router.replace("/(tabs)");
     }
   };
 
@@ -116,7 +127,7 @@ const ChooseRole = () => {
         {/* --- BOTTOM SECTION --- */}
         {/* This stays anchored safely to the bottom of the screen */}
         <TouchableOpacity
-          onPress={() => router.replace("/(tabs)")}
+          onPress={handleSkip}
           style={styles.footerLink}
         >
           <Text style={styles.footerText}>

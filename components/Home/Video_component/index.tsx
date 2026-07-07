@@ -39,7 +39,7 @@ export default function VideoSection() {
 
   return (
     // Removed px-5 to allow full-width video container
-    <View className="mt-0 pt-0 pb-6 bg-slate-100"> 
+    <View className="mt-8 py-6 bg-slate-100"> 
       {/* Header Section with padding restored */}
       <View className="mb-6 px-5">
         <Text className="text-[11px] font-jakarta-bold text-blue-700 tracking-[0.2em] mb-1.5 uppercase">

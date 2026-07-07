@@ -77,14 +77,43 @@ const LeadsScreen = () => {
     fetchLeads(false);
   }, [activeFilter]);
 
-  // --- FILTERING LOGIC ---
   const filteredLeads = leads.filter((lead) => {
+    // 1. Search Query filter
     const query = searchQuery.toLowerCase();
     const name = String(lead.name || lead.fullName || lead.userName || "").toLowerCase();
     const product = String(lead.product || lead.message || lead.query || lead.requirements || "").toLowerCase();
     const phone = String(lead.phone || "").toLowerCase();
     
-    return name.includes(query) || product.includes(query) || phone.includes(query);
+    const matchesSearch = name.includes(query) || product.includes(query) || phone.includes(query);
+    if (!matchesSearch) return false;
+
+    // 2. Active Time Filter (Client-side fallback/guarantee)
+    if (activeFilter === "all" || !activeFilter) return true;
+
+    if (!lead.createdAt) return false;
+    const createdAtDate = new Date(lead.createdAt);
+    if (isNaN(createdAtDate.getTime())) return false;
+
+    const now = new Date();
+    const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const startOfYesterday = new Date(startOfToday);
+    startOfYesterday.setDate(startOfYesterday.getDate() - 1);
+
+    if (activeFilter === "today") {
+      return createdAtDate >= startOfToday;
+    } else if (activeFilter === "yesterday") {
+      return createdAtDate >= startOfYesterday && createdAtDate < startOfToday;
+    } else if (activeFilter === "7days") {
+      const sevenDaysAgo = new Date(now);
+      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+      return createdAtDate >= sevenDaysAgo;
+    } else if (activeFilter === "30days") {
+      const thirtyDaysAgo = new Date(now);
+      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+      return createdAtDate >= thirtyDaysAgo;
+    }
+
+    return true;
   });
 
   // --- CARD RENDERER ---
@@ -409,7 +438,7 @@ const s = StyleSheet.create({
   cardHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
-    alignItems: "start",
+    alignItems: "flex-start",
     marginBottom: verticalScale(12),
   },
   cardHeaderLeft: {

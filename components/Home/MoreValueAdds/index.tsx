@@ -149,7 +149,7 @@ export default function MoreValueAdds() {
   };
 
   return (
-    <View className="mt-8 mb-6">
+    <View className="mt-8 mb-2">
       {/* Section Header */}
       <View className="px-4 mb-5">
         <Text

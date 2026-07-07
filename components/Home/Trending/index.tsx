@@ -141,7 +141,7 @@ export default function HorizontalProductList() {
   }, []);
 
   return (
-    <View className="mt-8">
+    <View className="mt-2">
       <View className="flex flex-row justify-between items-end px-5">
         <View className="flex-col">
           <Text className="text-[10px] font-jakarta-bold text-slate-400 tracking-[0.15em] mb-1 uppercase">
