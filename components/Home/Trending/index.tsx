@@ -1,9 +1,20 @@
-import { useRouter } from "expo-router";
-import React, { useEffect, useState } from "react";
-import { ActivityIndicator, FlatList, Text, TouchableOpacity, View } from "react-native";
-import { Image } from "expo-image";
-import { productCache } from "@/utils/productCache";
 import { fetchWithCache, getCacheSync } from "@/utils/apiCache";
+import { productCache } from "@/utils/productCache";
+import { Image } from "expo-image";
+import { useRouter } from "expo-router";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  ActivityIndicator,
+  FlatList,
+  Linking,
+  NativeScrollEvent,
+  NativeSyntheticEvent,
+  Text,
+  TouchableOpacity,
+  useWindowDimensions,
+  View,
+} from "react-native";
+import EnquiryModal from "@/components/EnquiryModal";
 
 type Media = {
   _id: string;
@@ -40,15 +51,24 @@ type Product = {
   supplier?: Supplier;
 };
 
-const CARD_WIDTH = 170; 
-const CARD_MARGIN = 20;
+const CARD_MARGIN = 16; // Slightly tighter margin to fit 2 cards comfortably
 
-const ProductCard = ({ item }: { item: Product }) => {
+// --- UPDATED CARD COMPONENT ---
+const ProductCard = ({ 
+  item, 
+  cardWidth,
+  onReqQuote
+}: { 
+  item: Product; 
+  cardWidth: number;
+  onReqQuote: (item: Product) => void;
+}) => {
   const router = useRouter();
-  
-  const primaryImage = item.media && item.media.length > 0
-    ? (item.media.find((m) => m.isPrimary) || item.media[0]).url
-    : "https://images.unsplash.com/photo-1618366712010-f4ae9c647dcb?q=80&w=400";
+
+  const primaryImage =
+    item.media && item.media.length > 0
+      ? (item.media.find((m) => m.isPrimary) || item.media[0]).url
+      : "https://images.unsplash.com/photo-1618366712010-f4ae9c647dcb?q=80&w=400";
 
   const isPriceOnRequest = item.priceType === "on_request" || !item.price;
 
@@ -63,14 +83,20 @@ const ProductCard = ({ item }: { item: Product }) => {
     });
   };
 
+  const handleCall = () => {
+    const phone = item.supplier?.phone || "+910000000000";
+    Linking.openURL(`tel:${phone}`);
+  };
+
   return (
     <TouchableOpacity
-      className="bg-white rounded-3xl mr-5 shadow-lg shadow-slate-200/50 border border-slate-100 overflow-hidden"
-      style={{ width: CARD_WIDTH }}
-      activeOpacity={0.7}
+      className="bg-white rounded-2xl shadow-md shadow-slate-200/50 border border-slate-100 overflow-hidden"
+      style={{ width: cardWidth, marginRight: CARD_MARGIN }}
+      activeOpacity={1} 
       onPress={handlePress}
     >
-      <View className="h-48 w-full bg-slate-100">
+      {/* Top Image (Scaled down slightly for narrower card) */}
+      <View className="h-36 w-full bg-slate-100">
         <Image
           source={{ uri: primaryImage }}
           style={{ width: "100%", height: "100%" }}
@@ -79,46 +105,99 @@ const ProductCard = ({ item }: { item: Product }) => {
         />
       </View>
 
-      <View className="p-4 flex-1 justify-between bg-white">
-        <Text 
-          className="text-slate-800 font-jakarta-bold text-sm leading-snug mb-2" 
-          numberOfLines={2}
-        >
-          {item.name}
-        </Text>
+      {/* Card Content */}
+      <View className="p-3 flex-1 bg-white justify-between">
+        <View>
+          <Text
+            className="text-slate-900 font-jakarta-bold text-[13px] leading-tight mb-1"
+            numberOfLines={2}
+          >
+            {item.name}
+          </Text>
+          <Text
+            className="text-slate-400 font-jakarta-medium text-[10px] mb-3"
+            numberOfLines={1}
+          >
+            {item.supplier?.business?.companyName || "Verified Supplier"}
+          </Text>
+        </View>
 
-        <View className="flex-col mt-auto">
-          {isPriceOnRequest ? (
-            <Text className="text-amber-600 font-jakarta-bold text-xs">
-              Price on Request
-            </Text>
-          ) : (
-            <Text className="text-slate-900 font-jakarta-black text-lg tracking-tight">
-              ₹{item.price.toLocaleString()}
-            </Text>
-          )}
-          
-          {item.supplier?.business?.companyName ? (
-            <Text className="text-[10px] text-slate-400 font-jakarta-medium mt-1" numberOfLines={1}>
-              {item.supplier.business.companyName}
-            </Text>
-          ) : null}
+        <View>
+          {/* Price and Badge Section */}
+          <View className="flex-row justify-between items-end mb-4">
+            <View className="flex-1">
+              <Text className="text-slate-400 font-jakarta-medium text-[9px] mb-0.5">
+                Starting From
+              </Text>
+              {isPriceOnRequest ? (
+                <Text className="text-amber-600 font-jakarta-extrabold text-sm tracking-tight">
+                  On Request
+                </Text>
+              ) : (
+                <Text className="text-black font-jakarta-extrabold text-base tracking-tight" numberOfLines={1} adjustsFontSizeToFit>
+                  ₹{item.price.toLocaleString()}
+                </Text>
+              )}
+            </View>
+            
+            <View className="bg-[#dcfce7] px-1.5 py-1 rounded-md ml-2">
+              <Text className="text-[#166534] font-jakarta-bold text-[8px] uppercase tracking-wider">
+                In Stock
+              </Text>
+            </View>
+          </View>
+
+          {/* Action Buttons (Scaled text/padding to fit 2-columns in narrow width) */}
+          <View className="flex-row gap-1.5">
+            <TouchableOpacity
+              onPress={handleCall}
+              activeOpacity={0.7}
+              className="flex-1 border-[1.5px] border-[#1e3a8a] py-1.5 rounded-full items-center justify-center bg-white"
+            >
+              <Text className="text-[#1e3a8a] font-jakarta-bold text-[10px]" numberOfLines={1}>
+                Call Now
+              </Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity
+              activeOpacity={0.7}
+              onPress={() => onReqQuote(item)}
+              className="flex-1 bg-[#1e3a8a] py-1.5 rounded-full items-center justify-center border-[1.5px] border-[#1e3a8a]"
+            >
+              <Text className="text-white font-jakarta-bold text-[10px]" numberOfLines={1}>
+                Req Quote
+              </Text>
+            </TouchableOpacity>
+          </View>
         </View>
       </View>
     </TouchableOpacity>
   );
 };
 
-const API_URL = "https://backend.inquirybazaar.com/api/categories/sub/led-display-board/Delhi";
+const API_URL =
+  "https://backend.inquirybazaar.com/api/categories/sub/led-display-board/Delhi";
 
 export default function HorizontalProductList() {
   const router = useRouter();
+  const { width: screenWidth } = useWindowDimensions();
+  
+  // DYNAMIC CALCULATION: Exactly 2 cards visible on screen (plus margins)
+  // ~43% of the screen ensures 2 full cards + a peek of the 3rd card
+  const cardWidth = (screenWidth * 0.43); 
+  const ITEM_SIZE = cardWidth + CARD_MARGIN;
 
-  // Instantly load data synchronously from cached tree to avoid one-frame loaders
+  const flatListRef = useRef<FlatList>(null);
+  const activeIndexRef = useRef(0);
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
+  const [isModalVisible, setModalVisible] = useState(false);
+
   const cached = getCacheSync(API_URL);
   const [products, setProducts] = useState<Product[]>(
-    cached?.success && Array.isArray(cached.data?.products) 
-      ? cached.data.products.slice(0, 10) 
+    cached?.success && Array.isArray(cached.data?.products)
+      ? cached.data.products.slice(0, 10)
       : []
   );
   const [isLoading, setIsLoading] = useState(!cached);
@@ -136,13 +215,98 @@ export default function HorizontalProductList() {
         setIsLoading(false);
       }
     };
-
     fetchTrendingProducts();
   }, []);
 
+  // --- INFINITE SCROLL LOGIC ---
+  const replicatedData = useMemo(() => {
+    if (!products || products.length === 0) return [];
+    return Array(100).fill(products).flat();
+  }, [products]);
+
+  const baseMiddleIndex = useMemo(() => {
+    if (replicatedData.length === 0) return 0;
+    const middle = Math.floor(replicatedData.length / 2);
+    return middle - (middle % products.length);
+  }, [replicatedData.length, products.length]);
+
+  const startAutoPlay = useCallback(() => {
+    stopAutoPlay();
+    if (replicatedData.length <= 1) return;
+
+    timerRef.current = setInterval(() => {
+      let nextIndex = activeIndexRef.current + 1;
+
+      if (nextIndex >= replicatedData.length - 5) {
+        const remainder = nextIndex % products.length;
+        const safeMiddleIndex = baseMiddleIndex + remainder;
+
+        flatListRef.current?.scrollToIndex({
+          index: safeMiddleIndex,
+          animated: false,
+        });
+        activeIndexRef.current = safeMiddleIndex;
+      } else {
+        activeIndexRef.current = nextIndex;
+        flatListRef.current?.scrollToIndex({
+          index: nextIndex,
+          animated: true,
+        });
+      }
+    }, 3000); 
+  }, [baseMiddleIndex, replicatedData.length, products.length]);
+
+  const stopAutoPlay = useCallback(() => {
+    if (timerRef.current) clearInterval(timerRef.current);
+  }, []);
+
+  useEffect(() => {
+    if (replicatedData.length > 0) {
+      activeIndexRef.current = baseMiddleIndex;
+      const initTimer = setTimeout(() => {
+        flatListRef.current?.scrollToIndex({
+          index: baseMiddleIndex,
+          animated: false,
+        });
+        startAutoPlay();
+      }, 500);
+
+      return () => {
+        clearTimeout(initTimer);
+        stopAutoPlay();
+      };
+    }
+  }, [replicatedData, baseMiddleIndex, startAutoPlay, stopAutoPlay]);
+
+  const handleMomentumScrollEnd = (
+    event: NativeSyntheticEvent<NativeScrollEvent>
+  ) => {
+    const scrollOffset = event.nativeEvent.contentOffset.x;
+    let currentIndex = Math.round(scrollOffset / ITEM_SIZE);
+
+    if (currentIndex < 5 || currentIndex > replicatedData.length - 5) {
+      const remainder = currentIndex % products.length;
+      currentIndex = baseMiddleIndex + remainder;
+
+      flatListRef.current?.scrollToIndex({
+        index: currentIndex,
+        animated: false,
+      });
+    }
+
+    activeIndexRef.current = currentIndex;
+    startAutoPlay(); 
+  };
+
+  const handleScrollToIndexFailed = (info: { index: number }) => {
+    setTimeout(() => {
+      flatListRef.current?.scrollToIndex({ index: info.index, animated: true });
+    }, 500);
+  };
+
   return (
     <View className="mt-2">
-      <View className="flex flex-row justify-between items-end px-5">
+      <View className="flex flex-row justify-between items-end px-5 mb-4">
         <View className="flex-col">
           <Text className="text-[10px] font-jakarta-bold text-slate-400 tracking-[0.15em] mb-1 uppercase">
             TRENDING NOW
@@ -154,14 +318,20 @@ export default function HorizontalProductList() {
 
         <TouchableOpacity
           activeOpacity={0.6}
-          style={{ borderBottomWidth: 1, borderBottomColor: '#0f172a', paddingBottom: 2 }}
-          onPress={() => router.push({
-            pathname: "/Products_Page",
-            params: {
-              subCategorySlug: "led-display-board",
-              subCategoryName: "LED Display Board",
-            }
-          })}
+          style={{
+            borderBottomWidth: 1,
+            borderBottomColor: "#0f172a",
+            paddingBottom: 2,
+          }}
+          onPress={() =>
+            router.push({
+              pathname: "/Products_Page",
+              params: {
+                subCategorySlug: "led-display-board",
+                subCategoryName: "LED Display Board",
+              },
+            })
+          }
         >
           <Text className="text-slate-900 font-jakarta-bold text-sm tracking-tight">
             Explore
@@ -175,18 +345,49 @@ export default function HorizontalProductList() {
         </View>
       ) : (
         <FlatList
-          data={products}
+          ref={flatListRef}
+          data={replicatedData}
           horizontal
           showsHorizontalScrollIndicator={false}
-          keyExtractor={(item) => item._id}
-          renderItem={({ item }) => <ProductCard item={item} />}
-          className="mt-5 pl-5"
-          contentContainerStyle={{ paddingRight: 20 }}
-          snapToInterval={CARD_WIDTH + CARD_MARGIN}
+          keyExtractor={(_, index) => index.toString()}
+          renderItem={({ item }) => (
+            <ProductCard
+              item={item}
+              cardWidth={cardWidth}
+              onReqQuote={(prod) => {
+                setSelectedProduct(prod);
+                setModalVisible(true);
+              }}
+            />
+          )}
+          className="pl-5 py-2" 
+          contentContainerStyle={{ paddingRight: 40 }} 
+          snapToInterval={ITEM_SIZE}
           decelerationRate="fast"
           snapToAlignment="start"
+          
+          removeClippedSubviews={true}
+          initialNumToRender={4}
+          maxToRenderPerBatch={4}
+          windowSize={5}
+          getItemLayout={(_, index) => ({
+            length: ITEM_SIZE,
+            offset: ITEM_SIZE * index,
+            index,
+          })}
+          
+          onScrollBeginDrag={stopAutoPlay}
+          onMomentumScrollEnd={handleMomentumScrollEnd}
+          onScrollToIndexFailed={handleScrollToIndexFailed}
         />
       )}
+
+      {/* Enquiry Modal overlay */}
+      <EnquiryModal
+        visible={isModalVisible}
+        onClose={() => setModalVisible(false)}
+        product={selectedProduct}
+      />
     </View>
   );
 }

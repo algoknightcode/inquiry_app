@@ -1,7 +1,14 @@
 import { useRouter } from "expo-router";
-import React, { useCallback, useMemo } from "react";
-import { Pressable, Text, View, useWindowDimensions } from "react-native";
-import Carousel from "react-native-reanimated-carousel";
+import React, { useCallback, useEffect, useMemo, useRef } from "react";
+import {
+  FlatList,
+  NativeScrollEvent,
+  NativeSyntheticEvent,
+  Pressable,
+  Text,
+  View,
+  useWindowDimensions,
+} from "react-native";
 
 type Brand = {
   id: string;
@@ -22,47 +29,47 @@ const mockBrands: Brand[] = [
 
 const BrandCard = React.memo(({ brand, dynamicStyles }: { brand: Brand; dynamicStyles: any }) => {
   return (
-    <View 
-      style={{ width: dynamicStyles.itemWidth }} 
+    <View
+      style={{ width: dynamicStyles.itemWidth }}
       className="flex-row items-center justify-between pr-1.5"
     >
-      <Pressable className="flex-row items-center py-1 flex-1">
-        <View 
+      <Pressable className="flex-row items-center py-1 flex-1 active:opacity-70 transition-opacity">
+        <View
           style={[
-            dynamicStyles.avatar, 
-            { backgroundColor: brand.colors[0] }
+            dynamicStyles.avatar,
+            { backgroundColor: brand.colors[0] },
           ]}
           className="items-center justify-center"
         >
-          <Text 
-            style={dynamicStyles.avatarText} 
+          <Text
+            style={dynamicStyles.avatarText}
             className="font-jakarta-bold text-white tracking-wide"
           >
             {brand.initials}
           </Text>
         </View>
-        
-        <View 
-          style={dynamicStyles.infoWrapper} 
+
+        <View
+          style={dynamicStyles.infoWrapper}
           className="ml-3 justify-center shrink"
         >
-          <Text 
-            style={dynamicStyles.brandName} 
-            className="text-slate-800 font-jakarta-bold tracking-tight" 
+          <Text
+            style={dynamicStyles.brandName}
+            className="text-slate-800 font-jakarta-bold tracking-tight"
             numberOfLines={1}
           >
             {brand.name}
           </Text>
-          <Text 
-            style={dynamicStyles.category} 
-            className="text-slate-400 font-jakarta mt-0.5" 
+          <Text
+            style={dynamicStyles.category}
+            className="text-slate-400 font-jakarta mt-0.5"
             numberOfLines={1}
           >
             {brand.category}
           </Text>
         </View>
       </Pressable>
-      
+
       {/* Divider */}
       <View className="h-9 w-[1px] bg-slate-200/50" />
     </View>
@@ -73,6 +80,11 @@ function TrendingBrandsCarousel() {
   const router = useRouter();
   const { width: screenWidth } = useWindowDimensions();
 
+  // Auto-scroll refs
+  const flatListRef = useRef<FlatList>(null);
+  const activeIndexRef = useRef(0);
+  const timerRef = useRef<NodeJS.Timeout | null>(null);
+
   const scale = useMemo(() => {
     const isTablet = screenWidth >= 768;
     return isTablet ? 1.25 : Math.max(0.85, Math.min(1.15, screenWidth / 375));
@@ -81,9 +93,9 @@ function TrendingBrandsCarousel() {
   const dynamicStyles = useMemo(() => {
     const avatarSize = 52 * scale;
     const paddingHorizontal = 16 * scale;
-    
-    const carouselWidth = screenWidth - (paddingHorizontal * 2);
-    
+
+    const carouselWidth = screenWidth - paddingHorizontal * 2;
+
     let itemsPerView = 2;
     if (screenWidth >= 1024) {
       itemsPerView = 4;
@@ -103,9 +115,9 @@ function TrendingBrandsCarousel() {
       titleSize: 22 * scale,
       subtitleSize: 12 * scale,
       bottomTextSize: 12.5 * scale,
-      
-      itemWidth: carouselWidth / itemsPerView, 
-      
+
+      itemWidth: carouselWidth / itemsPerView,
+
       avatarText: { fontSize: 16 * scale },
       brandName: { fontSize: 14.5 * scale },
       category: { fontSize: 11.5 * scale },
@@ -114,25 +126,113 @@ function TrendingBrandsCarousel() {
         width: avatarSize,
         height: avatarSize,
         borderRadius: avatarSize * 0.32,
-      }
+      },
     };
   }, [scale, screenWidth]);
+
+  const ITEM_SIZE = dynamicStyles.itemWidth;
+
+  // ── INFINITE SCROLL LOGIC ──
+  const replicatedData = useMemo(() => {
+    return Array(100).fill(mockBrands).flat();
+  }, []);
+
+  const baseMiddleIndex = useMemo(() => {
+    const middle = Math.floor(replicatedData.length / 2);
+    return middle - (middle % mockBrands.length);
+  }, [replicatedData.length]);
+
+  const startAutoPlay = useCallback(() => {
+    stopAutoPlay();
+    timerRef.current = setInterval(() => {
+      let nextIndex = activeIndexRef.current + 1;
+
+      if (nextIndex >= replicatedData.length - 5) {
+        const remainder = nextIndex % mockBrands.length;
+        const safeMiddleIndex = baseMiddleIndex + remainder;
+
+        flatListRef.current?.scrollToIndex({
+          index: safeMiddleIndex,
+          animated: false,
+        });
+        activeIndexRef.current = safeMiddleIndex;
+      } else {
+        activeIndexRef.current = nextIndex;
+        flatListRef.current?.scrollToIndex({
+          index: nextIndex,
+          animated: true,
+        });
+      }
+    }, 2500);
+  }, [baseMiddleIndex, replicatedData.length]);
+
+  const stopAutoPlay = useCallback(() => {
+    if (timerRef.current) clearInterval(timerRef.current);
+  }, []);
+
+  // Initialize and jump to middle
+  useEffect(() => {
+    if (replicatedData.length > 0) {
+      activeIndexRef.current = baseMiddleIndex;
+      const initTimer = setTimeout(() => {
+        flatListRef.current?.scrollToIndex({
+          index: baseMiddleIndex,
+          animated: false,
+        });
+        startAutoPlay();
+      }, 500);
+
+      return () => {
+        clearTimeout(initTimer);
+        stopAutoPlay();
+      };
+    }
+  }, [replicatedData, baseMiddleIndex, startAutoPlay, stopAutoPlay]);
+
+  // Handle manual swipe ending to ensure perfect alignment
+  const handleMomentumScrollEnd = (
+    event: NativeSyntheticEvent<NativeScrollEvent>
+  ) => {
+    const scrollOffset = event.nativeEvent.contentOffset.x;
+    let currentIndex = Math.round(scrollOffset / ITEM_SIZE);
+
+    if (currentIndex < 5 || currentIndex > replicatedData.length - 5) {
+      const remainder = currentIndex % mockBrands.length;
+      currentIndex = baseMiddleIndex + remainder;
+
+      flatListRef.current?.scrollToIndex({
+        index: currentIndex,
+        animated: false,
+      });
+    }
+
+    activeIndexRef.current = currentIndex;
+    startAutoPlay();
+  };
+
+  const handleScrollToIndexFailed = (info: { index: number }) => {
+    setTimeout(() => {
+      flatListRef.current?.scrollToIndex({ index: info.index, animated: true });
+    }, 500);
+  };
 
   const handleFreeListingPress = useCallback(() => {
     router.push("/Seller/auth/Signup");
   }, [router]);
 
-  const renderItem = useCallback(({ item }: { item: Brand }) => (
-    <BrandCard brand={item} dynamicStyles={dynamicStyles} />
-  ), [dynamicStyles]);
-
   return (
-    <View style={{ paddingHorizontal: dynamicStyles.paddingHorizontal }} className="mt-1 mb-4">
+    <View
+      style={{ paddingHorizontal: dynamicStyles.paddingHorizontal }}
+      className="mt-1 mb-4"
+    >
       {/* Title & Header Section */}
       <View className="flex-row justify-between items-end mb-3.5 px-1">
         <View className="flex-1">
           <View className="flex-row items-center">
-            <Text style={{ fontSize: dynamicStyles.titleSize }} className="text-slate-900 font-jakarta-bold tracking-tight mr-1.5">
+            <Text
+              style={{ fontSize: dynamicStyles.titleSize }}
+              className="text-slate-900 font-jakarta-bold tracking-tight mr-1.5"
+            >
               Trending Brands
             </Text>
             <View className="bg-amber-100/80 px-2 py-0.5 rounded-full flex-row items-center border border-amber-200/50">
@@ -141,7 +241,10 @@ function TrendingBrandsCarousel() {
               </Text>
             </View>
           </View>
-          <Text style={{ fontSize: dynamicStyles.subtitleSize }} className="text-slate-400 font-jakarta mt-0.5">
+          <Text
+            style={{ fontSize: dynamicStyles.subtitleSize }}
+            className="text-slate-400 font-jakarta mt-0.5"
+          >
             Discover top-performing partners active on InquiryBazaar
           </Text>
         </View>
@@ -156,41 +259,66 @@ function TrendingBrandsCarousel() {
         }}
         className="bg-white border border-slate-100 rounded-[28px] shadow-lg shadow-slate-100/50"
       >
-        
-        <View style={{ height: dynamicStyles.marqueeHeight, width: '100%' }}>
-          <Carousel
-            loop={true}
-            width={dynamicStyles.itemWidth}
-            style={{ width: '100%' }}
-            height={dynamicStyles.marqueeHeight}
-            autoPlay={true}
-            autoPlayInterval={2500}
-            scrollAnimationDuration={1000}
-            data={mockBrands} 
-            renderItem={renderItem}
-            windowSize={3} 
-            onConfigurePanGesture={(panGesture) => {
-              'worklet';
-              panGesture.activeOffsetX([-10, 10]);
-            }}
+        <View style={{ height: dynamicStyles.marqueeHeight, width: "100%" }}>
+          <FlatList
+            ref={flatListRef}
+            data={replicatedData}
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            keyExtractor={(_, index) => index.toString()}
+            renderItem={({ item }) => (
+              <BrandCard brand={item} dynamicStyles={dynamicStyles} />
+            )}
+            
+            // Replaces the Reanimated Carousel config
+            snapToInterval={ITEM_SIZE}
+            snapToAlignment="start"
+            decelerationRate="fast"
+            
+            // Event Listeners for Autoplay & Gestures
+            onScrollBeginDrag={stopAutoPlay}
+            onMomentumScrollEnd={handleMomentumScrollEnd}
+            onScrollToIndexFailed={handleScrollToIndexFailed}
+            
+            // CPU & Memory Layout Optimization
+            getItemLayout={(_, index) => ({
+              length: ITEM_SIZE,
+              offset: ITEM_SIZE * index,
+              index,
+            })}
+            initialNumToRender={6}
+            maxToRenderPerBatch={4}
+            windowSize={5}
+            removeClippedSubviews={true}
           />
         </View>
 
-        <View className="border-t border-slate-100/80 my-4.5 mb-4"  />
+        <View className="border-t border-slate-100/80 my-4 mb-4" />
 
         {/* Bottom Details Info Row */}
         <View className="flex-row justify-between items-center w-full">
           <View className="flex-row items-center py-0.5 px-2 bg-emerald-50/60 border border-emerald-100/40 rounded-full">
             <View className="w-1 h-1 rounded-full bg-emerald-500 mr-1.5" />
-            <Text style={{ fontSize: dynamicStyles.bottomTextSize * 0.82 }} className="text-emerald-700 font-jakarta-semibold">
+            <Text
+              style={{ fontSize: dynamicStyles.bottomTextSize * 0.82 }}
+              className="text-emerald-700 font-jakarta-semibold"
+            >
               100+ verified brands active on IB
             </Text>
           </View>
 
-          <Pressable onPress={handleFreeListingPress} className="active:scale-97 flex-row items-center py-0.5 px-2 bg-orange-50 border border-orange-100/80 rounded-full">
-            <Text style={{ fontSize: dynamicStyles.bottomTextSize * 0.82 }} className="text-slate-700 font-jakarta-semibold">
+          <Pressable
+            onPress={handleFreeListingPress}
+            className="active:opacity-70 flex-row items-center py-0.5 px-2 bg-orange-50 border border-orange-100/80 rounded-full"
+          >
+            <Text
+              style={{ fontSize: dynamicStyles.bottomTextSize * 0.82 }}
+              className="text-slate-700 font-jakarta-semibold"
+            >
               Want to be featured?{" "}
-              <Text className="text-orange-500 font-jakarta-bold">List free →</Text>
+              <Text className="text-orange-500 font-jakarta-bold">
+                List free →
+              </Text>
             </Text>
           </Pressable>
         </View>

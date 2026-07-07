@@ -6,21 +6,16 @@ import { Image } from "expo-image";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import React, { useState } from "react";
 import {
-  ActivityIndicator,
-  Alert,
-  KeyboardAvoidingView,
   Linking,
-  Modal,
-  Platform,
   ScrollView,
   Share,
   Text,
-  TextInput,
   TouchableOpacity,
   Vibration,
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import EnquiryModal from "@/components/EnquiryModal";
 
 export default function ProductDetailPage() {
   const router = useRouter();
@@ -35,13 +30,6 @@ export default function ProductDetailPage() {
 
   // --- INQUIRY MODAL STATES ---
   const [isModalVisible, setModalVisible] = useState(false);
-  const [showSuccessModal, setShowSuccessModal] = useState(false); // NEW: Custom Success Modal State
-  
-  const [inqName, setInqName] = useState("");
-  const [inqEmail, setInqEmail] = useState("");
-  const [inqPhone, setInqPhone] = useState("");
-  const [inqMessage, setInqMessage] = useState("");
-  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Load wishlist state on mount
   React.useEffect(() => {
@@ -144,82 +132,7 @@ export default function ProductDetailPage() {
     fetchFullDetails();
   }, [productId, slug]);
 
-  // --- SUBMIT INQUIRY API ---
-  const handleSendInquiry = async () => {
-    if (!inqName.trim() || !inqPhone.trim() || !inqMessage.trim()) {
-      Alert.alert("Required Fields", "Please provide your Name, Phone Number, and Message.");
-      return;
-    }
 
-    setIsSubmitting(true);
-    try {
-      const globalUserId = globalSellerId || await AsyncStorage.getItem("buyerId") || await AsyncStorage.getItem("supplierId");
-
-      let supToken = typeof product?.supplier === "string" 
-        ? product.supplier 
-        : (product?.supplier?._id || product?.supplierId?._id);
-
-      if (!supToken && globalUserId) {
-        supToken = globalUserId;
-      }
-
-      const payload = {
-        supplierToken: supToken,
-        platform: "App Product Popup",
-        platformEmail: product?.supplier?.email || product?.supplierId?.email || "lead.inquirybazaar@gmail.com",
-        name: inqName,
-        email: inqEmail || "NA",
-        company: "NA",
-        phone: inqPhone,
-        product: product?.name || "NA",
-        place: "NA",
-        message: inqMessage,
-      };
-
-      // EXACT LOGGING SO YOU KNOW WHERE IT FAILS
-      console.log("📤 Sending Payload:", JSON.stringify(payload, null, 2));
-
-      const res = await fetch("https://brandbnalo.com/api/form/add", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Accept": "application/json",
-          ...(globalUserId ? { "x-user-id": globalUserId } : {})
-        },
-        body: JSON.stringify(payload),
-      });
-
-      const resText = await res.text();
-      
-      // EXACT LOGGING OF BACKEND RESPONSE
-      console.log("📥 Response Status:", res.status);
-      console.log("📥 Response Body:", resText);
-
-      if (res.ok) {
-        // CLOSE FORM MODAL AND SHOW BEAUTIFUL SUCCESS MODAL
-        setModalVisible(false);
-        setShowSuccessModal(true);
-        
-        // Reset fields
-        setInqName("");
-        setInqEmail("");
-        setInqPhone("");
-        setInqMessage("");
-      } else {
-        let errorMsg = "Failed to send inquiry.";
-        try {
-          const errorData = JSON.parse(resText);
-          errorMsg = errorData.message || errorData.error || errorMsg;
-        } catch (e) {}
-        Alert.alert("Submission Failed", errorMsg);
-      }
-    } catch (error) {
-      console.error("Inquiry Error:", error);
-      Alert.alert("Error", "A network error occurred. Please try again.");
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
 
   // ── Helpers ──────────────────────────────────────────────────────────────
   const getPrimaryImage = (media: any[]) => {
@@ -422,9 +335,23 @@ export default function ProductDetailPage() {
               </TouchableOpacity>
             ) : null}
 
-            <TouchableOpacity style={{ width: "100%", paddingVertical: 14, backgroundColor: "#fff", borderWidth: 1, borderColor: "#c7d2fe", borderRadius: 12, alignItems: "center" }}>
-              <Text style={{ color: "#4f46e5", fontWeight: "700", fontSize: 14 }}>View Full Profile</Text>
-            </TouchableOpacity>
+            <View style={{ flexDirection: "row", gap: 12 }}>
+              <TouchableOpacity
+                onPress={() => phone && Linking.openURL(`tel:${phone}`)}
+                style={{ flex: 1, flexDirection: "row", justifyContent: "center", alignItems: "center", paddingVertical: 12, borderRadius: 12, borderWidth: 1.5, borderColor: "#e2e8f0", backgroundColor: "#fff" }}
+              >
+                <Ionicons name="call" size={18} color="#475569" />
+                <Text style={{ color: "#475569", fontWeight: "700", fontSize: 14, marginLeft: 8 }}>Call</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                onPress={() => setModalVisible(true)}
+                style={{ flex: 2, flexDirection: "row", justifyContent: "center", alignItems: "center", paddingVertical: 12, borderRadius: 12, backgroundColor: "#4f46e5" }}
+              >
+                <Ionicons name="paper-plane-outline" size={18} color="white" />
+                <Text style={{ color: "#fff", fontWeight: "700", fontSize: 14, marginLeft: 8 }}>Inquiry</Text>
+              </TouchableOpacity>
+            </View>
           </View>
         </View>
       </ScrollView>
@@ -444,95 +371,12 @@ export default function ProductDetailPage() {
         </View>
       </View>
 
-      {/* INQUIRY MODAL (THE FORM) */}
-      <Modal visible={isModalVisible} animationType="slide" transparent={true} onRequestClose={() => setModalVisible(false)}>
-        <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={{ flex: 1, justifyContent: "flex-end", backgroundColor: "rgba(0,0,0,0.5)" }}>
-          <View style={{ backgroundColor: "#fff", borderTopLeftRadius: 32, borderTopRightRadius: 32, padding: 24, maxHeight: '90%' }}>
-            <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
-              <Text style={{ fontSize: 20, fontWeight: "800", color: "#0f172a" }}>Contact Supplier</Text>
-              <TouchableOpacity onPress={() => setModalVisible(false)} style={{ padding: 4, backgroundColor: "#f1f5f9", borderRadius: 20 }}>
-                <Ionicons name="close" size={20} color="#64748b" />
-              </TouchableOpacity>
-            </View>
-
-            <ScrollView showsVerticalScrollIndicator={false}>
-              <View style={{ flexDirection: "row", alignItems: "center", backgroundColor: "#f8fafc", padding: 12, borderRadius: 16, marginBottom: 24, borderWidth: 1, borderColor: "#e2e8f0" }}>
-                {imageUri ? (
-                  <Image source={{ uri: imageUri }} style={{ width: 60, height: 60, borderRadius: 10 }} contentFit="cover" />
-                ) : (
-                  <View style={{ width: 60, height: 60, borderRadius: 10, backgroundColor: "#e2e8f0", alignItems: "center", justifyContent: "center" }}>
-                    <Ionicons name="image" size={24} color="#94a3b8" />
-                  </View>
-                )}
-                <View style={{ flex: 1, marginLeft: 12 }}>
-                  <Text style={{ fontSize: 14, fontWeight: "700", color: "#0f172a" }} numberOfLines={2}>{product.name}</Text>
-                  <Text style={{ fontSize: 13, color: "#64748b", marginTop: 4 }}>{company}</Text>
-                </View>
-              </View>
-
-              <View style={{ flexDirection: "row", alignItems: "center", borderWidth: 1, borderColor: "#e2e8f0", borderRadius: 16, paddingHorizontal: 16, height: 52, marginBottom: 16, backgroundColor: "#f8fafc" }}>
-                <Ionicons name="person-outline" size={18} color="#64748b" style={{ marginRight: 12 }} />
-                <TextInput style={{ flex: 1, fontSize: 15, color: "#0f172a" }} placeholder="Your Name *" placeholderTextColor="#94a3b8" value={inqName} onChangeText={setInqName} editable={!isSubmitting} />
-              </View>
-
-              <View style={{ flexDirection: "row", alignItems: "center", borderWidth: 1, borderColor: "#e2e8f0", borderRadius: 16, paddingHorizontal: 16, height: 52, marginBottom: 16, backgroundColor: "#f8fafc" }}>
-                <Ionicons name="mail-outline" size={18} color="#64748b" style={{ marginRight: 12 }} />
-                <TextInput style={{ flex: 1, fontSize: 15, color: "#0f172a" }} placeholder="Your Email" placeholderTextColor="#94a3b8" keyboardType="email-address" autoCapitalize="none" value={inqEmail} onChangeText={setInqEmail} editable={!isSubmitting} />
-              </View>
-
-              <View style={{ flexDirection: "row", alignItems: "center", borderWidth: 1, borderColor: "#e2e8f0", borderRadius: 16, paddingHorizontal: 16, height: 52, marginBottom: 16, backgroundColor: "#f8fafc" }}>
-                <Ionicons name="call-outline" size={18} color="#64748b" style={{ marginRight: 12 }} />
-                <TextInput style={{ flex: 1, fontSize: 15, color: "#0f172a" }} placeholder="Phone Number *" placeholderTextColor="#94a3b8" keyboardType="phone-pad" value={inqPhone} onChangeText={setInqPhone} editable={!isSubmitting} />
-              </View>
-
-              <View style={{ flexDirection: "row", alignItems: "flex-start", borderWidth: 1, borderColor: "#e2e8f0", borderRadius: 16, paddingHorizontal: 16, paddingVertical: 16, height: 120, marginBottom: 24, backgroundColor: "#f8fafc" }}>
-                <Ionicons name="chatbubble-outline" size={18} color="#64748b" style={{ marginRight: 12, marginTop: 2 }} />
-                <TextInput style={{ flex: 1, fontSize: 15, color: "#0f172a", textAlignVertical: "top" }} placeholder="Your Message *" placeholderTextColor="#94a3b8" multiline value={inqMessage} onChangeText={setInqMessage} editable={!isSubmitting} />
-              </View>
-
-              <TouchableOpacity onPress={handleSendInquiry} disabled={isSubmitting} style={{ backgroundColor: "#1e3a8a", height: 56, borderRadius: 16, alignItems: "center", justifyContent: "center", flexDirection: "row", marginBottom: Platform.OS === "ios" ? 20 : 0 }}>
-                {isSubmitting ? <ActivityIndicator color="#fff" /> : <Text style={{ color: "#fff", fontSize: 16, fontWeight: "700" }}>Submit Inquiry</Text>}
-              </TouchableOpacity>
-            </ScrollView>
-          </View>
-        </KeyboardAvoidingView>
-      </Modal>
-
-      {/* ── CUSTOM SUCCESS MODAL ── */}
-      <Modal
-        animationType="fade"
-        transparent
-        visible={showSuccessModal}
-        statusBarTranslucent
-        onRequestClose={() => setShowSuccessModal(false)}
-      >
-        <View style={{ flex: 1, backgroundColor: "rgba(15,23,42,0.55)", justifyContent: "center", alignItems: "center", paddingHorizontal: 32 }}>
-          <View style={{ backgroundColor: "#ffffff", borderRadius: 28, paddingVertical: 36, paddingHorizontal: 28, width: "100%", alignItems: "center", shadowColor: "#000", shadowOffset: { width: 0, height: 20 }, shadowOpacity: 0.12, shadowRadius: 40, elevation: 12 }}>
-            
-            {/* Green ring icon */}
-            <View style={{ width: 80, height: 80, borderRadius: 40, backgroundColor: "#f0fdf4", borderWidth: 2, borderColor: "#bbf7d0", alignItems: "center", justifyContent: "center", marginBottom: 20 }}>
-              <View style={{ width: 56, height: 56, borderRadius: 28, backgroundColor: "#dcfce7", alignItems: "center", justifyContent: "center" }}>
-                <Ionicons name="checkmark" size={32} color="#059669" />
-              </View>
-            </View>
-
-            <Text style={{ fontSize: 22, fontWeight: "800", color: "#0f172a", letterSpacing: -0.5, marginBottom: 10, textAlign: "center" }}>
-              Inquiry Sent!
-            </Text>
-            <Text style={{ fontSize: 14, color: "#64748b", textAlign: "center", lineHeight: 22, marginBottom: 28 }}>
-              Your request has been successfully sent to the supplier. They will contact you shortly.
-            </Text>
-
-            <TouchableOpacity
-              activeOpacity={0.85}
-              onPress={() => setShowSuccessModal(false)}
-              style={{ width: "100%", backgroundColor: "#0f172a", paddingVertical: 15, borderRadius: 16, alignItems: "center" }}
-            >
-              <Text style={{ color: "#ffffff", fontWeight: "700", fontSize: 15, letterSpacing: 0.2 }}>Got it, Thanks!</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </Modal>
+      {/* INQUIRY MODAL */}
+      <EnquiryModal
+        visible={isModalVisible}
+        onClose={() => setModalVisible(false)}
+        product={product}
+      />
 
     </View>
   );
