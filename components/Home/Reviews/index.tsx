@@ -1,13 +1,25 @@
 import { useIsFocused } from "@react-navigation/native";
 import { Image } from "expo-image";
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Dimensions,
-  FlatList,
   StyleSheet,
   Text,
   View,
 } from "react-native";
+// 1. Reanimated imports for UI-Thread optimization
+import Animated, {
+  runOnJS,
+  runOnUI,
+  scrollTo,
+  useAnimatedRef,
+  useAnimatedReaction,
+  useAnimatedScrollHandler,
+  useSharedValue,
+  withRepeat,
+  withTiming,
+  cancelAnimation,
+} from "react-native-reanimated";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 const CARD_WIDTH = Math.round(SCREEN_WIDTH * 0.88);
@@ -22,19 +34,16 @@ const client4 = require("../../../assets/images/Company_logo/client4logo.webp");
 const client5 = require("../../../assets/images/Company_logo/client5logo.webp");
 const client6 = require("../../../assets/images/Company_logo/client6logo.webp");
 
-// ── Interface definition ───────────────────────────────────────────────────
-// Added optional properties to control individual logo and text sizes
 export interface TestimonialData {
   id: string;
   logo: any;
   quote: string;
   company: string;
-  logoWidth?: number;       // Interface to increase/decrease individual logo width
-  logoHeight?: number;      // Interface to increase/decrease individual logo height
-  companyFontSize?: number; // Interface to increase individual company name text size
+  logoWidth?: number;       
+  logoHeight?: number;      
+  companyFontSize?: number; 
 }
 
-// ── Testimonial data ───────────────────────────────────────────────────────
 const testimonials: TestimonialData[] = [
   {
     id: "1",
@@ -92,49 +101,31 @@ const testimonials: TestimonialData[] = [
   },
 ];
 
-// ── Optimised card with React.memo to prevent unnecessary re-renders ───────
+// ── Optimised Static Card ──────────────────────────────────────────────────
 const TestimonialCard = React.memo(({ item }: { item: TestimonialData }) => (
   <View style={styles.cardContainer}>
-    {/* Company Logo */}
     <View style={styles.logoContainer}>
       <Image
         source={item.logo}
         style={[
           styles.defaultLogo,
-          // Apply custom individual overrides if they exist in the data
           item.logoWidth ? { width: item.logoWidth } : undefined,
           item.logoHeight ? { height: item.logoHeight } : undefined,
         ]}
         contentFit="contain"
-        transition={150}
+        transition={0} // Faster instant load
+        cachePolicy="memory-disk"
       />
     </View>
 
-    {/* Quote */}
-    <Text style={styles.quoteText}>
-      {`"${item.quote}"`}
-    </Text>
-
-    {/* Divider */}
+    <Text style={styles.quoteText}>{`"${item.quote}"`}</Text>
     <View style={styles.divider} />
-
-    {/* Company name */}
-    <Text
-      style={[
-        styles.companyName,
-        // Apply custom individual override for the company font size
-        item.companyFontSize ? { fontSize: item.companyFontSize } : undefined,
-      ]}
-    >
+    <Text style={[styles.companyName, item.companyFontSize ? { fontSize: item.companyFontSize } : undefined]}>
       {item.company}
     </Text>
   </View>
 ));
 
-// Stable keyExtractor outside component to prevent re-creation
-const keyExtractor = (item: TestimonialData) => item.id;
-
-// Stable getItemLayout for Android fast scroll calculations
 const getItemLayout = (_: any, index: number) => ({
   length: ITEM_SIZE,
   offset: ITEM_SIZE * index,
@@ -143,69 +134,117 @@ const getItemLayout = (_: any, index: number) => ({
 
 // ── Main Component ─────────────────────────────────────────────────────────
 export default function TestimonialCarousel() {
-  const [currentIndex, setCurrentIndex] = useState(0);
-  const flatListRef = useRef<FlatList>(null);
   const isFocused = useIsFocused();
-  const timeoutRef = useRef<any>(null);
+  const [activeDotIndex, setActiveDotIndex] = useState(0);
 
-  const startAutoPlay = useCallback(() => {
-    stopAutoPlay();
-    timeoutRef.current = setInterval(() => {
-      setCurrentIndex((prevIndex) => {
-        let nextIndex = prevIndex + 1;
-        if (nextIndex >= testimonials.length) {
-          nextIndex = 0;
-        }
-        flatListRef.current?.scrollToIndex({
-          index: nextIndex,
-          animated: true,
-        });
-        return nextIndex;
-      });
-    }, 4000);
-  }, []);
+  // 2. Data Replication for Seamless Infinite Loop
+  const replicatedData = useMemo(() => Array(15).fill(testimonials).flat(), []);
+  const baseMiddleIndex = useMemo(() => {
+    const middle = Math.floor(replicatedData.length / 2);
+    return middle - (middle % testimonials.length);
+  }, [replicatedData.length]);
 
-  const stopAutoPlay = useCallback(() => {
-    if (timeoutRef.current) {
-      clearInterval(timeoutRef.current);
-      timeoutRef.current = null;
+  // 3. Reanimated Core Hooks
+  const flatListRef = useAnimatedRef<Animated.FlatList<TestimonialData>>();
+  const scrollIndex = useSharedValue(baseMiddleIndex);
+  const isAutoPlaying = useSharedValue(false);
+  const autoplayPulse = useSharedValue(0);
+
+  // 4. Auto-play using useAnimatedReaction + withRepeat pattern (proven pattern)
+  useAnimatedReaction(
+    () => Math.floor(autoplayPulse.value),
+    (currentPulse, prevPulse) => {
+      if (currentPulse !== prevPulse && isAutoPlaying.value) {
+        scrollIndex.value = scrollIndex.value + 1;
+        scrollTo(flatListRef, scrollIndex.value * ITEM_SIZE, 0, true);
+        runOnJS(setActiveDotIndex)(scrollIndex.value % testimonials.length);
+      }
     }
-  }, []);
+  );
 
+  // Start autoplay timer on component focus
   useEffect(() => {
-    if (isFocused) {
-      startAutoPlay();
+    if (isFocused && replicatedData.length > 0) {
+      // Set initial center position immediately
+      const initTimer = setTimeout(() => {
+        flatListRef.current?.scrollToIndex({ index: baseMiddleIndex, animated: false });
+        scrollIndex.value = baseMiddleIndex;
+        setActiveDotIndex(0);
+
+        // Start UI Thread Autoplay with 4-second intervals
+        runOnUI(() => {
+          'worklet';
+          isAutoPlaying.value = true;
+          cancelAnimation(autoplayPulse);
+          autoplayPulse.value = withRepeat(
+            withTiming(1, { duration: 4000 }),
+            -1,
+            true
+          );
+        })();
+      }, 300);
+
+      return () => {
+        clearTimeout(initTimer);
+        runOnUI(() => {
+          'worklet';
+          isAutoPlaying.value = false;
+          cancelAnimation(autoplayPulse);
+        })();
+      };
     } else {
-      stopAutoPlay();
+      runOnUI(() => {
+        'worklet';
+        isAutoPlaying.value = false;
+        cancelAnimation(autoplayPulse);
+      })();
     }
-    return () => stopAutoPlay();
-  }, [isFocused, startAutoPlay, stopAutoPlay]);
+  }, [isFocused, baseMiddleIndex, scrollIndex, flatListRef, autoplayPulse, isAutoPlaying, replicatedData.length]);
 
-  const viewabilityConfig = useRef({ itemVisiblePercentThreshold: 60 }).current;
+  // 5. Scroll Handler completely on the UI Thread
+  const scrollHandler = useAnimatedScrollHandler({
+    onScrollBeginDrag: () => {
+      isAutoPlaying.value = false; // Pause on user interaction
+      cancelAnimation(autoplayPulse);
+    },
+    onMomentumScrollEnd: (event) => {
+      const scrollOffset = event.contentOffset.x;
+      let currentIndex = Math.round(scrollOffset / ITEM_SIZE);
 
-  const onViewableItemsChanged = useRef(({ viewableItems }: any) => {
-    if (viewableItems.length > 0 && viewableItems[0].index != null) {
-      setCurrentIndex(viewableItems[0].index);
-    }
-  }).current;
+      // Infinite Loop Snap-back correction
+      if (currentIndex < 3 || currentIndex > replicatedData.length - 3) {
+        const remainder = currentIndex % testimonials.length;
+        currentIndex = baseMiddleIndex + remainder;
+        scrollTo(flatListRef, currentIndex * ITEM_SIZE, 0, false);
+      }
 
-  // Stable render item
+      scrollIndex.value = currentIndex;
+      runOnJS(setActiveDotIndex)(currentIndex % testimonials.length);
+
+      // Resume Autoplay
+      isAutoPlaying.value = true;
+      cancelAnimation(autoplayPulse);
+      autoplayPulse.value = withRepeat(
+        withTiming(1, { duration: 4000 }),
+        -1,
+        true
+      );
+    },
+  });
+
   const renderItem = useCallback(({ item }: { item: TestimonialData }) => (
     <TestimonialCard item={item} />
   ), []);
 
   return (
     <View style={styles.mainContainer}>
-      {/* Header */}
-      <Text style={styles.headerText}>
-        What Our Clients Say
-      </Text>
+      <Text style={styles.headerText}>What Our Clients Say</Text>
 
-      {/* Cards */}
-      <FlatList
+      {/* 6. Animated.FlatList Replaces Standard FlatList */}
+      <Animated.FlatList
         ref={flatListRef}
-        data={testimonials}
-        keyExtractor={keyExtractor}
+        data={replicatedData}
+        keyExtractor={(_, index) => index.toString()}
         renderItem={renderItem}
         horizontal
         showsHorizontalScrollIndicator={false}
@@ -215,23 +254,25 @@ export default function TestimonialCarousel() {
         bounces={false}
         contentContainerStyle={{ paddingHorizontal: Math.round((SCREEN_WIDTH - CARD_WIDTH) / 2) }}
         getItemLayout={getItemLayout}
+        
+        // UI Thread Scroll Interactions
+        onScroll={scrollHandler}
+        scrollEventThrottle={16}
+        
+        // Optimizations
         initialNumToRender={2}
         maxToRenderPerBatch={2}
         windowSize={3}
-        viewabilityConfig={viewabilityConfig}
-        onViewableItemsChanged={onViewableItemsChanged}
-        onScrollBeginDrag={stopAutoPlay}
-        onScrollEndDrag={startAutoPlay}
+        removeClippedSubviews={true}
       />
 
-      {/* Pagination dots */}
       <View style={styles.paginationContainer}>
         {testimonials.map((_, index) => (
           <View
-            key={index}
+            key={`dot-${index}`}
             style={[
               styles.dot,
-              currentIndex === index ? styles.activeDot : styles.inactiveDot
+              activeDotIndex === index ? styles.activeDot : styles.inactiveDot
             ]}
           />
         ))}
@@ -241,7 +282,6 @@ export default function TestimonialCarousel() {
 }
 
 // ── Styles ─────────────────────────────────────────────────────────────────
-// Using StyleSheet improves scroll performance over inline styles
 const styles = StyleSheet.create({
   mainContainer: {
     paddingVertical: 28,
@@ -293,7 +333,7 @@ const styles = StyleSheet.create({
     marginBottom: 14,
   },
   companyName: {
-    fontSize: 16, // Default fallback size
+    fontSize: 16, 
     fontWeight: "700",
     color: "#0f172a",
     textAlign: "center",

@@ -3,20 +3,31 @@ import { productCache } from "@/utils/productCache";
 import { Ionicons } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import { useRouter } from "expo-router";
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
-  FlatList,
   Modal,
   NativeScrollEvent,
   NativeSyntheticEvent,
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
-  View
+  View,
 } from "react-native";
+// 1. Import Reanimated for UI-Thread animations
+import Animated, {
+  runOnUI,
+  scrollTo,
+  useAnimatedRef,
+  useSharedValue,
+  useAnimatedReaction,
+  withRepeat,
+  withTiming,
+  cancelAnimation,
+} from "react-native-reanimated";
 
 // ── Types ──────────────────────────────────────────────────────────────────
 type Media = {
@@ -94,8 +105,97 @@ function getInitialCachedProducts(): { products: Product[]; categoryId: string |
 const CARD_WIDTH = 160;
 const CARD_MARGIN = 16;
 const ITEM_SIZE = CARD_WIDTH + CARD_MARGIN;
-const TITLE_HEIGHT = 36; // Exact height for 2 lines of title text
-const PRICE_HEIGHT = 20; // Exact height for 1 line of price text
+const TITLE_HEIGHT = 36; 
+const PRICE_HEIGHT = 20; 
+
+// ── Memoized Static Card Component ──
+const ProductCard = React.memo(
+  ({
+    item,
+    onPress,
+    onQuotePress,
+  }: {
+    item: Product;
+    onPress: (item: Product) => void;
+    onQuotePress: (item: Product) => void;
+  }) => {
+    const primaryImage =
+      item.media && item.media.length > 0
+        ? (item.media.find((m) => m.isPrimary) || item.media[0]).url
+        : "https://images.unsplash.com/photo-1581092335397-9583eb92d232?q=80";
+
+    const company = item.supplier?.business?.companyName || item.supplier?.name || "Manufacturer";
+    const isPriceOnRequest = item.priceType === "on_request" || !item.price;
+
+    return (
+      <Pressable style={flatStyles.card} onPress={() => onPress(item)}>
+        {({ pressed }) => (
+          <View style={{ opacity: pressed ? 0.95 : 1, transform: [{ scale: pressed ? 0.98 : 1 }], flex: 1 }}>
+            
+            <View style={flatStyles.imageWrapper}>
+              <Image
+                source={{ uri: primaryImage }}
+                style={flatStyles.image}
+                contentFit="cover"
+                cachePolicy="memory-disk"
+                transition={0} // 2. Instant render, no GPU transition cost
+              />
+            </View>
+
+            <View style={flatStyles.content}>
+              <Text style={flatStyles.company} numberOfLines={1}>
+                {company}
+              </Text>
+
+              <View style={{ height: TITLE_HEIGHT, justifyContent: 'flex-start' }}>
+                <Text style={flatStyles.title} numberOfLines={2} ellipsizeMode="tail">
+                  {item.name}
+                </Text>
+              </View>
+
+              <View style={[flatStyles.priceContainer, { height: PRICE_HEIGHT }]}>
+                {isPriceOnRequest ? (
+                  <Text style={flatStyles.priceRequest}>Price on Request</Text>
+                ) : (
+                  <Text style={flatStyles.price} numberOfLines={1} adjustsFontSizeToFit>
+                    ₹{item.price.toLocaleString()}
+                    <Text style={flatStyles.unit}> / {item.unit || "pc"}</Text>
+                  </Text>
+                )}
+              </View>
+
+              <TouchableOpacity
+                activeOpacity={0.8}
+                onPress={() => onQuotePress(item)}
+                style={flatStyles.quoteBtn}
+              >
+                <Text style={flatStyles.quoteBtnText}>Request Quote</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        )}
+      </Pressable>
+    );
+  }
+);
+
+// ── Skeleton Loader Component ──
+const SkeletonProductCard = () => (
+  <View style={flatStyles.card}>
+    <View style={[flatStyles.imageWrapper, { backgroundColor: '#e2e8f0' }]} />
+    <View style={flatStyles.content}>
+      <View style={{ height: 12, backgroundColor: '#e2e8f0', borderRadius: 4, width: '80%', marginBottom: 4 }} />
+      <View style={{ height: TITLE_HEIGHT, justifyContent: 'flex-start', gap: 4 }}>
+        <View style={{ height: 14, backgroundColor: '#e2e8f0', borderRadius: 4, width: '100%' }} />
+        <View style={{ height: 14, backgroundColor: '#e2e8f0', borderRadius: 4, width: '60%' }} />
+      </View>
+      <View style={[flatStyles.priceContainer, { height: PRICE_HEIGHT }]}>
+        <View style={{ height: 16, backgroundColor: '#e2e8f0', borderRadius: 4, width: '50%' }} />
+      </View>
+      <View style={[flatStyles.quoteBtn, { backgroundColor: '#e2e8f0' }]} />
+    </View>
+  </View>
+);
 
 const NewOnes = () => {
   const router = useRouter();
@@ -110,10 +210,10 @@ const NewOnes = () => {
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
 
-  // Auto-scroll Refs
-  const flatListRef = useRef<FlatList>(null);
-  const activeIndexRef = useRef(0);
-  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  // 3. Reanimated Auto-scroll Refs
+  const flatListRef = useAnimatedRef<Animated.FlatList<Product>>();
+  const scrollIndex = useSharedValue(0);
+  const isAutoPlaying = useSharedValue(false);
 
   // Fetch Data
   useEffect(() => {
@@ -158,10 +258,10 @@ const NewOnes = () => {
     fetchCategoryProducts();
   }, []);
 
-  // ── INFINITE SCROLL LOGIC ──
+  // 4. Reduced Infinite Scroll Array Size (30 instead of 100)
   const replicatedData = useMemo(() => {
     if (!productsList || productsList.length === 0) return [];
-    return Array(100).fill(productsList).flat();
+    return Array(30).fill(productsList).flat();
   }, [productsList]);
 
   const baseMiddleIndex = useMemo(() => {
@@ -170,157 +270,128 @@ const NewOnes = () => {
     return middle - (middle % productsList.length);
   }, [replicatedData.length, productsList.length]);
 
-  const startAutoPlay = useCallback(() => {
-    stopAutoPlay();
-    if (replicatedData.length <= 1) return;
+  // 5. UI-Thread Autoplay Loop using withRepeat + useAnimatedReaction
+  const autoplayPulse = useSharedValue(0);
 
-    timerRef.current = setInterval(() => {
-      let nextIndex = activeIndexRef.current + 1;
+  const startAutoPlayUI = () => {
+    'worklet';
+    if (productsList.length <= 0) return;
+    autoplayPulse.value = withRepeat(
+      withTiming(autoplayPulse.value + 1, { duration: 3000 }),
+      -1
+    );
+  };
 
-      if (nextIndex >= replicatedData.length - 5) {
-        const remainder = nextIndex % productsList.length;
-        const safeMiddleIndex = baseMiddleIndex + remainder;
+  const stopAutoPlayUI = () => {
+    'worklet';
+    cancelAnimation(autoplayPulse);
+  };
 
-        flatListRef.current?.scrollToIndex({
-          index: safeMiddleIndex,
-          animated: false,
-        });
-        activeIndexRef.current = safeMiddleIndex;
-      } else {
-        activeIndexRef.current = nextIndex;
-        flatListRef.current?.scrollToIndex({
-          index: nextIndex,
-          animated: true,
-        });
+  // Listen to autoplay pulse and scroll
+  useAnimatedReaction(
+    () => Math.floor(autoplayPulse.value),
+    (currentPulse, prevPulse) => {
+      if (currentPulse !== prevPulse && prevPulse !== null && !isAutoPlaying.value) {
+        return; // Don't scroll if user is dragging
       }
-    }, 3000);
-  }, [baseMiddleIndex, replicatedData.length, productsList.length]);
-
-  const stopAutoPlay = useCallback(() => {
-    if (timerRef.current) clearInterval(timerRef.current);
-  }, []);
+      
+      if (currentPulse !== prevPulse && prevPulse !== null && isAutoPlaying.value) {
+        scrollIndex.value = scrollIndex.value + 1;
+        scrollTo(flatListRef, scrollIndex.value * ITEM_SIZE, 0, true);
+        
+        // Infinite loop: reset when reaching end
+        if (scrollIndex.value >= replicatedData.length - 2) {
+          const remainder = scrollIndex.value % productsList.length;
+          const safeIndex = baseMiddleIndex + remainder;
+          scrollIndex.value = safeIndex;
+          scrollTo(flatListRef, safeIndex * ITEM_SIZE, 0, false);
+        }
+      }
+    }
+  );
 
   useEffect(() => {
-    if (replicatedData.length > 0) {
-      activeIndexRef.current = baseMiddleIndex;
+    if (replicatedData.length > 0 && productsList.length > 0) {
+      scrollIndex.value = baseMiddleIndex;
       const initTimer = setTimeout(() => {
-        flatListRef.current?.scrollToIndex({
-          index: baseMiddleIndex,
-          animated: false,
-        });
-        startAutoPlay();
+        flatListRef.current?.scrollToIndex({ index: baseMiddleIndex, animated: false });
+        
+        runOnUI(() => {
+          'worklet';
+          isAutoPlaying.value = true;
+          startAutoPlayUI();
+        })();
       }, 500);
 
       return () => {
         clearTimeout(initTimer);
-        stopAutoPlay();
+        runOnUI(stopAutoPlayUI)();
+        isAutoPlaying.value = false;
       };
     }
-  }, [replicatedData, baseMiddleIndex, startAutoPlay, stopAutoPlay]);
+  }, [replicatedData, baseMiddleIndex, productsList.length]);
 
-  const handleMomentumScrollEnd = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
+  // ── Manual Scroll Handling ──
+  const handleScrollBegin = useCallback(() => {
+    runOnUI(() => {
+      'worklet';
+      isAutoPlaying.value = false;
+    })();
+  }, [isAutoPlaying]);
+
+  const handleMomentumScrollEnd = useCallback((event: NativeSyntheticEvent<NativeScrollEvent>) => {
     const scrollOffset = event.nativeEvent.contentOffset.x;
     let currentIndex = Math.round(scrollOffset / ITEM_SIZE);
 
     if (currentIndex < 5 || currentIndex > replicatedData.length - 5) {
       const remainder = currentIndex % productsList.length;
       currentIndex = baseMiddleIndex + remainder;
-
-      flatListRef.current?.scrollToIndex({
-        index: currentIndex,
-        animated: false,
-      });
+      flatListRef.current?.scrollToIndex({ index: currentIndex, animated: false });
     }
 
-    activeIndexRef.current = currentIndex;
-    startAutoPlay();
-  };
+    scrollIndex.value = currentIndex;
+    
+    runOnUI(() => {
+      'worklet';
+      isAutoPlaying.value = true;
+      startAutoPlayUI();
+    })();
+  }, [ITEM_SIZE, replicatedData.length, productsList.length, baseMiddleIndex]);
 
-  const handleScrollToIndexFailed = (info: { index: number }) => {
+  const handleScrollToIndexFailed = useCallback((info: { index: number }) => {
     setTimeout(() => {
       flatListRef.current?.scrollToIndex({ index: info.index, animated: true });
     }, 500);
-  };
+  }, [flatListRef]);
 
   // ── Actions ──
-  const handleCardPress = (item: Product) => {
+  const handleCardPress = useCallback((item: Product) => {
     productCache[item._id] = item;
     router.push({
       pathname: "/Products_Page/[slug]",
       params: { slug: item.slug, productId: item._id },
     });
-  };
+  }, [router]);
 
-  const handleOpenQuote = (item: Product) => {
+  const handleOpenQuote = useCallback((item: Product) => {
     setSelectedProduct(item);
     setIsModalVisible(true);
-  };
-
-  // ── Render Card (Rigid Design) ──
-  const renderProductCard = useCallback(({ item }: { item: Product }) => {
-    const primaryImage =
-      item.media && item.media.length > 0
-        ? (item.media.find((m) => m.isPrimary) || item.media[0]).url
-        : "https://images.unsplash.com/photo-1581092335397-9583eb92d232?q=80";
-
-    const company = item.supplier?.business?.companyName || item.supplier?.name || "Manufacturer";
-    const isPriceOnRequest = item.priceType === "on_request" || !item.price;
-
-    return (
-      <Pressable style={flatStyles.card} onPress={() => handleCardPress(item)}>
-        {({ pressed }) => (
-          <View style={{ opacity: pressed ? 0.95 : 1, transform: [{ scale: pressed ? 0.98 : 1 }], flex: 1 }}>
-            
-            {/* Rigid Image Wrapper */}
-            <View style={flatStyles.imageWrapper}>
-              <Image
-                source={{ uri: primaryImage }}
-                style={flatStyles.image}
-                contentFit="cover"
-                cachePolicy="memory-disk"
-                transition={200}
-              />
-            </View>
-
-            {/* Rigid Content Wrapper */}
-            <View style={flatStyles.content}>
-              <Text style={flatStyles.company} numberOfLines={1}>
-                {company}
-              </Text>
-
-              {/* Rigid Title Block */}
-              <View style={{ height: TITLE_HEIGHT, justifyContent: 'flex-start' }}>
-                <Text style={flatStyles.title} numberOfLines={2} ellipsizeMode="tail">
-                  {item.name}
-                </Text>
-              </View>
-
-              {/* Rigid Price Block */}
-              <View style={[flatStyles.priceContainer, { height: PRICE_HEIGHT }]}>
-                {isPriceOnRequest ? (
-                  <Text style={flatStyles.priceRequest}>Price on Request</Text>
-                ) : (
-                  <Text style={flatStyles.price} numberOfLines={1} adjustsFontSizeToFit>
-                    ₹{item.price.toLocaleString()}
-                    <Text style={flatStyles.unit}> / {item.unit || "pc"}</Text>
-                  </Text>
-                )}
-              </View>
-
-              {/* Action Button - Securely aligned at the bottom */}
-              <TouchableOpacity
-                activeOpacity={0.8}
-                onPress={() => handleOpenQuote(item)}
-                style={flatStyles.quoteBtn}
-              >
-                <Text style={flatStyles.quoteBtnText}>Request Quote</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        )}
-      </Pressable>
-    );
   }, []);
+
+  const renderProductCard = useCallback(({ item }: { item: Product }) => (
+    <ProductCard 
+      item={item} 
+      onPress={handleCardPress} 
+      onQuotePress={handleOpenQuote} 
+    />
+  ), [handleCardPress, handleOpenQuote]);
+
+  const keyExtractor = useCallback((_: any, index: number) => index.toString(), []);
+  const getItemLayout = useCallback((_: any, index: number) => ({
+    length: ITEM_SIZE,
+    offset: ITEM_SIZE * index,
+    index,
+  }), []);
 
   return (
     <View style={flatStyles.container}>
@@ -347,39 +418,44 @@ const NewOnes = () => {
 
       {/* List */}
       {isLoading ? (
-        <View style={flatStyles.loader}>
-          <ActivityIndicator size="small" color="#0E2347" />
-        </View>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          scrollEnabled={false}
+          contentContainerStyle={flatStyles.listContent}
+        >
+          {[...Array(4)].map((_, i) => (
+            <SkeletonProductCard key={`skeleton-${i}`} />
+          ))}
+        </ScrollView>
       ) : (
-        <FlatList
+        <Animated.FlatList
           ref={flatListRef}
           data={replicatedData}
           horizontal
           showsHorizontalScrollIndicator={false}
-          keyExtractor={(_, index) => index.toString()}
+          keyExtractor={keyExtractor}
           renderItem={renderProductCard}
           contentContainerStyle={flatStyles.listContent}
           
-          // Auto-Swipe specific props
           snapToInterval={ITEM_SIZE}
           snapToAlignment="start"
           decelerationRate="fast"
-          onScrollBeginDrag={stopAutoPlay}
+          
+          onScrollBeginDrag={handleScrollBegin}
           onMomentumScrollEnd={handleMomentumScrollEnd}
           onScrollToIndexFailed={handleScrollToIndexFailed}
-          getItemLayout={(_, index) => ({
-            length: ITEM_SIZE,
-            offset: ITEM_SIZE * index,
-            index,
-          })}
+          
+          getItemLayout={getItemLayout}
           initialNumToRender={4}
           maxToRenderPerBatch={4}
           windowSize={5}
+          updateCellsBatchingPeriod={40} // 6. Optimized React Native Batching
           removeClippedSubviews={true}
         />
       )}
 
-      {/* Inline Enquiry Modal (Standalone or hook up to EnquiryModal) */}
+      {/* Inline Enquiry Modal */}
       <Modal
         visible={isModalVisible}
         animationType="slide"
@@ -416,7 +492,6 @@ const NewOnes = () => {
             <TouchableOpacity 
               style={flatStyles.submitBtn} 
               onPress={() => {
-                // Submit Form Logic
                 setIsModalVisible(false);
               }}
             >
@@ -429,8 +504,9 @@ const NewOnes = () => {
   );
 };
 
-export default NewOnes;
+export default React.memo(NewOnes);
 
+// ── 7. Static Styles ──
 const flatStyles = StyleSheet.create({
   container: {
     marginTop: 32,
@@ -467,11 +543,6 @@ const flatStyles = StyleSheet.create({
     fontFamily: "PlusJakartaSans-Bold",
     color: "#0f172a",
   },
-  loader: {
-    height: 250,
-    justifyContent: "center",
-    alignItems: "center",
-  },
   listContent: {
     paddingLeft: 20,
     paddingRight: 10,
@@ -491,7 +562,7 @@ const flatStyles = StyleSheet.create({
     shadowRadius: 12,
     elevation: 3,
     flexDirection: 'column',
-    height: 256, // Exactly calculated rigid height
+    height: 256, 
   },
   imageWrapper: {
     height: 110,

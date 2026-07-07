@@ -2,37 +2,69 @@ import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import React from "react";
-import { Image, Platform, Pressable, View, Animated, TouchableOpacity, Text } from "react-native";
+import { Image, Platform, Pressable, View } from "react-native";
+import Animated, {
+  Extrapolation,
+  interpolate,
+  SharedValue,
+  useAnimatedStyle,
+  useSharedValue
+} from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+
 import Logo from "../../../assets/images/logoo-Photoroom.png";
 import SearchBar from "../SearchBar";
 
-const Navbar = ({ onMenuPress, scrollY }: { onMenuPress?: () => void; scrollY?: Animated.Value }) => {
+interface NavbarProps {
+  onMenuPress?: () => void;
+  // Optional scrollY with default - works in both Home (with scroll) and Dashboard (without)
+  scrollY?: SharedValue<number>; 
+}
+
+const Navbar = ({ onMenuPress, scrollY: externalScrollY }: NavbarProps) => {
+  // Use provided scrollY or create default static one
+  const scrollY = externalScrollY || useSharedValue<number>(0);
   const insets = useSafeAreaInsets();
   const router = useRouter();
 
-  // Interpolations for crossfading logo and search bar (activated after scrolling past homepage search bar)
-  const logoOpacity = scrollY ? scrollY.interpolate({
-    inputRange: [380, 440, 480],
-    outputRange: [1, 0.5, 0],
-    extrapolate: 'clamp'
-  }) : 1;
+  // 1. Logo Style (UI Thread only - Never triggers a React re-render)
+  const logoAnimatedStyle = useAnimatedStyle(() => {
+    const opacity = interpolate(
+      scrollY.value,
+      [380, 440, 480],
+      [1, 0.5, 0],
+      Extrapolation.CLAMP
+    );
+    return { opacity };
+  });
 
-  const searchOpacity = scrollY ? scrollY.interpolate({
-    inputRange: [380, 440, 480],
-    outputRange: [0, 0.5, 1],
-    extrapolate: 'clamp'
-  }) : 0;
-
-  const searchTranslateY = scrollY ? scrollY.interpolate({
-    inputRange: [380, 480],
-    outputRange: [-50, 0],
-    extrapolate: 'clamp'
-  }) : -50;
+  // 2. Search Bar Style (UI Thread only)
+  const searchAnimatedStyle = useAnimatedStyle(() => {
+    const opacity = interpolate(
+      scrollY.value,
+      [380, 440, 480],
+      [0, 0.5, 1],
+      Extrapolation.CLAMP
+    );
+    const translateY = interpolate(
+      scrollY.value,
+      [380, 480],
+      [-50, 0],
+      Extrapolation.CLAMP
+    );
+    
+    return {
+      opacity,
+      transform: [{ translateY }],
+    };
+  });
 
   return (
     <View 
-      style={{ paddingTop: Platform.OS === 'android' ? Math.max(insets.top, 10) : 0, zIndex: 50 }}
+      style={{ 
+        paddingTop: Platform.OS === 'android' ? Math.max(insets.top, 10) : 0, 
+        zIndex: 50 
+      }}
       className="flex flex-row items-center justify-between px-5 bg-white border-b border-gray-100 shadow-sm"
     >
       <StatusBar style="dark" />
@@ -47,29 +79,29 @@ const Navbar = ({ onMenuPress, scrollY }: { onMenuPress?: () => void; scrollY?: 
       </Pressable>
 
       {/* Center Container for Logo & Search Bar */}
-      <View className="flex-1 h-16 items-center justify-center relative mx-2">
-        {/* Animated Logo - pointerEvents="none" so it doesn't block search bar interaction when hidden */}
+      <View className="flex-1 h-16 items-center justify-center relative mx-2 overflow-hidden">
+        
+        {/* Animated Logo */}
         <Animated.View 
-          style={{ opacity: logoOpacity, position: 'absolute', width: '100%', height: '100%', alignItems: 'center', justifyContent: 'center' }}
+          style={[
+            { position: 'absolute', width: '100%', height: '100%', alignItems: 'center', justifyContent: 'center' },
+            logoAnimatedStyle // Applied safely on UI thread
+          ]}
           pointerEvents="none"
         >
           <Image
             source={Logo}
-            style={styles.logoImage}
+            style={{ width: "75%", height: "100%" }}
             resizeMode="contain"
           />
         </Animated.View>
 
         {/* Animated Sticky Search Bar */}
         <Animated.View 
-          style={{ 
-            opacity: searchOpacity, 
-            transform: [{ translateY: searchTranslateY }],
-            position: 'absolute', 
-            width: '100%',
-            height: 40,
-            justifyContent: 'center'
-          }}
+          style={[
+            { position: 'absolute', width: '100%', height: 40, justifyContent: 'center' },
+            searchAnimatedStyle // Applied safely on UI thread
+          ]}
           pointerEvents="box-none"
         >
           <View style={{ width: '100%', marginTop: -8 }}>
@@ -82,7 +114,7 @@ const Navbar = ({ onMenuPress, scrollY }: { onMenuPress?: () => void; scrollY?: 
       <Pressable 
         className="h-12 w-12 items-center justify-center rounded-full active:bg-black/5 active:scale-[0.92] transition-all z-10"
         hitSlop={12}
-        onPress={()=> router.push("/NotificationPanel")}
+        onPress={() => router.push("/NotificationPanel")}
       >
         <View className="relative items-center justify-center">
           <Ionicons name="notifications-outline" size={26} color="#0f172a" />
@@ -94,11 +126,5 @@ const Navbar = ({ onMenuPress, scrollY }: { onMenuPress?: () => void; scrollY?: 
   );
 };
 
-export default Navbar;
-
-const styles = {
-  logoImage: {
-    width: "75%" as const,
-    height: "100%" as const,
-  },
-};
+// Use React.memo so the Navbar NEVER re-renders if parent state changes (unless props change)
+export default React.memo(Navbar);

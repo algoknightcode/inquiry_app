@@ -1,7 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import { useRouter, useLocalSearchParams } from "expo-router";
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import {
   FlatList,
   Pressable,
@@ -20,9 +20,22 @@ type Industry = {
   imageUrl: string;
 };
 
-// --- Card Component using Reanimated ---
-const AnimatedIndustryCard = React.memo(({ item, index, location }: { item: Industry; index: number; location?: string }) => {
-  const router = useRouter();
+// --- 1. Custom React.memo Comparator & Memoized Card Component ---
+const AnimatedIndustryCard = React.memo(({ 
+  item, 
+  index, 
+  location, 
+  onPress 
+}: { 
+  item: Industry; 
+  index: number; 
+  location?: string;
+  onPress: (id: string, name: string) => void;
+}) => {
+  // Stable internal callback
+  const handlePress = useCallback(() => {
+    onPress(item._id, item.name);
+  }, [item._id, item.name, onPress]);
 
   return (
     <Animated.View
@@ -31,17 +44,15 @@ const AnimatedIndustryCard = React.memo(({ item, index, location }: { item: Indu
       <Pressable
         className={styles.card}
         android_ripple={{ color: "#f1f5f9" }}
-        onPress={() => router.push({
-          pathname: "/GrId_MainCategory",
-          params: { id: item._id, name: item.name, location }
-        })}
+        onPress={handlePress}
       >
         <View className={styles.imageWrapper}>
           <Image
             source={item.imageUrl ? { uri: item.imageUrl } : CategoryImage}
             style={styles.image}
             contentFit="cover"
-            transition={200}
+            transition={0} // 2. Zero transition to remove GPU fade overhead
+            cachePolicy="memory-disk"
           />
         </View>
 
@@ -56,10 +67,15 @@ const AnimatedIndustryCard = React.memo(({ item, index, location }: { item: Indu
       </Pressable>
     </Animated.View>
   );
-});
+}, (prev, next) => 
+  prev.item._id === next.item._id && 
+  prev.location === next.location && 
+  prev.index === next.index
+);
 
 // --- Main List Component ---
 const IndustriesList = () => {
+  const router = useRouter();
   const { location } = useLocalSearchParams<{ location?: string }>();
   const [industriesList, setIndustriesList] = useState<Industry[]>([]);
   const [loading, setLoading] = useState(true);
@@ -82,6 +98,35 @@ const IndustriesList = () => {
     fetchIndustries();
   }, []);
 
+  // --- 3. Memoize Navigation Handler ---
+  const handleCardPress = useCallback((id: string, name: string) => {
+    router.push({
+      pathname: "/GrId_MainCategory",
+      params: { id, name, location }
+    });
+  }, [router, location]);
+
+  // --- 4. Memoize renderItem ---
+  const renderItem = useCallback(({ item, index }: { item: Industry, index: number }) => (
+    <AnimatedIndustryCard 
+      item={item} 
+      index={index} 
+      location={location} 
+      onPress={handleCardPress}
+    />
+  ), [location, handleCardPress]);
+
+  // --- 5. O(1) Layout Calculation ---
+  // Card padding (24) + Image (56) = 80. Margin bottom (14). Total length = 94.
+  const ITEM_HEIGHT = 94; 
+  const getItemLayout = useCallback((_: any, index: number) => ({
+    length: ITEM_HEIGHT,
+    offset: ITEM_HEIGHT * index,
+    index,
+  }), []);
+
+  const keyExtractor = useCallback((item: Industry) => item._id, []);
+
   return (
     <View style={{ flex: 1, backgroundColor: "#fff", paddingTop: insets.top }}>
       <View className={styles.header}>
@@ -98,14 +143,16 @@ const IndustriesList = () => {
       ) : (
         <FlatList
           data={industriesList}
-          renderItem={({ item, index }) => <AnimatedIndustryCard item={item} index={index} location={location} />}
-          keyExtractor={(item) => item._id}
+          renderItem={renderItem}
+          keyExtractor={keyExtractor}
           showsVerticalScrollIndicator={false}
-          contentContainerStyle={{
-            paddingHorizontal: 20,
-            paddingTop: 8,
-            paddingBottom: 40,
-          }}
+          
+          // --- 6. Moved contentContainerStyle to stable reference ---
+          contentContainerStyle={styles.listContent}
+          
+          // --- 7. Aggressive FlatList Optimizations ---
+          getItemLayout={getItemLayout}
+          updateCellsBatchingPeriod={40}
           initialNumToRender={10}
           maxToRenderPerBatch={10}
           windowSize={7}
@@ -131,4 +178,10 @@ const styles = {
     borderRadius: 14,
   },
   title: "ml-4 mr-2 flex-1 text-[16px] leading-[22px] text-slate-800 font-jakarta-bold tracking-tight",
+  // Stable reference for contentContainerStyle
+  listContent: {
+    paddingHorizontal: 20,
+    paddingTop: 8,
+    paddingBottom: 40,
+  }
 };

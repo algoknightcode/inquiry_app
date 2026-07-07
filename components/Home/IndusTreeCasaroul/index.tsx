@@ -2,53 +2,43 @@ import { fetchWithCache } from "@/utils/apiCache";
 import { Ionicons } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import { useRouter } from "expo-router";
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Dimensions,
-  FlatList,
+  Platform,
   Pressable,
   StyleSheet,
   Text,
   View,
-  ViewToken,
 } from "react-native";
+import Animated, {
+  Extrapolation,
+  interpolate,
+  runOnUI,
+  scrollTo,
+  useAnimatedReaction,
+  useAnimatedRef,
+  useAnimatedScrollHandler,
+  useAnimatedStyle,
+  useSharedValue,
+  withRepeat,
+  withTiming,
+  cancelAnimation, // ⚡ ADDED: Proper way to stop native animations
+} from "react-native-reanimated";
 
 const { width: screenWidth } = Dimensions.get("window");
 
 // ------------------------------------------------------------------
-// 1. Types
+// Types
 // ------------------------------------------------------------------
-interface SubCategory {
-  _id: string;
-  name: string;
-  slug: string;
-  imageUrl?: string;
-}
-
-interface Category {
-  _id: string;
-  name: string;
-  slug: string;
-  imageUrl?: string;
-  subCategories?: SubCategory[];
-}
-
-interface Industry {
-  _id: string;
-  name: string;
-  slug: string;
-  imageUrl?: string;
-  categories?: Category[];
-}
-
-interface ApiResponse {
-  success: boolean;
-  data: Industry[];
-}
+interface SubCategory { _id: string; name: string; slug: string; imageUrl?: string; }
+interface Category { _id: string; name: string; slug: string; imageUrl?: string; subCategories?: SubCategory[]; }
+interface Industry { _id: string; name: string; slug: string; imageUrl?: string; categories?: Category[]; }
+interface ApiResponse { success: boolean; data: Industry[]; }
 
 // ------------------------------------------------------------------
-// 2. Extracted & Memoized Slide Component (Prevents Re-renders)
+// Memoized Slide Component
 // ------------------------------------------------------------------
 const IndustrySlide = React.memo(({ 
   item, 
@@ -67,9 +57,7 @@ const IndustrySlide = React.memo(({
   return (
     <View style={s.slide}>
       <Pressable onPress={() => onIndustryPress(item)}>
-        <Text style={s.industryName} numberOfLines={1}>
-          {item.name}
-        </Text>
+        <Text style={s.industryName} numberOfLines={1}>{item.name}</Text>
       </Pressable>
 
       <Pressable style={s.heroWrap} onPress={() => onIndustryPress(item)}>
@@ -77,7 +65,7 @@ const IndustrySlide = React.memo(({
           source={{ uri: item.imageUrl }}
           style={StyleSheet.absoluteFillObject}
           contentFit="cover"
-          transition={300}
+          transition={0} 
           cachePolicy="memory-disk"
         />
       </Pressable>
@@ -95,7 +83,7 @@ const IndustrySlide = React.memo(({
                   source={{ uri: cat.imageUrl }}
                   style={{ width: "100%", height: "100%" }}
                   contentFit="cover"
-                  transition={200}
+                  transition={0} 
                   cachePolicy="memory-disk"
                 />
               </View>
@@ -103,9 +91,7 @@ const IndustrySlide = React.memo(({
                 {cat.name}
               </Text>
             </View>
-
             <View style={s.divider} />
-
             <View style={s.subList}>
               {renderIndices.map((i) => {
                 const sub = cat.subCategories?.[i];
@@ -117,11 +103,7 @@ const IndustrySlide = React.memo(({
                     onPress={() => sub && onSubCategoryPress(sub)}
                   >
                     <View style={s.dot} />
-                    <Text
-                      style={sub ? s.subName : s.subEmpty}
-                      numberOfLines={1}
-                      ellipsizeMode="tail"
-                    >
+                    <Text style={sub ? s.subName : s.subEmpty} numberOfLines={1} ellipsizeMode="tail">
                       {sub?.name ?? ""}
                     </Text>
                   </Pressable>
@@ -131,40 +113,47 @@ const IndustrySlide = React.memo(({
           </Pressable>
         ))}
       </View>
-
-      <Pressable 
-        style={({ pressed }) => [s.cta, pressed && s.ctaPressed]}
-        onPress={() => onIndustryPress(item)}
-      >
-        <Text style={s.ctaText}>View All Categories</Text>
-        <Ionicons name="arrow-forward" size={16} color="#fff" />
-      </Pressable>
     </View>
   );
 });
 
 // ------------------------------------------------------------------
-// 3. Main Component
+// UI Thread Pagination Dot Component
+// ------------------------------------------------------------------
+const PaginationDot = React.memo(({ index, scrollX }: { index: number, scrollX: Animated.SharedValue<number> }) => {
+  const animatedStyle = useAnimatedStyle(() => {
+    const inputRange = [(index - 1) * screenWidth, index * screenWidth, (index + 1) * screenWidth];
+    const dotWidth = interpolate(scrollX.value, inputRange, [6, 12, 6], Extrapolation.CLAMP);
+    return { width: dotWidth };
+  });
+
+  return <Animated.View style={[s.dotIndicator, animatedStyle]} />;
+});
+
+// ------------------------------------------------------------------
+// Main Component
 // ------------------------------------------------------------------
 export default function IndustryTreeCarousel() {
   const router = useRouter();
   const [data, setData] = useState<Industry[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [activeIndex, setActiveIndex] = useState(0);
   
-  const flatRef = useRef<FlatList<Industry>>(null);
-  const activeIndexRef = useRef(0);
-  const timerRef = useRef<NodeJS.Timeout | null>(null);
+  const flatRef = useAnimatedRef<Animated.FlatList<Industry>>();
+  const scrollX = useSharedValue(0);
+  const currentIndex = useSharedValue(0);
+  const autoplayPulse = useSharedValue(0);
+  const isDragging = useSharedValue(false);
+  const dataLength = useSharedValue(0);
 
   useEffect(() => {
     (async () => {
       try {
-        const json: ApiResponse = await fetchWithCache(
-          "https://backend.inquirybazaar.com/api/industries/tree"
-        );
+        const json: ApiResponse = await fetchWithCache("https://backend.inquirybazaar.com/api/industries/tree");
         if (json.success && json.data) {
-          setData(json.data.filter((i) => (i.categories?.length ?? 0) >= 4));
+          const filtered = json.data.filter((i) => (i.categories?.length ?? 0) >= 4);
+          setData(filtered);
+          dataLength.value = filtered.length; 
         } else {
           throw new Error("Invalid response");
         }
@@ -176,65 +165,66 @@ export default function IndustryTreeCarousel() {
     })();
   }, []);
 
-  // --- Auto-Swipe Engine ---
-  const startAutoPlay = useCallback(() => {
-    if (timerRef.current) clearInterval(timerRef.current);
-    if (data.length <= 1) return;
+  // ⚡ FIX 1: Defined Worklet safely
+  const startAutoPlayUI = () => {
+    'worklet';
+    if (dataLength.value <= 1) return;
+    autoplayPulse.value = withRepeat(
+      withTiming(autoplayPulse.value + 1, { duration: 4000 }),
+      -1,
+      false
+    );
+  };
 
-    timerRef.current = setInterval(() => {
-      let nextIndex = activeIndexRef.current + 1;
-      
-      // Loop back to the first slide when reaching the end
-      if (nextIndex >= data.length) {
-        nextIndex = 0; 
+  // ⚡ FIX 2: Check current vs previous to prevent reaction spam/crashes
+  useAnimatedReaction(
+    () => Math.floor(autoplayPulse.value),
+    (current, previous) => {
+      if (current !== previous && previous !== null) {
+        if (!isDragging.value && dataLength.value > 0) {
+          currentIndex.value = (currentIndex.value + 1) % dataLength.value;
+          scrollTo(flatRef, currentIndex.value * screenWidth, 0, true);
+        }
       }
-
-      flatRef.current?.scrollToIndex({
-        index: nextIndex,
-        animated: true,
-      });
-    }, 4000); // 4 seconds per slide (adjust as needed)
-  }, [data.length]);
-
-  const stopAutoPlay = useCallback(() => {
-    if (timerRef.current) {
-      clearInterval(timerRef.current);
-      timerRef.current = null;
     }
-  }, []);
+  );
 
-  // Initialize Auto-play when data loads
+  // ⚡ FIX 3: Removed startAutoPlayUI from dependency array to stop the infinite loop memory leak
   useEffect(() => {
-    if (data.length > 0) {
-      startAutoPlay();
+    if (data.length > 1) {
+      runOnUI(startAutoPlayUI)();
     }
-    return () => stopAutoPlay();
-  }, [data, startAutoPlay, stopAutoPlay]);
+  }, [data]); 
 
-  // --- Memoized Navigation Callbacks ---
+  // --- Fully Bridgeless Scroll Handler ---
+  const scrollHandler = useAnimatedScrollHandler({
+    onScroll: (event) => {
+      scrollX.value = event.contentOffset.x;
+    },
+    onBeginDrag: () => {
+      isDragging.value = true;
+      // ⚡ FIX 4: Safely cancel native animation
+      cancelAnimation(autoplayPulse);
+    },
+    onMomentumEnd: (event) => {
+      isDragging.value = false;
+      currentIndex.value = Math.round(event.contentOffset.x / screenWidth);
+      
+      // ⚡ FIX 5: Directly call the worklet. DO NOT use runOnUI here because we are ALREADY on the UI thread!
+      startAutoPlayUI(); 
+    }
+  });
+
   const handleIndustryPress = useCallback((item: Industry) => {
-    router.push({
-      pathname: "/GrId_MainCategory",
-      params: { id: item._id, name: item.name }
-    });
+    router.push({ pathname: "/GrId_MainCategory", params: { id: item._id, name: item.name }});
   }, [router]);
 
   const handleCategoryPress = useCallback((cat: Category, industryId: string) => {
-    router.push({
-      pathname: "/SubCategory",
-      params: { categoryId: cat._id, categoryName: cat.name, industryId }
-    });
+    router.push({ pathname: "/SubCategory", params: { categoryId: cat._id, categoryName: cat.name, industryId }});
   }, [router]);
 
   const handleSubCategoryPress = useCallback((sub: SubCategory) => {
-    router.push({
-      pathname: "/Products_Page",
-      params: {
-        subCategoryId: sub._id,
-        subCategoryName: sub.name,
-        subCategorySlug: sub.slug,
-      }
-    });
+    router.push({ pathname: "/Products_Page", params: { subCategoryId: sub._id, subCategoryName: sub.name, subCategorySlug: sub.slug }});
   }, [router]);
 
   const renderItem = useCallback(({ item }: { item: Industry }) => (
@@ -246,30 +236,11 @@ export default function IndustryTreeCarousel() {
     />
   ), [handleIndustryPress, handleCategoryPress, handleSubCategoryPress]);
 
-  // --- Viewability Tracking for Dots ---
-  const onViewableItemsChanged = useRef(({ viewableItems }: { viewableItems: ViewToken[] }) => {
-    if (viewableItems.length > 0) {
-      const newIndex = viewableItems[0].index ?? 0;
-      setActiveIndex(newIndex);
-      activeIndexRef.current = newIndex; // Sync ref for the auto-scroll timer
-    }
-  }).current;
-
-  const viewabilityConfig = useRef({ itemVisiblePercentThreshold: 50 }).current;
-
-  // --- FlatList Layout Optimization ---
   const getItemLayout = useCallback((_: any, index: number) => ({
     length: screenWidth,
     offset: screenWidth * index,
     index,
   }), []);
-
-  // Catch errors if auto-scroll fires before a layout is mounted
-  const handleScrollToIndexFailed = useCallback((info: { index: number }) => {
-    setTimeout(() => {
-      flatRef.current?.scrollToIndex({ index: info.index, animated: true });
-    }, 500);
-  }, []);
 
   if (loading) {
     return (
@@ -292,43 +263,32 @@ export default function IndustryTreeCarousel() {
     <View style={s.root}>
       {data.length > 0 ? (
         <>
-          <FlatList
+          <Animated.FlatList
             ref={flatRef}
             data={data}
             keyExtractor={(item) => item._id}
             renderItem={renderItem}
             horizontal
             pagingEnabled
+            scrollsToTop={false}
             showsHorizontalScrollIndicator={false}
-            nestedScrollEnabled
             
-            // Auto-swipe Handlers (Pause on touch, resume on release)
-            onScrollBeginDrag={stopAutoPlay}
-            onMomentumScrollEnd={startAutoPlay}
-            onScrollToIndexFailed={handleScrollToIndexFailed}
+            // ⚡ Zero-Bridge Native Event Handler
+            onScroll={scrollHandler}
+            scrollEventThrottle={32}
             
-            // Layout & Memory Optimizations
+            // Aggressive Optimizations for Horizontal Carousel
             getItemLayout={getItemLayout}
             initialNumToRender={1}
-            maxToRenderPerBatch={2}
-            windowSize={3}
-            removeClippedSubviews={true}
-            
-            // Viewability
-            onViewableItemsChanged={onViewableItemsChanged}
-            viewabilityConfig={viewabilityConfig}
+            maxToRenderPerBatch={1}
+            windowSize={2}
+            updateCellsBatchingPeriod={50}
+            removeClippedSubviews={Platform.OS === 'android'}
           />
           
-          {/* Dots Indicator */}
           <View style={s.dotsRow}>
             {data.map((_, i) => (
-              <View
-                key={i}
-                style={[
-                  s.dotIndicator,
-                  activeIndex === i && s.dotActive,
-                ]}
-              />
+              <PaginationDot key={i} index={i} scrollX={scrollX} />
             ))}
           </View>
         </>
@@ -342,180 +302,33 @@ export default function IndustryTreeCarousel() {
 }
 
 // ------------------------------------------------------------------
-// 4. Styles — light theme
+// Styles
 // ------------------------------------------------------------------
 const WHITE  = "#ffffff";
 const BG     = "#f8fafc";
 const BORDER = "#e2e8f0";
 const NAVY   = "#0f172a";
-const BLUE   = "#1d4ed8";
 const BLUE_L = "#3b82f6";
 const ACCENT = "#1d4ed8";
 
 const s = StyleSheet.create({
   root: { backgroundColor: BG },
-
-  stateBox: {
-    height: 560,
-    backgroundColor: BG,
-    justifyContent: "center",
-    alignItems: "center",
-    gap: 12,
-  },
-  stateText: {
-    color: "#64748b",
-    fontSize: 14,
-  },
-
-  slide: {
-    width: screenWidth,
-    backgroundColor: WHITE,
-    paddingHorizontal: 16,
-    paddingTop: 20,
-  },
-
-  industryName: {
-    color: NAVY,
-    fontSize: 26,
-    fontFamily: "PlusJakartaSans-ExtraBold",
-    letterSpacing: -0.8,
-    marginBottom: 14,
-  },
-
-  heroWrap: {
-    width: "100%",
-    height: 150,
-    borderRadius: 18,
-    overflow: "hidden",
-    marginBottom: 16,
-  },
-
-  grid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    justifyContent: "space-between",
-    rowGap: 10,
-    marginBottom: 8,
-  },
-
-  catCard: {
-    width: "49%",
-    backgroundColor: WHITE,
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: BORDER,
-    padding: 11,
-    shadowColor: "#000",
-    shadowOpacity: 0.04,
-    shadowRadius: 6,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 1,
-  },
-
-  catHeader: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    gap: 9,
-    minHeight: 48,
-  },
-
-  catThumb: {
-    width: 50,
-    height: 50,
-    borderRadius: 10,
-    overflow: "hidden",
-    backgroundColor: BG,
-    flexShrink: 0,
-    borderWidth: 1,
-    borderColor: BORDER,
-  },
-
-  catName: {
-    flex: 1,
-    color: "#1e293b",
-    fontSize: 14,
-    fontFamily: "PlusJakartaSans-Bold",
-    lineHeight: 16,
-    letterSpacing: -0.2,
-    minHeight: 32,
-  },
-
-  divider: {
-    height: 1,
-    backgroundColor: BORDER,
-    marginVertical: 8,
-  },
-
+  stateBox: { height: 560, backgroundColor: BG, justifyContent: "center", alignItems: "center", gap: 12 },
+  stateText: { color: "#64748b", fontSize: 14 },
+  slide: { width: screenWidth, backgroundColor: WHITE, paddingHorizontal: 16, paddingTop: 20 },
+  industryName: { color: NAVY, fontSize: 26, fontFamily: "PlusJakartaSans-ExtraBold", letterSpacing: -0.8, marginBottom: 14 },
+  heroWrap: { width: "100%", height: 150, borderRadius: 18, overflow: "hidden", marginBottom: 16 },
+  grid: { flexDirection: "row", flexWrap: "wrap", justifyContent: "space-between", rowGap: 10, marginBottom: 8 },
+  catCard: { width: "49%", backgroundColor: WHITE, borderRadius: 14, borderWidth: 1, borderColor: BORDER, padding: 11, shadowColor: "#000", shadowOpacity: 0.04, shadowRadius: 6, shadowOffset: { width: 0, height: 2 }, elevation: 1 },
+  catHeader: { flexDirection: "row", alignItems: "flex-start", gap: 9, minHeight: 48 },
+  catThumb: { width: 50, height: 50, borderRadius: 10, overflow: "hidden", backgroundColor: BG, flexShrink: 0, borderWidth: 1, borderColor: BORDER },
+  catName: { flex: 1, color: "#1e293b", fontSize: 14, fontFamily: "PlusJakartaSans-Bold", lineHeight: 16, letterSpacing: -0.2, minHeight: 32 },
+  divider: { height: 1, backgroundColor: BORDER, marginVertical: 8 },
   subList: { gap: 5 },
-
-  subRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    height: 17,
-    gap: 6,
-  },
-
-  dot: {
-    width: 5,
-    height: 5,
-    borderRadius: 3,
-    backgroundColor: BLUE_L,
-    flexShrink: 0,
-  },
-
-  subName: {
-    flex: 1,
-    color: ACCENT,
-    fontSize: 13,
-    fontFamily: "PlusJakartaSans-Medium",
-    letterSpacing: -0.1,
-  },
-
-  subEmpty: {
-    flex: 1,
-    fontSize: 11,
-    color: "transparent",
-  },
-
-  cta: {
-    backgroundColor: BLUE,
-    borderRadius: 50,
-    paddingVertical: 14,
-    flexDirection: "row",
-    justifyContent: "center",
-    alignItems: "center",
-    gap: 8,
-  },
-  ctaPressed: {
-    opacity: 0.85,
-    transform: [{ scale: 0.98 }],
-  },
-  ctaText: {
-    color: WHITE,
-    fontFamily: "PlusJakartaSans-Bold",
-    fontSize: 15,
-    letterSpacing: -0.3,
-  },
-
-  dotsRow: {
-    flexDirection: "row",
-    justifyContent: "center",
-    alignItems: "center",
-    gap: 6,
-    paddingTop: 0,
-    paddingBottom: 0,
-    marginTop: -16,
-    backgroundColor: WHITE,
-  },
-  dotIndicator: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: "#cbd5e1",
-  },
-  dotActive: {
-    width: 20,
-    backgroundColor: BLUE,
-    borderRadius: 3,
-  },
+  subRow: { flexDirection: "row", alignItems: "center", height: 17, gap: 6 },
+  dot: { width: 5, height: 5, borderRadius: 3, backgroundColor: BLUE_L, flexShrink: 0 },
+  subName: { flex: 1, color: ACCENT, fontSize: 13, fontFamily: "PlusJakartaSans-Medium", letterSpacing: -0.1 },
+  subEmpty: { flex: 1, fontSize: 11, color: "transparent" },
+  dotsRow: { flexDirection: "row", justifyContent: "center", alignItems: "center", gap: 6, paddingTop: 12, paddingBottom: 12, backgroundColor: WHITE },
+  dotIndicator: { height: 6, borderRadius: 3, backgroundColor: "#cbd5e1" },
 });

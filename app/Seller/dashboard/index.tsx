@@ -2,7 +2,7 @@ import Navbar from "@/components/Home/Navbar";
 import Sidebar from "@/components/ui/Sidebar";
 import { globalSellerId } from "@/utils/roleCache";
 import { Ionicons } from "@expo/vector-icons";
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
   RefreshControl,
@@ -26,7 +26,7 @@ const Dashboard = () => {
   const [categoriesList, setCategoriesList] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  const fetchDashboardData = async (showLoader = false) => {
+  const fetchDashboardData = useCallback(async (showLoader = false) => {
     if (showLoader) setIsLoading(true);
     try {
       const supplierId = globalSellerId || await AsyncStorage.getItem("supplierId");
@@ -76,17 +76,17 @@ const Dashboard = () => {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     fetchDashboardData(true);
-  }, []);
+  }, [fetchDashboardData]);
 
-  const onRefresh = React.useCallback(async () => {
+  const onRefresh = useCallback(async () => {
     setRefreshing(true);
     await fetchDashboardData(false);
     setRefreshing(false);
-  }, []);
+  }, [fetchDashboardData]);
 
   return (
     <View style={s.flexContainer}>

@@ -22,7 +22,9 @@ import WeConnectBuyerSeller from '@/components/Home/WeConnect_BuyerSeller';
 import Sidebar from '@/components/ui/Sidebar';
 import { userRole } from '@/utils/roleCache';
 import React, { useCallback, useMemo, useRef, useState } from 'react';
-import { Animated, FlatList, Platform, SafeAreaView, StyleSheet } from 'react-native';
+import { FlatList, Platform, SafeAreaView, StyleSheet } from 'react-native';
+// Added Reanimated imports
+import Animated, { useAnimatedScrollHandler, useSharedValue } from 'react-native-reanimated';
 
 // Memoize all home components to prevent unnecessary re-renders during scrolls
 const MemoizedBanner2 = React.memo(Banner2);
@@ -50,7 +52,9 @@ export default function HomeScreen() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [renderBelowFold, setRenderBelowFold] = useState(false);
   const flatListRef = useRef<FlatList>(null);
-  const scrollY = useRef(new Animated.Value(0)).current;
+  
+  // 1. Replaced Animated.Value with Reanimated's useSharedValue
+  const scrollY = useSharedValue(0);
 
   React.useEffect(() => {
     const timer = setTimeout(() => {
@@ -155,8 +159,16 @@ export default function HomeScreen() {
 
   const keyExtractor = useCallback((item: string) => item, []);
 
+  // 2. Map standard scroll events directly to the UI thread using Reanimated
+  const scrollHandler = useAnimatedScrollHandler({
+    onScroll: (event) => {
+      scrollY.value = event.contentOffset.y;
+    },
+  });
+
   return (
     <SafeAreaView style={styles.container}>
+      {/* 3. Pass the Reanimated SharedValue safely to the Navbar */}
       <Navbar onMenuPress={() => setIsSidebarOpen(true)} scrollY={scrollY} />
 
       <Animated.FlatList
@@ -164,17 +176,15 @@ export default function HomeScreen() {
         data={data}
         keyExtractor={keyExtractor}
         renderItem={renderItem}
-        onScroll={Animated.event(
-          [{ nativeEvent: { contentOffset: { y: scrollY } } }],
-          { useNativeDriver: true }
-        )}
-        scrollEventThrottle={16}
+        // 4. Attach the Reanimated scroll handler instead of standard Animated.event
+        onScroll={scrollHandler}
+        scrollEventThrottle={16} // Still needed so the native side streams the event at 60fps
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="always"
-        removeClippedSubviews={false} // Disable clipping to prevent components from disappearing/flashing when scrolling
-        windowSize={21} // Keep more items rendered in memory to ensure smooth scrolling
-        maxToRenderPerBatch={10} // Render more items per batch
-        initialNumToRender={8} // Render more items initially to cover the screen area
+        removeClippedSubviews={false}
+        windowSize={21}
+        maxToRenderPerBatch={10}
+        initialNumToRender={8}
         updateCellsBatchingPeriod={50}
         overScrollMode="never"
         decelerationRate={Platform.OS === 'android' ? 'normal' : 'normal'}

@@ -42,35 +42,25 @@ const fetchIndustriesData = async () => {
   return [];
 };
 
-// 1. Interactive Pill (Mounted only once per item)
+// 1. Single Interactive Pill Component (Used for both sets to fix UX bug)
 const PillItem = React.memo(
   ({ industry, combinedPillStyle, combinedTextStyle, onPress }: {
     industry: Industry;
     combinedPillStyle: any;
     combinedTextStyle: any;
     onPress: (ind: Industry) => void;
-  }) => (
-    <Pressable onPress={() => onPress(industry)} style={combinedPillStyle}>
-      <Text style={combinedTextStyle}>{industry.name}</Text>
-    </Pressable>
-  ),
-  (prev, next) =>
-    prev.industry._id === next.industry._id &&
-    prev.combinedPillStyle === next.combinedPillStyle &&
-    prev.combinedTextStyle === next.combinedTextStyle
-);
+  }) => {
+    // Stable inline callback
+    const handlePress = useCallback(() => {
+      onPress(industry);
+    }, [industry, onPress]);
 
-// 2. Static Pill (Cuts down mounted Pressables by 50% for the duplicate set)
-const StaticPillItem = React.memo(
-  ({ industry, combinedPillStyle, combinedTextStyle }: {
-    industry: Industry;
-    combinedPillStyle: any;
-    combinedTextStyle: any;
-  }) => (
-    <View style={combinedPillStyle}>
-      <Text style={combinedTextStyle}>{industry.name}</Text>
-    </View>
-  ),
+    return (
+      <Pressable onPress={handlePress} style={combinedPillStyle}>
+        <Text style={combinedTextStyle}>{industry.name}</Text>
+      </Pressable>
+    );
+  },
   (prev, next) =>
     prev.industry._id === next.industry._id &&
     prev.combinedPillStyle === next.combinedPillStyle &&
@@ -103,7 +93,7 @@ const CategoryMarquee = () => {
     { fontSize: dims.fontSize }
   ]), [dims.fontSize]);
 
-  // --- UI THREAD ENGINE (⭐⭐⭐⭐⭐ IMPACT) ---
+  // --- UI THREAD ENGINE ---
   const translateX = useSharedValue(0);
   const startX = useSharedValue(0);
   const isDragging = useSharedValue(false);
@@ -122,7 +112,6 @@ const CategoryMarquee = () => {
     const w = sharedContentWidth.value;
     if (w <= 0) return;
 
-    // Normalize current position to cleanly handle manual right/left swipes
     let currentPos = translateX.value % w;
     if (currentPos > 0) currentPos -= w;
     
@@ -131,27 +120,24 @@ const CategoryMarquee = () => {
     const distanceLeft = w + currentPos; 
     const duration = distanceLeft * MARQUEE_SPEED_MS_PER_PIXEL;
 
-    // Phase 1: Travel the remaining distance smoothly to the loop boundary
     translateX.value = withTiming(-w, {
       duration: Math.max(duration, 16),
       easing: Easing.linear,
     }, (finished) => {
       if (finished && !isDragging.value) {
-        // Phase 2: Instantly reset to 0 and loop forever completely natively
         translateX.value = 0;
         translateX.value = withRepeat(
           withTiming(-w, {
             duration: w * MARQUEE_SPEED_MS_PER_PIXEL,
             easing: Easing.linear,
           }),
-          -1, // -1 means infinite repeat
+          -1, 
           false
         );
       }
     });
   };
 
-  // Triggers the animation exactly once when layout is measured
   useAnimatedReaction(
     () => sharedContentWidth.value,
     (width, prevWidth) => {
@@ -161,17 +147,21 @@ const CategoryMarquee = () => {
     }
   );
 
+  // 2. Optimized Gesture: Explicit worklets, empty dependency array
   const panGesture = useMemo(() => Gesture.Pan()
     .activeOffsetX([-10, 10])
     .onBegin(() => {
+      'worklet';
       cancelAnimation(translateX);
       isDragging.value = true;
       startX.value = translateX.value;
     })
     .onChange((event) => {
+      'worklet';
       translateX.value = startX.value + event.translationX;
     })
     .onFinalize((event) => {
+      'worklet';
       if (Math.abs(event.velocityX) > 150) {
         translateX.value = withDecay({
           velocity: event.velocityX,
@@ -179,14 +169,14 @@ const CategoryMarquee = () => {
         }, (finished) => {
           if (finished) {
             isDragging.value = false;
-            startMarquee(); // Resume infinite loop after physics decay stops
+            startMarquee(); 
           }
         });
       } else {
         isDragging.value = false;
         startMarquee();
       }
-    }), [translateX, startX, isDragging, sharedContentWidth]); 
+    }), []); // Empty array guarantees it is never re-created
 
   const animatedStyle = useAnimatedStyle(() => {
     const w = sharedContentWidth.value;
@@ -222,26 +212,16 @@ const CategoryMarquee = () => {
 
   const safeIndustries = Array.isArray(industries) ? industries : [];
 
-  // Set 1: Interactive
-  const set1 = useMemo(() => safeIndustries.map((ind) => (
+  // 3. Both Sets Interactive (Fixes UX Bug)
+  const renderPills = useMemo(() => safeIndustries.map((ind, index) => (
     <PillItem
-      key={`s1-${ind._id}`}
+      key={`pill-${ind._id}-${index}`}
       industry={ind}
       combinedPillStyle={combinedPillStyle}
       combinedTextStyle={combinedTextStyle}
       onPress={handlePress}
     />
   )), [safeIndustries, combinedPillStyle, combinedTextStyle, handlePress]);
-
-  // Set 2: Non-Interactive (Removes dozens of Pressables from memory)
-  const set2 = useMemo(() => safeIndustries.map((ind) => (
-    <StaticPillItem
-      key={`s2-${ind._id}`}
-      industry={ind}
-      combinedPillStyle={combinedPillStyle}
-      combinedTextStyle={combinedTextStyle}
-    />
-  )), [safeIndustries, combinedPillStyle, combinedTextStyle]);
 
   if (loading) return renderLoading;
   if (safeIndustries.length === 0) return null;
@@ -251,14 +231,13 @@ const CategoryMarquee = () => {
       <View style={{ height: dims.marqueeHeight }} className="bg-white border-y border-slate-100/80 overflow-hidden flex-row items-center relative">
         <Animated.View 
           style={[mqs.animatedWrapper, animatedStyle]}
-          renderToHardwareTextureAndroid={true}
-          needsOffscreenAlphaCompositing={true}
+          // Removed hardware properties as they cause Android alpha compositing glitches on moving targets
         >
           <View onLayout={handleLayout} className="flex-row items-center pl-3">
-            {set1}
+            {renderPills}
           </View>
           <View className="flex-row items-center pl-3">
-            {set2}
+            {renderPills}
           </View>
         </Animated.View>
       </View>

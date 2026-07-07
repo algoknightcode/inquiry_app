@@ -1,6 +1,6 @@
 import { FontAwesome, Ionicons } from "@expo/vector-icons";
 import { useVideoPlayer, VideoView } from "expo-video";
-import React, { useState } from "react";
+import React, { useCallback, useState } from "react";
 import { Dimensions, Pressable, Text, View } from "react-native";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
@@ -9,38 +9,50 @@ const CARD_HEIGHT = CARD_WIDTH * 0.65; // Increased height aspect ratio
 
 const videoSource = require("../../../assets/Video/3D_graphic_animation_InquiryBazaar_202606191118 (1).mp4");
 
-export default function VideoSection() {
+const VideoSection = () => {
   const [isMuted, setIsMuted] = useState(true);
-  const [isPlaying, setIsPlaying] = useState(true);
+  const [isPlaying, setIsPlaying] = useState(false);
 
-  // Initialize expo-video player
-  const player = useVideoPlayer(videoSource);
+  // Setup video player with loop enabled
+  const player = useVideoPlayer(videoSource, (setupPlayer) => {
+    setupPlayer.loop = true;
+    setupPlayer.muted = true;
+  });
 
-  React.useEffect(() => {
-    player.loop = true;
-    player.muted = true;
-    player.play();
-  }, [player]);
-
-  const togglePlay = () => {
+  // Manual play/pause control
+  const togglePlay = useCallback(() => {
     if (isPlaying) {
-      player.pause();
+      try {
+        if (player) player.pause();
+      } catch (e) {
+        console.warn('Error pausing video:', e);
+      }
       setIsPlaying(false);
     } else {
-      player.play();
+      try {
+        if (player) player.play();
+      } catch (e) {
+        console.warn('Error playing video:', e);
+      }
       setIsPlaying(true);
     }
-  };
+  }, [isPlaying, player]);
 
-  const toggleMute = () => {
-    player.muted = !isMuted;
+  // Manual mute/unmute control
+  const toggleMute = useCallback(() => {
+    try {
+      if (player) {
+        player.muted = !isMuted;
+      }
+    } catch (e) {
+      console.warn('Error toggling mute:', e);
+    }
     setIsMuted(!isMuted);
-  };
+  }, [isMuted, player]);
 
   return (
-    // Removed px-5 to allow full-width video container
     <View className="mt-0 py-6 bg-slate-100"> 
-      {/* Header Section with padding restored */}
+      {/* Header Section */}
       <View className="mb-6 px-5">
         <Text className="text-[13px] font-jakarta-bold text-blue-700 tracking-[0.2em] mb-1.5 uppercase">
           INSIGHTS
@@ -70,10 +82,7 @@ export default function VideoSection() {
         className="bg-[#050912] overflow-hidden relative" 
       >
         <VideoView 
-          style={{ 
-            width: "100%", 
-            height: "100%",
-          }} 
+          style={{ width: "100%", height: "100%" }} 
           player={player}
           allowsPictureInPicture
           nativeControls={false}
@@ -85,7 +94,7 @@ export default function VideoSection() {
           {/* Play/Pause Button */}
           <Pressable 
             onPress={togglePlay}
-            className={`w-12 h-12 rounded-full backdrop-blur-lg items-center justify-center border border-white/20 active:scale-95 transition-all shadow-md bg-black/50`}
+            className="w-12 h-12 rounded-full backdrop-blur-lg items-center justify-center border border-white/20 active:scale-95 transition-all shadow-md bg-black/50"
           >
             <FontAwesome 
               name={isPlaying ? "pause" : "play"} 
@@ -95,12 +104,10 @@ export default function VideoSection() {
             />
           </Pressable>
 
-         
-
-          {/* Mute/Unmute: Visual feedback with volume levels */}
+          {/* Mute/Unmute Button */}
           <Pressable 
             onPress={toggleMute}
-            className={`w-12 h-12 rounded-full  backdrop-blur-lg items-center justify-center border border-white/20 active:scale-95 transition-all shadow-md bg-black/50`}
+            className="w-12 h-12 rounded-full backdrop-blur-lg items-center justify-center border border-white/20 active:scale-95 transition-all shadow-md bg-black/50"
           >
             <Ionicons 
               name={isMuted ? "volume-mute" : "volume-high"} 
@@ -110,7 +117,9 @@ export default function VideoSection() {
           </Pressable>
         </View>
       </View>
-
     </View>
   ); 
-}
+};
+
+// 4. Memoize the component to protect it from parent scrolls/updates
+export default React.memo(VideoSection);
