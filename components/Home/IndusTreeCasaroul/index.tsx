@@ -2,7 +2,7 @@ import { fetchWithCache } from "@/utils/apiCache";
 import { Ionicons } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import { useRouter } from "expo-router";
-import React, { useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Dimensions,
@@ -11,6 +11,7 @@ import {
   StyleSheet,
   Text,
   View,
+  ViewToken,
 } from "react-native";
 
 const { width: screenWidth } = Dimensions.get("window");
@@ -47,7 +48,109 @@ interface ApiResponse {
 }
 
 // ------------------------------------------------------------------
-// 2. Component — uses plain horizontal FlatList (no gesture conflicts)
+// 2. Extracted & Memoized Slide Component (Prevents Re-renders)
+// ------------------------------------------------------------------
+const IndustrySlide = React.memo(({ 
+  item, 
+  onIndustryPress, 
+  onCategoryPress, 
+  onSubCategoryPress 
+}: { 
+  item: Industry;
+  onIndustryPress: (item: Industry) => void;
+  onCategoryPress: (cat: Category, industryId: string) => void;
+  onSubCategoryPress: (sub: SubCategory) => void;
+}) => {
+  const cats = item.categories?.slice(0, 4) ?? [];
+  const renderIndices = [0, 1, 2]; // Pre-defined array avoids creating Array.from() on every render
+
+  return (
+    <View style={s.slide}>
+      {/* Industry title */}
+      <Pressable onPress={() => onIndustryPress(item)}>
+        <Text style={s.industryName} numberOfLines={1}>
+          {item.name}
+        </Text>
+      </Pressable>
+
+      {/* Hero image */}
+      <Pressable style={s.heroWrap} onPress={() => onIndustryPress(item)}>
+        <Image
+          source={{ uri: item.imageUrl }}
+          style={StyleSheet.absoluteFillObject}
+          contentFit="cover"
+          transition={300}
+          cachePolicy="memory-disk"
+        />
+      </Pressable>
+
+      {/* 2×2 grid */}
+      <View style={s.grid}>
+        {cats.map((cat) => (
+          <Pressable 
+            key={cat._id} 
+            style={s.catCard}
+            onPress={() => onCategoryPress(cat, item._id)}
+          >
+            {/* Fixed-height header keeps all 4 cards aligned */}
+            <View style={s.catHeader}>
+              <View style={s.catThumb}>
+                <Image
+                  source={{ uri: cat.imageUrl }}
+                  style={{ width: "100%", height: "100%" }}
+                  contentFit="cover"
+                  transition={200}
+                  cachePolicy="memory-disk"
+                />
+              </View>
+              <Text style={s.catName} numberOfLines={2} ellipsizeMode="tail">
+                {cat.name}
+              </Text>
+            </View>
+
+            <View style={s.divider} />
+
+            {/* Always 3 slots — prevents height jumps */}
+            <View style={s.subList}>
+              {renderIndices.map((i) => {
+                const sub = cat.subCategories?.[i];
+                return (
+                  <Pressable 
+                    key={i} 
+                    style={s.subRow}
+                    disabled={!sub}
+                    onPress={() => sub && onSubCategoryPress(sub)}
+                  >
+                    <View style={s.dot} />
+                    <Text
+                      style={sub ? s.subName : s.subEmpty}
+                      numberOfLines={1}
+                      ellipsizeMode="tail"
+                    >
+                      {sub?.name ?? ""}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+          </Pressable>
+        ))}
+      </View>
+
+      {/* CTA */}
+      <Pressable 
+        style={({ pressed }) => [s.cta, pressed && s.ctaPressed]}
+        onPress={() => onIndustryPress(item)}
+      >
+        <Text style={s.ctaText}>View All Categories</Text>
+        <Ionicons name="arrow-forward" size={16} color="#fff" />
+      </Pressable>
+    </View>
+  );
+});
+
+// ------------------------------------------------------------------
+// 3. Main Component
 // ------------------------------------------------------------------
 export default function IndustryTreeCarousel() {
   const router = useRouter();
@@ -76,6 +179,58 @@ export default function IndustryTreeCarousel() {
     })();
   }, []);
 
+  // --- Memoized Navigation Callbacks ---
+  const handleIndustryPress = useCallback((item: Industry) => {
+    router.push({
+      pathname: "/GrId_MainCategory",
+      params: { id: item._id, name: item.name }
+    });
+  }, [router]);
+
+  const handleCategoryPress = useCallback((cat: Category, industryId: string) => {
+    router.push({
+      pathname: "/SubCategory",
+      params: { categoryId: cat._id, categoryName: cat.name, industryId }
+    });
+  }, [router]);
+
+  const handleSubCategoryPress = useCallback((sub: SubCategory) => {
+    router.push({
+      pathname: "/Products_Page",
+      params: {
+        subCategoryId: sub._id,
+        subCategoryName: sub.name,
+        subCategorySlug: sub.slug,
+      }
+    });
+  }, [router]);
+
+  const renderItem = useCallback(({ item }: { item: Industry }) => (
+    <IndustrySlide 
+      item={item} 
+      onIndustryPress={handleIndustryPress}
+      onCategoryPress={handleCategoryPress}
+      onSubCategoryPress={handleSubCategoryPress}
+    />
+  ), [handleIndustryPress, handleCategoryPress, handleSubCategoryPress]);
+
+  // --- Viewability Tracking for Dots (Highly Optimized) ---
+  const onViewableItemsChanged = useRef(({ viewableItems }: { viewableItems: ViewToken[] }) => {
+    if (viewableItems.length > 0) {
+      setActiveIndex(viewableItems[0].index ?? 0);
+    }
+  }).current;
+
+  const viewabilityConfig = useRef({ itemVisiblePercentThreshold: 50 }).current;
+
+  // --- FlatList Layout Optimization ---
+  const getItemLayout = useCallback((_: any, index: number) => ({
+    length: screenWidth,
+    offset: screenWidth * index,
+    index,
+  }), []);
+
+
   if (loading) {
     return (
       <View style={s.stateBox}>
@@ -93,109 +248,6 @@ export default function IndustryTreeCarousel() {
     );
   }
 
-  const renderItem = ({ item }: { item: Industry }) => {
-    const cats = item.categories?.slice(0, 4) ?? [];
-
-    const handleIndustryPress = () => {
-      router.push({
-        pathname: "/GrId_MainCategory",
-        params: { id: item._id, name: item.name }
-      });
-    };
-
-    return (
-      <View style={s.slide}>
-        {/* Industry title */}
-        <Pressable onPress={handleIndustryPress}>
-          <Text style={s.industryName} numberOfLines={1}>
-            {item.name}
-          </Text>
-        </Pressable>
-
-        {/* Hero image */}
-        <Pressable style={s.heroWrap} onPress={handleIndustryPress}>
-          <Image
-            source={{ uri: item.imageUrl }}
-            style={StyleSheet.absoluteFillObject}
-            contentFit="cover"
-            transition={300}
-          />
-        </Pressable>
-
-        {/* 2×2 grid */}
-        <View style={s.grid}>
-          {cats.map((cat) => (
-            <Pressable 
-              key={cat._id} 
-              style={s.catCard}
-              onPress={() => router.push({
-                pathname: "/SubCategory",
-                params: { categoryId: cat._id, categoryName: cat.name, industryId: item._id }
-              })}
-            >
-              {/* Fixed-height header keeps all 4 cards aligned */}
-              <View style={s.catHeader}>
-                <View style={s.catThumb}>
-                  <Image
-                    source={{ uri: cat.imageUrl }}
-                    style={{ width: "100%", height: "100%" }}
-                    contentFit="cover"
-                    transition={200}
-                  />
-                </View>
-                <Text style={s.catName} numberOfLines={2} ellipsizeMode="tail">
-                  {cat.name}
-                </Text>
-              </View>
-
-              <View style={s.divider} />
-
-              {/* Always 3 slots — prevents height jumps */}
-              <View style={s.subList}>
-                {Array.from({ length: 3 }).map((_, i) => {
-                  const sub = cat.subCategories?.[i];
-                  return (
-                    <Pressable 
-                      key={i} 
-                      style={s.subRow}
-                      disabled={!sub}
-                      onPress={() => sub && router.push({
-                        pathname: "/Products_Page",
-                        params: {
-                          subCategoryId: sub._id,
-                          subCategoryName: sub.name,
-                          subCategorySlug: sub.slug,
-                        }
-                      })}
-                    >
-                      <View style={s.dot} />
-                      <Text
-                        style={sub ? s.subName : s.subEmpty}
-                        numberOfLines={1}
-                        ellipsizeMode="tail"
-                      >
-                        {sub?.name ?? ""}
-                      </Text>
-                    </Pressable>
-                  );
-                })}
-              </View>
-            </Pressable>
-          ))}
-        </View>
-
-        {/* CTA */}
-        <Pressable 
-          style={({ pressed }) => [s.cta, pressed && s.ctaPressed]}
-          onPress={handleIndustryPress}
-        >
-          <Text style={s.ctaText}>View All Categories</Text>
-          <Ionicons name="arrow-forward" size={16} color="#fff" />
-        </Pressable>
-      </View>
-    );
-  };
-
   return (
     <View style={s.root}>
       {data.length > 0 ? (
@@ -208,16 +260,21 @@ export default function IndustryTreeCarousel() {
             horizontal
             pagingEnabled
             showsHorizontalScrollIndicator={false}
-            // ↓ Critical: lets the parent vertical ScrollView capture
-            //   vertical gestures while this list handles horizontal ones
             nestedScrollEnabled
-            onMomentumScrollEnd={(e) => {
-              const idx = Math.round(
-                e.nativeEvent.contentOffset.x / screenWidth
-              );
-              setActiveIndex(idx);
-            }}
+            
+            // Layout & Memory Optimizations
+            getItemLayout={getItemLayout}
+            initialNumToRender={1}
+            maxToRenderPerBatch={2}
+            windowSize={3} // Prevents rendering slides far off-screen
+            removeClippedSubviews={true}
+            
+            // Viewability
+            onViewableItemsChanged={onViewableItemsChanged}
+            viewabilityConfig={viewabilityConfig}
           />
+          
+          {/* Dots Indicator */}
           <View style={s.dotsRow}>
             {data.map((_, i) => (
               <View
@@ -240,7 +297,7 @@ export default function IndustryTreeCarousel() {
 }
 
 // ------------------------------------------------------------------
-// 3. Styles — light theme
+// 4. Styles — light theme
 // ------------------------------------------------------------------
 const WHITE  = "#ffffff";
 const BG     = "#f8fafc";
@@ -321,8 +378,8 @@ const s = StyleSheet.create({
   },
 
   catThumb: {
-    width: 42,
-    height: 42,
+    width: 50,
+    height: 50,
     borderRadius: 10,
     overflow: "hidden",
     backgroundColor: BG,
@@ -334,7 +391,7 @@ const s = StyleSheet.create({
   catName: {
     flex: 1,
     color: "#1e293b",
-    fontSize: 12,
+    fontSize: 14,
     fontFamily: "PlusJakartaSans-Bold",
     lineHeight: 16,
     letterSpacing: -0.2,
@@ -367,7 +424,7 @@ const s = StyleSheet.create({
   subName: {
     flex: 1,
     color: ACCENT,
-    fontSize: 11,
+    fontSize: 13,
     fontFamily: "PlusJakartaSans-Medium",
     letterSpacing: -0.1,
   },
@@ -407,7 +464,7 @@ const s = StyleSheet.create({
     gap: 6,
     paddingTop: 0,
     paddingBottom: 0,
-    marginTop: 0,
+    marginTop: -16,
     backgroundColor: WHITE,
   },
   dotIndicator: {

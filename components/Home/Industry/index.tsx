@@ -136,7 +136,7 @@ const styles = {
   viewAllBtn: 
     "bg-slate-100/80 active:bg-slate-200 px-3.5 py-1.5 rounded-full active:scale-95 transition-all",
 
-  viewAllText: "text-slate-900 font-jakarta-semibold text-xs tracking-tight", 
+  viewAllText: "text-slate-900 font-jakarta-semibold text-[14px] tracking-tight", 
 
   cardsContainer: "mt-4 pl-4",
 
@@ -163,11 +163,11 @@ const styles = {
     "self-start bg-white/10 border border-white/30 px-2.5 py-1 rounded-lg mb-2",
 
   glassPillText:
-    "text-white font-jakarta-bold text-[10px] tracking-widest uppercase",
+    "text-white font-jakarta-bold text-[12px] tracking-widest uppercase",
 
   // Added dynamic scaling safeguards for text
   cardText:
-    "text-white font-jakarta-bold text-[16px] sm:text-[18px] leading-[20px] sm:leading-[22px] tracking-tight",
+    "text-white font-jakarta-bold text-[18px] sm:text-[20px] leading-[22px] sm:leading-[24px] tracking-tight",
 
   textShadow: {
     textShadowColor: "rgba(0, 0, 0, 0.75)",

@@ -57,9 +57,9 @@ export default function MoreValueAdds() {
 
   const scale = Math.max(0.85, Math.min(1.1, screenWidth / 375));
   const titleSize = 22 * scale;
-  const cardTitleSize = 15 * scale;
-  const badgeSize = 11 * scale;
-  const actionTextSize = 13 * scale;
+  const cardTitleSize = 17 * scale;
+  const badgeSize = 13 * scale;
+  const actionTextSize = 15 * scale;
 
   const maxScrollIndex = cardsData.length - 2;
 

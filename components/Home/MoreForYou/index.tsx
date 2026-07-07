@@ -72,9 +72,9 @@ export default function MoreForYou() {
   const cardWidth = isTablet ? screenWidth / 4 : screenWidth / 2;
 
   const sectionTitleSize = 22 * scale;
-  const cardTitleSize = 14 * scale;
-  const descSize = 11.5 * scale;
-  const buttonTextSize = 12 * scale;
+  const cardTitleSize = 16 * scale;
+  const descSize = 13.5 * scale;
+  const buttonTextSize = 14 * scale;
 
   // INCREASED TO 250 (1000 items). CPU/Mem is safe because of FlatList Virtualization props.
   const replicatedData = useMemo(() => {
@@ -262,7 +262,7 @@ export default function MoreForYou() {
   };
 
   return (
-    <View className="w-full bg-[#f5f5f5] py-4 mt-2 mb-0">
+    <View className="w-full bg-white pt-4 pb-0 mt-0 mb-0">
       <View className="px-4 mb-3">
         <Text
           style={{

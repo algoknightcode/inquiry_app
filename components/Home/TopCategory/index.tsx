@@ -54,6 +54,8 @@ const Main_Category = () => {
           source={item.imageUrl ? { uri: item.imageUrl } : CategoryImage}
           style={catStyles.image}
           contentFit="cover"
+          cachePolicy="memory-disk"
+          transition={200}
         />
       </View>
       <Text style={catStyles.cardText} numberOfLines={1} ellipsizeMode="tail">
@@ -100,12 +102,12 @@ const catStyles = StyleSheet.create({
   outer: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingHorizontal: 16 },
   heading: { fontSize: 22, fontFamily: "PlusJakartaSans-Bold", color: "#0f172a", letterSpacing: -0.5 },
   viewAllBtn: { backgroundColor: "rgba(241,245,249,0.8)", paddingHorizontal: 14, paddingVertical: 6, borderRadius: 999 },
-  viewAllText: { color: "#0f172a", fontFamily: "PlusJakartaSans-SemiBold", fontSize: 12, letterSpacing: -0.3 },
+  viewAllText: { color: "#0f172a", fontFamily: "PlusJakartaSans-SemiBold", fontSize: 14, letterSpacing: -0.3 },
   loader: { paddingVertical: 40, justifyContent: "center", alignItems: "center" },
   cardsContainer: { marginTop: 12 },
   scrollContent: { paddingLeft: 16, paddingRight: 16 },
   card: { width: 90, marginRight: 16, alignItems: "center" },
   imageWrapper: { width: 80, height: 80, borderRadius: 16, overflow: "hidden", backgroundColor: "#f1f5f9" },
   image: { width: "100%", height: "100%" },
-  cardText: { marginTop: 8, fontSize: 12, fontFamily: "PlusJakartaSans-SemiBold", color: "#334155", textAlign: "center", width: "100%" }
+  cardText: { marginTop: 8, fontSize: 14, fontFamily: "PlusJakartaSans-SemiBold", color: "#334155", textAlign: "center", width: "100%" }
 });

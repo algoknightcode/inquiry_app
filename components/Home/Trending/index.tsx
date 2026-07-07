@@ -101,6 +101,7 @@ const ProductCard = ({
           source={{ uri: primaryImage }}
           style={{ width: "100%", height: "100%" }}
           contentFit="cover"
+          cachePolicy="memory-disk"
           transition={200}
         />
       </View>
@@ -109,13 +110,13 @@ const ProductCard = ({
       <View className="p-3 flex-1 bg-white justify-between">
         <View>
           <Text
-            className="text-slate-900 font-jakarta-bold text-[13px] leading-tight mb-1"
+            className="text-slate-900 font-jakarta-bold text-[15px] leading-tight mb-1"
             numberOfLines={2}
           >
             {item.name}
           </Text>
           <Text
-            className="text-slate-400 font-jakarta-medium text-[10px] mb-3"
+            className="text-slate-400 font-jakarta-medium text-[12px] mb-3"
             numberOfLines={1}
           >
             {item.supplier?.business?.companyName || "Verified Supplier"}
@@ -126,22 +127,22 @@ const ProductCard = ({
           {/* Price and Badge Section */}
           <View className="flex-row justify-between items-end mb-4">
             <View className="flex-1">
-              <Text className="text-slate-400 font-jakarta-medium text-[9px] mb-0.5">
+              <Text className="text-slate-400 font-jakarta-medium text-[11px] mb-0.5">
                 Starting From
               </Text>
               {isPriceOnRequest ? (
-                <Text className="text-amber-600 font-jakarta-extrabold text-sm tracking-tight">
+                <Text className="text-amber-600 font-jakarta-extrabold text-[16px] tracking-tight">
                   On Request
                 </Text>
               ) : (
-                <Text className="text-black font-jakarta-extrabold text-base tracking-tight" numberOfLines={1} adjustsFontSizeToFit>
+                <Text className="text-black font-jakarta-extrabold text-[18px] tracking-tight" numberOfLines={1} adjustsFontSizeToFit>
                   ₹{item.price.toLocaleString()}
                 </Text>
               )}
             </View>
             
             <View className="bg-[#dcfce7] px-1.5 py-1 rounded-md ml-2">
-              <Text className="text-[#166534] font-jakarta-bold text-[8px] uppercase tracking-wider">
+              <Text className="text-[#166534] font-jakarta-bold text-[10px] uppercase tracking-wider">
                 In Stock
               </Text>
             </View>
@@ -154,7 +155,7 @@ const ProductCard = ({
               activeOpacity={0.7}
               className="flex-1 border-[1.5px] border-[#1e3a8a] py-1.5 rounded-full items-center justify-center bg-white"
             >
-              <Text className="text-[#1e3a8a] font-jakarta-bold text-[10px]" numberOfLines={1}>
+              <Text className="text-[#1e3a8a] font-jakarta-bold text-[12px]" numberOfLines={1}>
                 Call Now
               </Text>
             </TouchableOpacity>
@@ -164,7 +165,7 @@ const ProductCard = ({
               onPress={() => onReqQuote(item)}
               className="flex-1 bg-[#1e3a8a] py-1.5 rounded-full items-center justify-center border-[1.5px] border-[#1e3a8a]"
             >
-              <Text className="text-white font-jakarta-bold text-[10px]" numberOfLines={1}>
+              <Text className="text-white font-jakarta-bold text-[12px]" numberOfLines={1}>
                 Req Quote
               </Text>
             </TouchableOpacity>
@@ -308,7 +309,7 @@ export default function HorizontalProductList() {
     <View className="mt-2">
       <View className="flex flex-row justify-between items-end px-5 mb-4">
         <View className="flex-col">
-          <Text className="text-[10px] font-jakarta-bold text-slate-400 tracking-[0.15em] mb-1 uppercase">
+          <Text className="text-[12px] font-jakarta-bold text-slate-400 tracking-[0.15em] mb-1 uppercase">
             TRENDING NOW
           </Text>
           <Text className="text-[26px] font-jakarta-extrabold text-slate-900 tracking-tighter leading-none">
@@ -333,7 +334,7 @@ export default function HorizontalProductList() {
             })
           }
         >
-          <Text className="text-slate-900 font-jakarta-bold text-sm tracking-tight">
+          <Text className="text-slate-900 font-jakarta-bold text-[16px] tracking-tight">
             Explore
           </Text>
         </TouchableOpacity>

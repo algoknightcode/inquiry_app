@@ -147,7 +147,7 @@ const Sidebar = ({ visible, onClose, currentRole }: SidebarProps) => {
       headerPaddingBottom: 16 * hScale,
       logoSize: 40 * baseScale,
       logoTextSize: 17 * baseScale,
-      logoSubTextSize: 11 * baseScale,
+      logoSubTextSize: 13 * baseScale,
       closeBtnSize: 32 * baseScale,
       closeIconSize: 18 * baseScale,
 
@@ -159,14 +159,14 @@ const Sidebar = ({ visible, onClose, currentRole }: SidebarProps) => {
       itemPaddingHorizontal: 14 * baseScale,
       itemIconBoxSize: 36 * baseScale,
       itemIconSize: 18 * baseScale,
-      itemTextSize: 14.5 * baseScale,
+      itemTextSize: 16.5 * baseScale,
       chevronSize: 15 * baseScale,
 
       subItemPaddingVertical: 9 * hScale,
       subItemPaddingHorizontal: 10 * baseScale,
       subItemIconBoxSize: 28 * baseScale,
       subItemIconSize: 14 * baseScale,
-      subItemTextSize: 13 * baseScale,
+      subItemTextSize: 15 * baseScale,
 
       planCardPadding: 12 * baseScale,
       planCardMarginBottom: 16 * hScale,
@@ -174,13 +174,13 @@ const Sidebar = ({ visible, onClose, currentRole }: SidebarProps) => {
       logoutPaddingHorizontal: 16 * baseScale,
       logoutPaddingVertical: 10 * hScale,
       logoutButtonPaddingVertical: 12 * hScale,
-      logoutTextSize: 13.5 * baseScale,
+      logoutTextSize: 15.5 * baseScale,
       logoutIconSize: 17 * baseScale,
 
       footerPaddingHorizontal: 24 * baseScale,
       footerPaddingTop: 10 * hScale,
       footerPaddingBottom: 8 * hScale,
-      footerTextSize: 10 * baseScale,
+      footerTextSize: 12 * baseScale,
     };
   }, [screenWidth, screenHeight]);
 
@@ -440,21 +440,21 @@ const Sidebar = ({ visible, onClose, currentRole }: SidebarProps) => {
             <Text style={{ fontSize: 18 * metrics.scale, color: "#0F172A", fontFamily: "PlusJakartaSans-Bold", marginBottom: 8, textAlign: "center" }}>
               Confirm Logout
             </Text>
-            <Text style={{ fontSize: 14 * metrics.scale, color: "#64748B", fontFamily: "PlusJakartaSans-Medium", textAlign: "center", marginBottom: 24, lineHeight: 20 * metrics.scale }}>
-              Are you sure you want to log out? You will need to sign in again to access your profile.
+            <Text style={{ fontSize: 16 * metrics.scale, color: "#64748B", fontFamily: "PlusJakartaSans-Medium", textAlign: "center", marginBottom: 24, lineHeight: 20 * metrics.scale }}>
+              Are you sure you want to log out of your account?
             </Text>
             <View style={{ flexDirection: "row", gap: 12, width: "100%" }}>
               <TouchableOpacity
                 onPress={() => setLogoutConfirmVisible(false)}
                 style={{ flex: 1, height: 48 * metrics.scale, borderRadius: 12, borderWidth: 1, borderColor: "#E2E8F0", justifyContent: "center", alignItems: "center" }}
               >
-                <Text style={{ fontSize: 14 * metrics.scale, color: "#475569", fontFamily: "PlusJakartaSans-Bold" }}>Cancel</Text>
+                <Text style={{ fontSize: 16 * metrics.scale, color: "#475569", fontFamily: "PlusJakartaSans-Bold" }}>Cancel</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 onPress={handleLogout}
                 style={{ flex: 1, height: 48 * metrics.scale, borderRadius: 12, backgroundColor: "#E11D48", justifyContent: "center", alignItems: "center" }}
               >
-                <Text style={{ fontSize: 14 * metrics.scale, color: "#ffffff", fontFamily: "PlusJakartaSans-Bold" }}>Logout</Text>
+                <Text style={{ fontSize: 16 * metrics.scale, color: "#ffffff", fontFamily: "PlusJakartaSans-Bold" }}>Logout</Text>
               </TouchableOpacity>
             </View>
           </View>

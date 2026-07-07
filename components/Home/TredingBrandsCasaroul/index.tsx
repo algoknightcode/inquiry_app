@@ -19,7 +19,7 @@ type Brand = {
 };
 
 const mockBrands: Brand[] = [
-  { id: "1", name: "Matrix Tissue", category: "Paper & Packaging", initials: "MT", colors: ["#FF8E53", "#FF4E50"] },
+  { id: "1", name: "Matrix Tissues", category: "Paper & Packaging", initials: "MT", colors: ["#FF8E53", "#FF4E50"] },
   { id: "2", name: "Vands Engineering", category: "Engineering Solutions", initials: "VA", colors: ["#4FACFE", "#00F2FE"] },
   { id: "3", name: "Ai Solutions", category: "IT & Technology", initials: "Ai", colors: ["#B185FC", "#8A4CFC"] },
   { id: "4", name: "BSM Enterprises", category: "Manufacturing", initials: "BS", colors: ["#38EF7D", "#11998E"] },
@@ -83,7 +83,7 @@ function TrendingBrandsCarousel() {
   // Auto-scroll refs
   const flatListRef = useRef<FlatList>(null);
   const activeIndexRef = useRef(0);
-  const timerRef = useRef<NodeJS.Timeout | null>(null);
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const scale = useMemo(() => {
     const isTablet = screenWidth >= 768;
@@ -113,14 +113,14 @@ function TrendingBrandsCarousel() {
       cardPaddingBottom: 20 * scale,
       marqueeHeight: 62 * scale,
       titleSize: 22 * scale,
-      subtitleSize: 12 * scale,
-      bottomTextSize: 12.5 * scale,
+      subtitleSize: 14 * scale,
+      bottomTextSize: 14.5 * scale,
 
       itemWidth: carouselWidth / itemsPerView,
 
-      avatarText: { fontSize: 16 * scale },
-      brandName: { fontSize: 14.5 * scale },
-      category: { fontSize: 11.5 * scale },
+      avatarText: { fontSize: 18 * scale },
+      brandName: { fontSize: 16.5 * scale },
+      category: { fontSize: 13.5 * scale },
       infoWrapper: { minWidth: 90 * scale },
       avatar: {
         width: avatarSize,

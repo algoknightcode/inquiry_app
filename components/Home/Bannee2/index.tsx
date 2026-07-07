@@ -62,14 +62,14 @@ const Banner2 = () => {
             />
 
             <View className="absolute inset-0 flex-col justify-center px-3">
-              <Text className="text-black text-[14px] sm:text-[15px] font-jakarta-semibold leading-snug">
+              <Text className="text-gray-800 text-[16px] sm:text-[17px] font-bold leading-snug">
                 Looking for a{"\n"}
-                <Text className="text-[#0D2340] font-jakarta-bold">product?</Text>
+                <Text className="text-[#0D2340] font-bold">product?</Text>
               </Text>
 
               {/* Blue Border with increased top margin (mt-4) for gap */}
               <View className="bg-white/60 px-3 py-2 rounded-lg border border-[#1753C5] self-start mt-4">
-                <Text className="text-black text-[12px] sm:text-[11px] font-jakarta-medium">
+                <Text className="text-gray-800 text-[11px] sm:text-[13px] font-semibold">
                   Post As Per Requirement →
                 </Text>
               </View>
@@ -93,14 +93,14 @@ const Banner2 = () => {
             />
 
             <View className="absolute inset-0 flex-col justify-center px-3">
-              <Text className="text-black text-[14px] sm:text-[15px] font-jakarta-semibold leading-snug">
+              <Text className="text-gray-800 text-[16px] sm:text-[17px] font-bold leading-snug">
                 Grow business{"\n"}
-                <Text className="text-[#0D2340] font-jakarta-bold">10x faster</Text>
+                <Text className="text-[#0D2340] font-bold">10x faster</Text>
               </Text>
 
               {/* Orange Border with increased top margin (mt-4) for gap */}
               <View className="bg-white/60 px-3 py-2 rounded-lg border border-[#f48335] self-start mt-4">
-                <Text className="text-black text-[13px] sm:text-[11px] font-jakarta-medium">
+                <Text className="text-gray-800 text-[11px] sm:text-[13px] font-semibold">
                   Free Listing →
                 </Text>
               </View>
@@ -125,5 +125,5 @@ const styles = {
     height: "100%",
     position: "absolute",
     opacity: 0.9, 
-  }
+  } as const
 };

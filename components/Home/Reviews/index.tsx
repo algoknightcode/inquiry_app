@@ -43,7 +43,7 @@ const testimonials: TestimonialData[] = [
     company: "Bhagya Laxmi Industries",
     logoWidth: 160, 
     logoHeight: 60,
-    companyFontSize: 16,
+    companyFontSize: 18,
   },
   {
     id: "2",
@@ -52,7 +52,7 @@ const testimonials: TestimonialData[] = [
     company: "Exotic Crate",
     logoWidth: 160, 
     logoHeight: 60,
-    companyFontSize: 16,
+    companyFontSize: 18,
   },
   {
     id: "3",
@@ -61,7 +61,7 @@ const testimonials: TestimonialData[] = [
     company: "Shree Shakti Infratech",
     logoWidth: 160, 
     logoHeight: 60,
-    companyFontSize: 16,
+    companyFontSize: 18,
   },
   {
     id: "4",
@@ -70,7 +70,7 @@ const testimonials: TestimonialData[] = [
     company: "Matrix Tissues",
     logoWidth: 160, 
     logoHeight: 60,
-    companyFontSize: 16,
+    companyFontSize: 18,
   },
   {
     id: "5",
@@ -79,7 +79,7 @@ const testimonials: TestimonialData[] = [
     company: "Strides Design Studio",
     logoWidth: 160, 
     logoHeight: 60,
-    companyFontSize: 16,
+    companyFontSize: 18,
   },
   {
     id: "6",
@@ -88,7 +88,7 @@ const testimonials: TestimonialData[] = [
     company: "Mr Dates",
     logoWidth: 160, 
     logoHeight: 60,
-    companyFontSize: 16,
+    companyFontSize: 18,
   },
 ];
 
@@ -280,7 +280,7 @@ const styles = StyleSheet.create({
     height: 52,
   },
   quoteText: {
-    fontSize: 14.5,
+    fontSize: 16.5,
     lineHeight: 24,
     color: "#475569",
     textAlign: "center",
@@ -293,7 +293,7 @@ const styles = StyleSheet.create({
     marginBottom: 14,
   },
   companyName: {
-    fontSize: 14, // Default fallback size
+    fontSize: 16, // Default fallback size
     fontWeight: "700",
     color: "#0f172a",
     textAlign: "center",

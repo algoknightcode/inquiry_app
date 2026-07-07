@@ -1,7 +1,15 @@
 import { fetchWithCache } from "@/utils/apiCache";
 import { useRouter } from "expo-router";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { ActivityIndicator, LayoutChangeEvent, Pressable, StyleSheet, Text, useWindowDimensions, View } from "react-native";
+import {
+  ActivityIndicator,
+  LayoutChangeEvent,
+  Pressable,
+  StyleSheet,
+  Text,
+  useWindowDimensions,
+  View,
+} from "react-native";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import Animated, {
   cancelAnimation,
@@ -9,8 +17,9 @@ import Animated, {
   useAnimatedReaction,
   useAnimatedStyle,
   useSharedValue,
+  withDecay,
   withRepeat,
-  withTiming
+  withTiming,
 } from "react-native-reanimated";
 
 type Industry = {
@@ -18,13 +27,13 @@ type Industry = {
   name: string;
 };
 
+// Controls speed. Lower number = faster. (30ms per pixel)
 const MARQUEE_SPEED_MS_PER_PIXEL = 30;
 
 const fetchIndustriesData = async () => {
   try {
     const json = await fetchWithCache("https://backend.inquirybazaar.com/api/industries/tree");
     if (json && json.success && Array.isArray(json.data)) {
-      // FIX: Removed Object.freeze() which was breaking Hermes array prototypes
       return json.data as Industry[];
     }
   } catch (error) {
@@ -33,20 +42,38 @@ const fetchIndustriesData = async () => {
   return [];
 };
 
+// 1. Interactive Pill (Mounted only once per item)
 const PillItem = React.memo(
-  ({ industry, combinedPillStyle, combinedTextStyle, onPress }: { 
-    industry: Industry; 
-    combinedPillStyle: any; 
-    combinedTextStyle: any; 
-    onPress: (ind: Industry) => void 
+  ({ industry, combinedPillStyle, combinedTextStyle, onPress }: {
+    industry: Industry;
+    combinedPillStyle: any;
+    combinedTextStyle: any;
+    onPress: (ind: Industry) => void;
   }) => (
     <Pressable onPress={() => onPress(industry)} style={combinedPillStyle}>
       <Text style={combinedTextStyle}>{industry.name}</Text>
     </Pressable>
   ),
-  (prev, next) => 
-    prev.industry._id === next.industry._id && 
-    prev.combinedPillStyle === next.combinedPillStyle && 
+  (prev, next) =>
+    prev.industry._id === next.industry._id &&
+    prev.combinedPillStyle === next.combinedPillStyle &&
+    prev.combinedTextStyle === next.combinedTextStyle
+);
+
+// 2. Static Pill (Cuts down mounted Pressables by 50% for the duplicate set)
+const StaticPillItem = React.memo(
+  ({ industry, combinedPillStyle, combinedTextStyle }: {
+    industry: Industry;
+    combinedPillStyle: any;
+    combinedTextStyle: any;
+  }) => (
+    <View style={combinedPillStyle}>
+      <Text style={combinedTextStyle}>{industry.name}</Text>
+    </View>
+  ),
+  (prev, next) =>
+    prev.industry._id === next.industry._id &&
+    prev.combinedPillStyle === next.combinedPillStyle &&
     prev.combinedTextStyle === next.combinedTextStyle
 );
 
@@ -60,22 +87,23 @@ const CategoryMarquee = () => {
     const isTablet = screenWidth >= 768;
     return {
       marqueeHeight: isTablet ? 68 : 46,
-      itemPaddingHorizontal: isTablet ? 20 : 16,
+      itemPaddingHorizontal: isTablet ? 18 : 15,
       itemPaddingVertical: isTablet ? 8 : 6,
-      fontSize: 15, 
+      fontSize: 14,
     };
   }, [screenWidth]);
 
   const combinedPillStyle = useMemo(() => ([
-    mqs.pill, 
+    mqs.pill,
     { paddingHorizontal: dims.itemPaddingHorizontal, paddingVertical: dims.itemPaddingVertical }
   ]), [dims.itemPaddingHorizontal, dims.itemPaddingVertical]);
 
   const combinedTextStyle = useMemo(() => ([
-    mqs.pillText, 
+    mqs.pillText,
     { fontSize: dims.fontSize }
   ]), [dims.fontSize]);
 
+  // --- UI THREAD ENGINE (⭐⭐⭐⭐⭐ IMPACT) ---
   const translateX = useSharedValue(0);
   const startX = useSharedValue(0);
   const isDragging = useSharedValue(false);
@@ -83,94 +111,94 @@ const CategoryMarquee = () => {
 
   useEffect(() => {
     fetchIndustriesData().then((data) => {
-      if (data && data.length > 0) {
-        setIndustries(data);
-      }
+      if (data && data.length > 0) setIndustries(data);
       setLoading(false);
     });
   }, []);
 
-  const loopMarquee = () => {
-    'worklet';
-    if (sharedContentWidth.value <= 0 || isDragging.value) return;
-    
-    cancelAnimation(translateX);
-    translateX.value = 0;
-    translateX.value = withRepeat(
-      withTiming(-sharedContentWidth.value, {
-        duration: sharedContentWidth.value * MARQUEE_SPEED_MS_PER_PIXEL,
-        easing: Easing.linear,
-      }),
-      -1, 
-      false 
-    );
-  };
-
-  useAnimatedReaction(
-    () => sharedContentWidth.value,
-    (width, prevWidth) => {
-      if (width > 0 && width !== prevWidth && !isDragging.value) {
-        loopMarquee();
-      }
-    }
-  );
-
+  // Native Worklet to handle seamless infinite looping via withRepeat
   const startMarquee = () => {
     'worklet';
-    if (sharedContentWidth.value <= 0) return;
-    cancelAnimation(translateX);
-    
-    const currentPos = translateX.value;
-    const width = sharedContentWidth.value;
-    
-    let normalizedPos = currentPos % width;
-    if (normalizedPos > 0) {
-      normalizedPos -= width;
-    }
+    const w = sharedContentWidth.value;
+    if (w <= 0) return;
 
-    const remainingDistance = width + normalizedPos;
-    const duration = (remainingDistance / width) * (width * MARQUEE_SPEED_MS_PER_PIXEL);
+    // Normalize current position to cleanly handle manual right/left swipes
+    let currentPos = translateX.value % w;
+    if (currentPos > 0) currentPos -= w;
+    
+    translateX.value = currentPos;
+    
+    const distanceLeft = w + currentPos; 
+    const duration = distanceLeft * MARQUEE_SPEED_MS_PER_PIXEL;
 
-    translateX.value = withTiming(-width, {
-      duration: Math.max(duration, 100),
+    // Phase 1: Travel the remaining distance smoothly to the loop boundary
+    translateX.value = withTiming(-w, {
+      duration: Math.max(duration, 16),
       easing: Easing.linear,
     }, (finished) => {
       if (finished && !isDragging.value) {
-        translateX.value = 0; 
-        loopMarquee();
+        // Phase 2: Instantly reset to 0 and loop forever completely natively
+        translateX.value = 0;
+        translateX.value = withRepeat(
+          withTiming(-w, {
+            duration: w * MARQUEE_SPEED_MS_PER_PIXEL,
+            easing: Easing.linear,
+          }),
+          -1, // -1 means infinite repeat
+          false
+        );
       }
     });
   };
 
-  useEffect(() => {
-    return () => cancelAnimation(translateX);
-  }, [translateX]);
+  // Triggers the animation exactly once when layout is measured
+  useAnimatedReaction(
+    () => sharedContentWidth.value,
+    (width, prevWidth) => {
+      if (width > 0 && width !== prevWidth && !isDragging.value) {
+        startMarquee();
+      }
+    }
+  );
 
   const panGesture = useMemo(() => Gesture.Pan()
     .activeOffsetX([-10, 10])
     .onBegin(() => {
-      isDragging.value = true;
       cancelAnimation(translateX);
+      isDragging.value = true;
       startX.value = translateX.value;
     })
     .onChange((event) => {
-      const w = sharedContentWidth.value;
-      if (w > 0) {
-        let nextValue = (startX.value + event.translationX) % w;
-        if (nextValue > 0) nextValue -= w;
-        translateX.value = nextValue;
-      } else {
-        translateX.value = startX.value + event.translationX;
-      }
+      translateX.value = startX.value + event.translationX;
     })
-    .onFinalize(() => {
-      isDragging.value = false;
-      startMarquee();
+    .onFinalize((event) => {
+      if (Math.abs(event.velocityX) > 150) {
+        translateX.value = withDecay({
+          velocity: event.velocityX,
+          deceleration: 0.995,
+        }, (finished) => {
+          if (finished) {
+            isDragging.value = false;
+            startMarquee(); // Resume infinite loop after physics decay stops
+          }
+        });
+      } else {
+        isDragging.value = false;
+        startMarquee();
+      }
     }), [translateX, startX, isDragging, sharedContentWidth]); 
 
-  const animatedStyle = useAnimatedStyle(() => ({
-    transform: [{ translateX: translateX.value }],
-  }));
+  const animatedStyle = useAnimatedStyle(() => {
+    const w = sharedContentWidth.value;
+    if (w === 0) return { transform: [{ translateX: 0 }] };
+    
+    let offset = translateX.value % w;
+    if (offset > 0) offset -= w; 
+
+    return {
+      transform: [{ translateX: offset }],
+    };
+  });
 
   const handlePress = useCallback((ind: Industry) => {
     router.push({
@@ -192,12 +220,12 @@ const CategoryMarquee = () => {
     </View>
   ), [dims.marqueeHeight]);
 
-  // FIX: Fallback to an empty array to absolutely guarantee .map exists
   const safeIndustries = Array.isArray(industries) ? industries : [];
 
-  const pillNodes = useMemo(() => safeIndustries.map((ind) => (
+  // Set 1: Interactive
+  const set1 = useMemo(() => safeIndustries.map((ind) => (
     <PillItem
-      key={`ind-${ind._id}`}
+      key={`s1-${ind._id}`}
       industry={ind}
       combinedPillStyle={combinedPillStyle}
       combinedTextStyle={combinedTextStyle}
@@ -205,17 +233,16 @@ const CategoryMarquee = () => {
     />
   )), [safeIndustries, combinedPillStyle, combinedTextStyle, handlePress]);
 
-  const duplicateNodes = useMemo(() => safeIndustries.map((ind) => (
-    <PillItem
-      key={`dup-${ind._id}`}
+  // Set 2: Non-Interactive (Removes dozens of Pressables from memory)
+  const set2 = useMemo(() => safeIndustries.map((ind) => (
+    <StaticPillItem
+      key={`s2-${ind._id}`}
       industry={ind}
       combinedPillStyle={combinedPillStyle}
       combinedTextStyle={combinedTextStyle}
-      onPress={handlePress}
     />
-  )), [safeIndustries, combinedPillStyle, combinedTextStyle, handlePress]);
+  )), [safeIndustries, combinedPillStyle, combinedTextStyle]);
 
-  // FIX: Bulletproof guard clauses before rendering
   if (loading) return renderLoading;
   if (safeIndustries.length === 0) return null;
 
@@ -228,10 +255,10 @@ const CategoryMarquee = () => {
           needsOffscreenAlphaCompositing={true}
         >
           <View onLayout={handleLayout} className="flex-row items-center pl-3">
-            {pillNodes}
+            {set1}
           </View>
           <View className="flex-row items-center pl-3">
-            {duplicateNodes}
+            {set2}
           </View>
         </Animated.View>
       </View>

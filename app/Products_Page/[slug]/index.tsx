@@ -220,12 +220,12 @@ export default function ProductDetailPage() {
         {/* PRODUCT INFO CARD */}
         <View style={{ marginTop: -24, backgroundColor: "#fff", borderTopLeftRadius: 32, borderTopRightRadius: 32, paddingTop: 32, paddingHorizontal: 24, paddingBottom: 24 }}>
           <View style={{ flexDirection: "row", alignItems: "center", flexWrap: "wrap", marginBottom: 12, gap: 6 }}>
-            <MaterialCommunityIcons name="domain" size={15} color="#64748b" />
-            <Text style={{ color: "#475569", fontWeight: "600", fontSize: 13 }} numberOfLines={1}>{company}</Text>
+            <MaterialCommunityIcons name="domain" size={18} color="#64748b" />
+            <Text style={{ color: "#475569", fontWeight: "600", fontSize: 16 }} numberOfLines={1}>{company}</Text>
             {(city || state) ? (
               <View style={{ flexDirection: "row", alignItems: "center", backgroundColor: "#f1f5f9", paddingHorizontal: 8, paddingVertical: 2, borderRadius: 8 }}>
-                <Ionicons name="location-outline" size={11} color="#64748b" />
-                <Text style={{ color: "#64748b", fontSize: 11, marginLeft: 2 }}>{[city, state].filter(Boolean).join(", ")}</Text>
+                <Ionicons name="location-outline" size={14} color="#64748b" />
+                <Text style={{ color: "#64748b", fontSize: 14, marginLeft: 2 }}>{[city, state].filter(Boolean).join(", ")}</Text>
               </View>
             ) : null}
           </View>
@@ -239,7 +239,7 @@ export default function ProductDetailPage() {
           ) : (
             <View style={{ flexDirection: "row", alignItems: "flex-end", marginBottom: 16, flexWrap: "wrap" }}>
               <Text style={{ fontSize: 30, fontWeight: "900", color: "#4f46e5" }}>₹{product.price?.toLocaleString()}</Text>
-              <Text style={{ color: "#64748b", fontSize: 14, marginLeft: 6, marginBottom: 4 }}>/ {product.unit}</Text>
+              <Text style={{ color: "#64748b", fontSize: 16, marginLeft: 6, marginBottom: 4 }}>/ {product.unit}</Text>
               {product.oldPrice ? (
                 <Text style={{ color: "#94a3b8", fontSize: 14, marginLeft: 8, marginBottom: 4, textDecorationLine: "line-through" }}>
                   ₹{product.oldPrice?.toLocaleString()}
@@ -251,20 +251,20 @@ export default function ProductDetailPage() {
           <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
             {product.minOrderQty ? (
               <View style={{ flexDirection: "row", alignItems: "center", backgroundColor: "#f1f5f9", paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8 }}>
-                <MaterialCommunityIcons name="package-variant" size={13} color="#475569" />
-                <Text style={{ color: "#475569", fontWeight: "600", fontSize: 12, marginLeft: 6 }}>MOQ: {product.minOrderQty} {product.unit}</Text>
+                <MaterialCommunityIcons name="package-variant" size={15} color="#475569" />
+                <Text style={{ color: "#475569", fontWeight: "600", fontSize: 14, marginLeft: 6 }}>MOQ: {product.minOrderQty} {product.unit}</Text>
               </View>
             ) : null}
             {product.deliveryTime ? (
               <View style={{ flexDirection: "row", alignItems: "center", backgroundColor: "#f1f5f9", paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8 }}>
-                <Ionicons name="time-outline" size={13} color="#475569" />
-                <Text style={{ color: "#475569", fontWeight: "600", fontSize: 12, marginLeft: 6 }}>{product.deliveryTime}</Text>
+                <Ionicons name="time-outline" size={15} color="#475569" />
+                <Text style={{ color: "#475569", fontWeight: "600", fontSize: 14, marginLeft: 6 }}>{product.deliveryTime}</Text>
               </View>
             ) : null}
             {product.supplyAbility ? (
               <View style={{ flexDirection: "row", alignItems: "center", backgroundColor: "#f0fdf4", borderWidth: 1, borderColor: "#bbf7d0", paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8 }}>
-                <MaterialCommunityIcons name="check-circle-outline" size={13} color="#16a34a" />
-                <Text style={{ color: "#15803d", fontWeight: "600", fontSize: 12, marginLeft: 6 }}>{product.supplyAbility}</Text>
+                <MaterialCommunityIcons name="check-circle-outline" size={15} color="#16a34a" />
+                <Text style={{ color: "#15803d", fontWeight: "600", fontSize: 14, marginLeft: 6 }}>{product.supplyAbility}</Text>
               </View>
             ) : null}
           </View>
@@ -272,9 +272,9 @@ export default function ProductDetailPage() {
 
         {/* DESCRIPTION */}
         {hasDescription ? (
-          <View style={{ marginTop: 12, backgroundColor: "#fff", paddingHorizontal: 24, paddingVertical: 28 }}>
+          <View style={{ marginTop: 0, borderTopWidth: 1, borderTopColor: "#f1f5f9", backgroundColor: "#fff", paddingHorizontal: 24, paddingVertical: 28 }}>
             <Text style={{ fontSize: 17, fontWeight: "800", color: "#0f172a", marginBottom: 16 }}>Product Description</Text>
-            <Text style={{ color: "#475569", fontSize: 14, lineHeight: 24, fontWeight: "400" }}>{plainTextDescription}</Text>
+            <Text style={{ color: "#475569", fontSize: 16, lineHeight: 26, fontWeight: "400" }}>{plainTextDescription}</Text>
           </View>
         ) : null}
 
@@ -285,8 +285,8 @@ export default function ProductDetailPage() {
             <View style={{ borderWidth: 1, borderColor: "#e2e8f0", borderRadius: 16, overflow: "hidden", marginBottom: 16 }}>
               {specs.map((spec, idx) => (
                 <View key={idx} style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingHorizontal: 16, paddingVertical: 14, backgroundColor: idx % 2 === 0 ? "#fff" : "#f8fafc", borderBottomWidth: idx === specs.length - 1 ? 0 : 1, borderBottomColor: "#e2e8f0" }}>
-                  <Text style={{ color: "#64748b", fontWeight: "600", fontSize: 13, flex: 1, marginRight: 8 }}>{spec.key}</Text>
-                  <Text style={{ color: "#0f172a", fontWeight: "600", fontSize: 13, flex: 1.5, textAlign: "right" }}>{spec.value}</Text>
+                  <Text style={{ color: "#64748b", fontWeight: "600", fontSize: 15, flex: 1, marginRight: 8 }}>{spec.key}</Text>
+                  <Text style={{ color: "#0f172a", fontWeight: "600", fontSize: 15, flex: 1.5, textAlign: "right" }}>{spec.value}</Text>
                 </View>
               ))}
             </View>
@@ -296,7 +296,7 @@ export default function ProductDetailPage() {
                 <MaterialCommunityIcons name="package-variant-closed" size={18} color="#64748b" />
                 <View style={{ marginLeft: 12 }}>
                   <Text style={{ color: "#94a3b8", fontWeight: "700", fontSize: 10, textTransform: "uppercase", letterSpacing: 1 }}>Packaging</Text>
-                  <Text style={{ color: "#334155", fontWeight: "600", fontSize: 13, marginTop: 2 }}>{product.packagingDetails}</Text>
+                  <Text style={{ color: "#334155", fontWeight: "600", fontSize: 15, marginTop: 2 }}>{product.packagingDetails}</Text>
                 </View>
               </View>
             ) : null}
@@ -306,47 +306,57 @@ export default function ProductDetailPage() {
         {/* SUPPLIER */}
         <View style={{ marginTop: (hasDescription || specs.length > 0) ? 0 : 12, borderTopWidth: (hasDescription || specs.length > 0) ? 1 : 0, borderTopColor: "#f1f5f9", backgroundColor: "#fff", paddingHorizontal: 24, paddingVertical: 32, marginBottom: 24 }}>
           <Text style={{ fontSize: 17, fontWeight: "800", color: "#0f172a", marginBottom: 20 }}>Supplier Details</Text>
-          <View style={{ backgroundColor: "#f8fafc", borderWidth: 1, borderColor: "#e2e8f0", borderRadius: 20, padding: 20 }}>
-            <View style={{ flexDirection: "row", alignItems: "center", paddingBottom: 16, marginBottom: 16, borderBottomWidth: 1, borderBottomColor: "#e2e8f0" }}>
+          <View style={{ backgroundColor: "#f0f7ff", borderWidth: 1, borderColor: "#bfdbfe", borderRadius: 20, padding: 20 }}>
+            <View style={{ flexDirection: "row", alignItems: "center", paddingBottom: 16, marginBottom: 16, borderBottomWidth: 1, borderBottomColor: "#bfdbfe" }}>
               {product.supplier?.profileImage ? (
-                <Image source={{ uri: product.supplier.profileImage }} style={{ width: 48, height: 48, borderRadius: 24, marginRight: 14 }} contentFit="cover" />
+                <Image source={{ uri: product.supplier.profileImage }} style={{ width: 52, height: 52, borderRadius: 26, marginRight: 14 }} contentFit="cover" />
               ) : (
-                <View style={{ width: 48, height: 48, borderRadius: 24, backgroundColor: "#e0e7ff", alignItems: "center", justifyContent: "center", marginRight: 14 }}>
-                  <MaterialCommunityIcons name="domain" size={22} color="#4f46e5" />
+                <View style={{ width: 52, height: 52, borderRadius: 26, backgroundColor: "#dbeafe", alignItems: "center", justifyContent: "center", marginRight: 14 }}>
+                  <MaterialCommunityIcons name="domain" size={24} color="#2563eb" />
                 </View>
               )}
               <View style={{ flex: 1 }}>
-                <Text style={{ color: "#0f172a", fontWeight: "700", fontSize: 15 }} numberOfLines={2}>{company}</Text>
-                {businessType ? <Text style={{ color: "#64748b", fontWeight: "500", fontSize: 12, marginTop: 2 }}>{businessType}</Text> : null}
+                <View style={{ flexDirection: "row", alignItems: "center", flexWrap: "wrap", gap: 6, marginBottom: 2 }}>
+                  <Text style={{ color: "#0f172a", fontWeight: "800", fontSize: 18, flexShrink: 1 }} numberOfLines={1}>{company}</Text>
+                  <View style={{ flexDirection: "row", alignItems: "center", backgroundColor: "#dcfce7", paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 }}>
+                    <Ionicons name="checkmark-circle" size={12} color="#16a34a" />
+                    <Text style={{ color: "#15803d", fontSize: 10, fontWeight: "700", marginLeft: 2 }}>VERIFIED</Text>
+                  </View>
+                </View>
+                {businessType ? <Text style={{ color: "#475569", fontWeight: "600", fontSize: 15 }}>{businessType}</Text> : null}
               </View>
             </View>
 
             {address ? (
-              <View style={{ flexDirection: "row", alignItems: "flex-start", marginBottom: 16 }}>
-                <Feather name="map-pin" size={15} color="#64748b" style={{ marginTop: 2, marginRight: 10 }} />
-                <Text style={{ color: "#334155", fontWeight: "500", fontSize: 13, lineHeight: 20, flex: 1 }}>{address}</Text>
+              <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 16 }}>
+                <View style={{ width: 28, height: 28, borderRadius: 14, backgroundColor: "#e0f2fe", alignItems: "center", justifyContent: "center", marginRight: 12 }}>
+                  <Feather name="map-pin" size={13} color="#0284c7" />
+                </View>
+                <Text style={{ color: "#334155", fontWeight: "500", fontSize: 16, lineHeight: 22, flex: 1 }}>{address}</Text>
               </View>
             ) : null}
 
             {phone ? (
               <TouchableOpacity onPress={() => Linking.openURL(`tel:${phone}`)} style={{ flexDirection: "row", alignItems: "center", marginBottom: 20 }}>
-                <Feather name="phone" size={15} color="#64748b" style={{ marginRight: 10 }} />
-                <Text style={{ color: "#4f46e5", fontWeight: "600", fontSize: 13 }}>{phone}</Text>
+                <View style={{ width: 28, height: 28, borderRadius: 14, backgroundColor: "#dcfce7", alignItems: "center", justifyContent: "center", marginRight: 12 }}>
+                  <Feather name="phone" size={13} color="#15803d" />
+                </View>
+                <Text style={{ color: "#2563eb", fontWeight: "700", fontSize: 16 }}>{phone}</Text>
               </TouchableOpacity>
             ) : null}
 
             <View style={{ flexDirection: "row", gap: 12 }}>
               <TouchableOpacity
                 onPress={() => phone && Linking.openURL(`tel:${phone}`)}
-                style={{ flex: 1, flexDirection: "row", justifyContent: "center", alignItems: "center", paddingVertical: 12, borderRadius: 12, borderWidth: 1.5, borderColor: "#e2e8f0", backgroundColor: "#fff" }}
+                style={{ flex: 1, flexDirection: "row", justifyContent: "center", alignItems: "center", paddingVertical: 12, borderRadius: 12, borderWidth: 1.5, borderColor: "#bfdbfe", backgroundColor: "#fff" }}
               >
-                <Ionicons name="call" size={18} color="#475569" />
-                <Text style={{ color: "#475569", fontWeight: "700", fontSize: 14, marginLeft: 8 }}>Call</Text>
+                <Ionicons name="call" size={18} color="#2563eb" />
+                <Text style={{ color: "#2563eb", fontWeight: "700", fontSize: 14, marginLeft: 8 }}>Call</Text>
               </TouchableOpacity>
 
               <TouchableOpacity
                 onPress={() => setModalVisible(true)}
-                style={{ flex: 2, flexDirection: "row", justifyContent: "center", alignItems: "center", paddingVertical: 12, borderRadius: 12, backgroundColor: "#4f46e5" }}
+                style={{ flex: 2, flexDirection: "row", justifyContent: "center", alignItems: "center", paddingVertical: 12, borderRadius: 12, backgroundColor: "#2563eb" }}
               >
                 <Ionicons name="paper-plane-outline" size={18} color="white" />
                 <Text style={{ color: "#fff", fontWeight: "700", fontSize: 14, marginLeft: 8 }}>Inquiry</Text>

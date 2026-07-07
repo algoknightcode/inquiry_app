@@ -251,14 +251,14 @@ const styles = StyleSheet.create({
     color: "#2563eb",
   },
   subText: {
-    fontSize: 14,
+    fontSize: 16,
     fontFamily: "PlusJakartaSans",
     color: "#64748b",
     lineHeight: 22,
     marginBottom: 24,
   },
   label: {
-    fontSize: 11,
+    fontSize: 13,
     fontFamily: "PlusJakartaSans-Bold",
     color: "#334155",
     textTransform: "uppercase",
@@ -281,7 +281,7 @@ const styles = StyleSheet.create({
     marginRight: 12,
   },
   countryCode: {
-    fontSize: 16,
+    fontSize: 18,
     fontFamily: "PlusJakartaSans-Bold",
     color: "#475569",
   },
@@ -293,7 +293,7 @@ const styles = StyleSheet.create({
   },
   textInput: {
     flex: 1,
-    fontSize: 16,
+    fontSize: 18,
     fontFamily: "PlusJakartaSans-Bold",
     color: "#0f172a",
     height: "100%",
@@ -317,7 +317,7 @@ const styles = StyleSheet.create({
   buttonText: {
     color: "#ffffff",
     fontFamily: "PlusJakartaSans-Bold",
-    fontSize: 16,
+    fontSize: 18,
   },
 
   // ── Modal ──────────────────────────────────────────────
@@ -369,7 +369,7 @@ const styles = StyleSheet.create({
     textAlign: "center",
   },
   modalBody: {
-    fontSize: 14,
+    fontSize: 16,
     fontFamily: "PlusJakartaSans",
     color: "#64748b",
     textAlign: "center",
@@ -386,7 +386,7 @@ const styles = StyleSheet.create({
   okayText: {
     color: "#ffffff",
     fontFamily: "PlusJakartaSans-Bold",
-    fontSize: 15,
+    fontSize: 17,
     letterSpacing: 0.2,
   },
 });

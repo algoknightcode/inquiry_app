@@ -1,16 +1,15 @@
-import React, { useEffect, useState, useMemo } from "react";
-import {
-  View,
-  Text,
-  TouchableOpacity,
-  FlatList,
-  TextInput,
-  Pressable,
-  ActivityIndicator,
-} from "react-native";
+import { fetchWithCache } from "@/utils/apiCache";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import { fetchWithCache } from "@/utils/apiCache";
+import React, { useEffect, useMemo, useState } from "react";
+import {
+  ActivityIndicator,
+  Pressable,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View
+} from "react-native";
 import { moderateScale } from "react-native-size-matters";
 
 // ── Types ──────────────────────────────────────────────────────────────────
@@ -36,9 +35,10 @@ interface Industry {
 
 interface SearchBarProps {
   onFocus?: () => void;
+  variant?: 'default' | 'compact';
 }
 
-export default function SearchBar({ onFocus }: SearchBarProps) {
+export default function SearchBar({ onFocus, variant = 'default' }: SearchBarProps) {
   const router = useRouter();
 
   // Data states
@@ -176,10 +176,10 @@ export default function SearchBar({ onFocus }: SearchBarProps) {
   };
 
   return (
-    <View className="w-full px-4 my-2 z-50">
+    <View className={variant === 'compact' ? "w-full z-50 relative" : "w-full px-4 my-2 z-50"}>
       <View 
-        className="bg-white rounded-[32px] p-2 shadow-2xl border border-slate-100/50"
-        style={{
+        className={variant === 'compact' ? "bg-white rounded-full border border-slate-200 shadow-sm" : "bg-white rounded-[32px] p-2 shadow-2xl border border-slate-100/50"}
+        style={variant === 'compact' ? {} : {
           shadowColor: "#0F172A",
           shadowOffset: { width: 0, height: 16 },
           shadowOpacity: 0.1,
@@ -188,11 +188,11 @@ export default function SearchBar({ onFocus }: SearchBarProps) {
         }}
       >
         {/* Input Field Container */}
-        <View className="flex-row items-center bg-slate-50/80 border border-slate-200/60 rounded-[28px] pl-4 pr-1.5 py-1.5">
-          <Ionicons name="search" size={moderateScale(20)} color="#94A3B8" />
+        <View className={variant === 'compact' ? "flex-row items-center bg-slate-50/80 rounded-full pl-3 pr-1 py-1" : "flex-row items-center bg-slate-50/80 border border-slate-200/60 rounded-[28px] pl-4 pr-1.5 py-1.5"}>
+          <Ionicons name="search" size={variant === 'compact' ? 16 : moderateScale(20)} color="#94A3B8" />
           <TextInput
-            className="flex-1 h-14 px-3 text-[15px] text-slate-800 font-jakarta"
-            placeholder="Search subcategory (e.g. Tissue)..."
+            className={variant === 'compact' ? "flex-1 h-9 px-2 text-[13px] text-slate-800 font-jakarta" : "flex-1 h-14 px-3 text-[15px] text-slate-800 font-jakarta"}
+            placeholder="Search Products"
             placeholderTextColor="#94A3B8"
             value={inputText}
             onChangeText={handleTextChange}
@@ -200,6 +200,8 @@ export default function SearchBar({ onFocus }: SearchBarProps) {
               setShowRecommendations(true);
               onFocus?.();
             }}
+            onSubmitEditing={handleSearchSubmit}
+            returnKeyType="search"
             clearButtonMode="never"
           />
           
@@ -210,22 +212,33 @@ export default function SearchBar({ onFocus }: SearchBarProps) {
           )}
 
           {/* Search Action Button */}
-          <TouchableOpacity
-            className="bg-emerald-700 rounded-[24px] px-6 h-12 items-center justify-center shadow-md shadow-emerald-900/20 ml-1"
-            activeOpacity={0.85}
-            onPress={handleSearchSubmit}
-          >
-            {loading ? (
-              <ActivityIndicator size="small" color="#FFFFFF" />
-            ) : (
-              <Text className="text-white text-[15px] font-jakarta-bold tracking-wide">Search</Text>
-            )}
-          </TouchableOpacity>
+          {variant !== 'compact' && (
+            <TouchableOpacity
+              className="bg-emerald-700 rounded-[24px] px-6 h-12 items-center justify-center shadow-md shadow-emerald-900/20 ml-1"
+              activeOpacity={0.85}
+              onPress={handleSearchSubmit}
+            >
+              {loading ? (
+                <ActivityIndicator size="small" color="#FFFFFF" />
+              ) : (
+                <Text className="text-white text-[15px] font-jakarta-bold tracking-wide">Search</Text>
+              )}
+            </TouchableOpacity>
+          )}
         </View>
 
         {/* Dynamic Recommendations List */}
         {showRecommendations && recommendations.length > 0 && (
-          <View className="bg-white mt-1 rounded-[24px] overflow-hidden">
+          <View 
+            className={variant === 'compact' ? "absolute left-0 right-0 top-[110%] bg-white rounded-[16px] shadow-lg border border-slate-100 overflow-hidden z-50" : "bg-white mt-1 rounded-[24px] overflow-hidden"}
+            style={variant === 'compact' ? {
+              shadowColor: "#0F172A",
+              shadowOffset: { width: 0, height: 8 },
+              shadowOpacity: 0.1,
+              shadowRadius: 16,
+              elevation: 5,
+            } : {}}
+          >
             {recommendations.map((item, index) => (
               <Pressable
                 key={item._id}

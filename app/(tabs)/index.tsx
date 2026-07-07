@@ -1,5 +1,3 @@
-import React, { useRef, useState, useCallback, useMemo } from 'react';
-import { FlatList, Platform, SafeAreaView, StyleSheet } from 'react-native';
 import Banner2 from '@/components/Home/Bannee2';
 import CategoryMarquee from '@/components/Home/CategoryMarquee';
 import SellersByCityGrid from '@/components/Home/Cities';
@@ -23,6 +21,8 @@ import VideoSection from '@/components/Home/Video_component';
 import WeConnectBuyerSeller from '@/components/Home/WeConnect_BuyerSeller';
 import Sidebar from '@/components/ui/Sidebar';
 import { userRole } from '@/utils/roleCache';
+import React, { useCallback, useMemo, useRef, useState } from 'react';
+import { Animated, FlatList, Platform, SafeAreaView, StyleSheet } from 'react-native';
 
 // Memoize all home components to prevent unnecessary re-renders during scrolls
 const MemoizedBanner2 = React.memo(Banner2);
@@ -50,6 +50,7 @@ export default function HomeScreen() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [renderBelowFold, setRenderBelowFold] = useState(false);
   const flatListRef = useRef<FlatList>(null);
+  const scrollY = useRef(new Animated.Value(0)).current;
 
   React.useEffect(() => {
     const timer = setTimeout(() => {
@@ -156,21 +157,27 @@ export default function HomeScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <Navbar onMenuPress={() => setIsSidebarOpen(true)} />
+      <Navbar onMenuPress={() => setIsSidebarOpen(true)} scrollY={scrollY} />
 
-      <FlatList
+      <Animated.FlatList
         ref={flatListRef}
         data={data}
         keyExtractor={keyExtractor}
         renderItem={renderItem}
+        onScroll={Animated.event(
+          [{ nativeEvent: { contentOffset: { y: scrollY } } }],
+          { useNativeDriver: true }
+        )}
+        scrollEventThrottle={16}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="always"
-        removeClippedSubviews={false} // Disable aggressive clipping to prevent flashing/missing views on scroll-up
-        windowSize={15} // Increase window size to keep more items rendered in memory
-        maxToRenderPerBatch={8} // Batch more items to avoid white-box/pop-in visual glitching
-        initialNumToRender={8} // Pre-render initial fold components
+        removeClippedSubviews={false} // Disable clipping to prevent components from disappearing/flashing when scrolling
+        windowSize={21} // Keep more items rendered in memory to ensure smooth scrolling
+        maxToRenderPerBatch={10} // Render more items per batch
+        initialNumToRender={8} // Render more items initially to cover the screen area
+        updateCellsBatchingPeriod={50}
         overScrollMode="never"
-        decelerationRate={Platform.OS === 'android' ? 0.985 : 'normal'} // High-precision smooth deceleration on Android
+        decelerationRate={Platform.OS === 'android' ? 'normal' : 'normal'}
         contentContainerStyle={{ paddingBottom: 100 }}
       />
 

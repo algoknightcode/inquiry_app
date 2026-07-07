@@ -62,7 +62,7 @@ export default function SellersByCityGrid() {
 
   const circleSize = 72 * scale;
   const imageSize = 42 * scale; // Slightly scaled for transparency layout
-  const textFontSize = 13.5 * scale;
+  const textFontSize = 15.5 * scale;
   const titleSize = 22 * scale;
 
   const handleCityPress = (cityName: string) => {
@@ -127,7 +127,7 @@ export default function SellersByCityGrid() {
 }
 
 const cityStyles = StyleSheet.create({
-  wrapper: { paddingHorizontal: 16, marginTop: 32 },
+  wrapper: { paddingHorizontal: 16, marginTop: 12 },
   title: { fontFamily: "PlusJakartaSans-ExtraBold", color: "#0f172a", letterSpacing: -0.5, marginBottom: 24, paddingHorizontal: 4 },
   grid: { flexDirection: "row", flexWrap: "wrap", justifyContent: "space-between" },
   gridItem: { width: "23.5%", alignItems: "center", marginBottom: 24 },

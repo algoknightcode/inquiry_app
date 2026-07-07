@@ -55,7 +55,7 @@ const AccordionItem = ({
         className="flex-row justify-between items-center px-4 py-3.5"
       >
         <Text 
-          className={`flex-1 text-[14px] font-jakarta-bold tracking-tight pr-4 leading-5 ${
+          className={`flex-1 text-[16px] font-jakarta-bold tracking-tight pr-4 leading-5 ${
             isExpanded ? "text-indigo-900" : "text-slate-800"
           }`}
         >
@@ -78,7 +78,7 @@ const AccordionItem = ({
       {isExpanded && (
         <View className="px-4 pb-3.5 pt-0 flex-row">
           <View className="w-[2.5px] bg-indigo-600 rounded-full mr-3 my-0.5" />
-          <Text className="flex-1 text-[13px] leading-[20px] text-slate-500 font-jakarta-medium">
+          <Text className="flex-1 text-[15px] leading-[20px] text-slate-500 font-jakarta-medium">
             {answer}
           </Text>
         </View>
@@ -115,7 +115,7 @@ export default function FaqSection() {
           onPress={() => router.push("/HelpSupport")}
           className="flex-row items-center bg-slate-50 border border-slate-100 px-3 py-1.5 rounded-xl"
         >
-          <Text className="text-[12px] font-jakarta-bold text-slate-600 mr-1">
+          <Text className="text-[14px] font-jakarta-bold text-slate-600 mr-1">
             Get Help
           </Text>
           <Ionicons name="arrow-forward" size={12} color="#475569" />

@@ -11,8 +11,8 @@ export default function WeConnectBuyerSeller() {
 
   // 2. Responsive Sizing & Typography Constants (centralized inside component)
   const titleSize = 24 * scale;
-  const itemTitleSize = 14 * scale;
-  const itemSubtitleSize = 12 * scale;
+  const itemTitleSize = 16 * scale;
+  const itemSubtitleSize = 14 * scale;
   const iconSize = 20 * scale;
   const iconBoxSize = 44 * scale;
 

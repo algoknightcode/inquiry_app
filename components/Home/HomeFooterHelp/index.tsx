@@ -31,8 +31,8 @@ export default function HomeFooterHelp({
     return {
       containerPadding: 20 * scale,
       iconSize: 22 * scale,
-      itemTitleSize: 13.5 * scale,
-      itemDescSize: 11 * scale,
+      itemTitleSize: 15.5 * scale,
+      itemDescSize: 13 * scale,
       headingSize: 15 * scale,
       itemWidth: isTablet ? "31.5%" : "48%",
       columnGap: isTablet ? 12 : 8,

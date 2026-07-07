@@ -1,11 +1,13 @@
 import { fetchWithCache } from "@/utils/apiCache";
 import { productCache } from "@/utils/productCache";
+import { Ionicons } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import { useRouter } from "expo-router";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   FlatList,
+  Linking,
   NativeScrollEvent,
   NativeSyntheticEvent,
   Pressable,
@@ -14,6 +16,7 @@ import {
   View,
   useWindowDimensions,
 } from "react-native";
+import EnquiryModal from "../../EnquiryModal";
 
 // ── TypeScript Types ─────────────────────────
 type Media = {
@@ -52,10 +55,12 @@ const ProductCard = React.memo(
     item,
     dynamicStyles,
     onPress,
+    onQuotePress,
   }: {
     item: Product;
     dynamicStyles: any;
     onPress: (item: Product) => void;
+    onQuotePress: (item: Product) => void;
   }) => {
     const primaryImage =
       item.media?.length > 0
@@ -135,19 +140,36 @@ const ProductCard = React.memo(
                 </Text>
               </View>
 
-              {/* NEW: Request a Quote Button */}
-              <TouchableOpacity
-                activeOpacity={0.8}
-                onPress={() => onPress(item)}
-                className="w-full bg-[#0E2347] py-2 rounded-lg items-center justify-center mt-1 shadow-sm shadow-[#0E2347]/20"
-              >
-                <Text
-                  style={dynamicStyles.buttonText}
-                  className="text-white font-jakarta-bold tracking-wide"
+              {/* Buttons Container */}
+              <View className="flex-row items-center w-full mt-1 gap-1.5">
+                {/* Request a Quote Button */}
+                <TouchableOpacity
+                  activeOpacity={0.8}
+                  onPress={() => onQuotePress(item)}
+                  className="flex-1 bg-[#0E2347] py-2 rounded-lg items-center justify-center shadow-sm shadow-[#0E2347]/20"
                 >
-                  Request a Quote
-                </Text>
-              </TouchableOpacity>
+                  <Text
+                    style={dynamicStyles.buttonText}
+                    className="text-white font-jakarta-bold tracking-wide"
+                    numberOfLines={1}
+                  >
+                    Request a Quote
+                  </Text>
+                </TouchableOpacity>
+
+                {/* Call Button */}
+                {item.supplier?.phone && (
+                  <TouchableOpacity
+                    activeOpacity={0.8}
+                    onPress={() => {
+                      Linking.openURL(`tel:${item.supplier.phone}`);
+                    }}
+                    className="bg-emerald-600 p-2 rounded-lg items-center justify-center shadow-sm shadow-emerald-600/20"
+                  >
+                    <Ionicons name="call" size={16} color="white" />
+                  </TouchableOpacity>
+                )}
+              </View>
             </View>
           </View>
         )}
@@ -160,6 +182,8 @@ const IBTrusted = () => {
   const router = useRouter();
   const [products, setProducts] = useState<Product[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isModalVisible, setIsModalVisible] = useState(false);
+  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const { width: screenWidth } = useWindowDimensions();
 
   // Auto-scroll refs
@@ -181,17 +205,17 @@ const IBTrusted = () => {
     return {
       containerPadding,
       paddingVertical: 24 * scale,
-      kickerText: { fontSize: 10 * scale, letterSpacing: 1.5 * scale },
+      kickerText: { fontSize: 12 * scale, letterSpacing: 1.5 * scale },
       headingText: { fontSize: 26 * scale },
-      viewAllText: { fontSize: 14 * scale },
+      viewAllText: { fontSize: 16 * scale },
       cardWidth,
       cardHeight: cardWidth * 1.25,
       cardSpacing: 16 * scale,
-      trustBadgeText: { fontSize: 8 * scale, letterSpacing: 1.5 * scale },
-      brandText: { fontSize: 10 * scale, letterSpacing: 0.5 * scale },
-      cardTitle: { fontSize: 14 * scale },
-      cardPrice: { fontSize: 15 * scale },
-      buttonText: { fontSize: 11 * scale }, // Dynamically scaled button text
+      trustBadgeText: { fontSize: 10 * scale, letterSpacing: 1.5 * scale },
+      brandText: { fontSize: 12 * scale, letterSpacing: 0.5 * scale },
+      cardTitle: { fontSize: 16 * scale },
+      cardPrice: { fontSize: 17 * scale },
+      buttonText: { fontSize: 13 * scale }, // Dynamically scaled button text
     };
   }, [scale, screenWidth]);
 
@@ -316,20 +340,26 @@ const IBTrusted = () => {
     [router]
   );
 
+  const handleOpenQuote = useCallback((item: Product) => {
+    setSelectedProduct(item);
+    setIsModalVisible(true);
+  }, []);
+
   const renderItem = useCallback(
     ({ item }: { item: Product }) => (
       <ProductCard
         item={item}
         dynamicStyles={dynamicStyles}
         onPress={handleCardPress}
+        onQuotePress={handleOpenQuote}
       />
     ),
-    [dynamicStyles, handleCardPress]
+    [dynamicStyles, handleCardPress, handleOpenQuote]
   );
 
   return (
     <View
-      style={{ paddingVertical: dynamicStyles.paddingVertical }}
+      style={{ paddingTop: dynamicStyles.paddingVertical, paddingBottom: 0 }}
       className="mt-3 bg-slate-50"
     >
       {/* Header Section */}
@@ -414,6 +444,13 @@ const IBTrusted = () => {
           removeClippedSubviews={true} 
         />
       )}
+
+      {/* Enquiry Modal */}
+      <EnquiryModal
+        visible={isModalVisible}
+        onClose={() => setIsModalVisible(false)}
+        product={selectedProduct}
+      />
     </View>
   );
 };
