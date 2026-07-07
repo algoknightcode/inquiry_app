@@ -62,18 +62,16 @@ const IndustrySlide = React.memo(({
   onSubCategoryPress: (sub: SubCategory) => void;
 }) => {
   const cats = item.categories?.slice(0, 4) ?? [];
-  const renderIndices = [0, 1, 2]; // Pre-defined array avoids creating Array.from() on every render
+  const renderIndices = [0, 1, 2]; 
 
   return (
     <View style={s.slide}>
-      {/* Industry title */}
       <Pressable onPress={() => onIndustryPress(item)}>
         <Text style={s.industryName} numberOfLines={1}>
           {item.name}
         </Text>
       </Pressable>
 
-      {/* Hero image */}
       <Pressable style={s.heroWrap} onPress={() => onIndustryPress(item)}>
         <Image
           source={{ uri: item.imageUrl }}
@@ -84,7 +82,6 @@ const IndustrySlide = React.memo(({
         />
       </Pressable>
 
-      {/* 2×2 grid */}
       <View style={s.grid}>
         {cats.map((cat) => (
           <Pressable 
@@ -92,7 +89,6 @@ const IndustrySlide = React.memo(({
             style={s.catCard}
             onPress={() => onCategoryPress(cat, item._id)}
           >
-            {/* Fixed-height header keeps all 4 cards aligned */}
             <View style={s.catHeader}>
               <View style={s.catThumb}>
                 <Image
@@ -110,7 +106,6 @@ const IndustrySlide = React.memo(({
 
             <View style={s.divider} />
 
-            {/* Always 3 slots — prevents height jumps */}
             <View style={s.subList}>
               {renderIndices.map((i) => {
                 const sub = cat.subCategories?.[i];
@@ -137,7 +132,6 @@ const IndustrySlide = React.memo(({
         ))}
       </View>
 
-      {/* CTA */}
       <Pressable 
         style={({ pressed }) => [s.cta, pressed && s.ctaPressed]}
         onPress={() => onIndustryPress(item)}
@@ -158,7 +152,10 @@ export default function IndustryTreeCarousel() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activeIndex, setActiveIndex] = useState(0);
+  
   const flatRef = useRef<FlatList<Industry>>(null);
+  const activeIndexRef = useRef(0);
+  const timerRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     (async () => {
@@ -178,6 +175,41 @@ export default function IndustryTreeCarousel() {
       }
     })();
   }, []);
+
+  // --- Auto-Swipe Engine ---
+  const startAutoPlay = useCallback(() => {
+    if (timerRef.current) clearInterval(timerRef.current);
+    if (data.length <= 1) return;
+
+    timerRef.current = setInterval(() => {
+      let nextIndex = activeIndexRef.current + 1;
+      
+      // Loop back to the first slide when reaching the end
+      if (nextIndex >= data.length) {
+        nextIndex = 0; 
+      }
+
+      flatRef.current?.scrollToIndex({
+        index: nextIndex,
+        animated: true,
+      });
+    }, 4000); // 4 seconds per slide (adjust as needed)
+  }, [data.length]);
+
+  const stopAutoPlay = useCallback(() => {
+    if (timerRef.current) {
+      clearInterval(timerRef.current);
+      timerRef.current = null;
+    }
+  }, []);
+
+  // Initialize Auto-play when data loads
+  useEffect(() => {
+    if (data.length > 0) {
+      startAutoPlay();
+    }
+    return () => stopAutoPlay();
+  }, [data, startAutoPlay, stopAutoPlay]);
 
   // --- Memoized Navigation Callbacks ---
   const handleIndustryPress = useCallback((item: Industry) => {
@@ -214,10 +246,12 @@ export default function IndustryTreeCarousel() {
     />
   ), [handleIndustryPress, handleCategoryPress, handleSubCategoryPress]);
 
-  // --- Viewability Tracking for Dots (Highly Optimized) ---
+  // --- Viewability Tracking for Dots ---
   const onViewableItemsChanged = useRef(({ viewableItems }: { viewableItems: ViewToken[] }) => {
     if (viewableItems.length > 0) {
-      setActiveIndex(viewableItems[0].index ?? 0);
+      const newIndex = viewableItems[0].index ?? 0;
+      setActiveIndex(newIndex);
+      activeIndexRef.current = newIndex; // Sync ref for the auto-scroll timer
     }
   }).current;
 
@@ -230,6 +264,12 @@ export default function IndustryTreeCarousel() {
     index,
   }), []);
 
+  // Catch errors if auto-scroll fires before a layout is mounted
+  const handleScrollToIndexFailed = useCallback((info: { index: number }) => {
+    setTimeout(() => {
+      flatRef.current?.scrollToIndex({ index: info.index, animated: true });
+    }, 500);
+  }, []);
 
   if (loading) {
     return (
@@ -262,11 +302,16 @@ export default function IndustryTreeCarousel() {
             showsHorizontalScrollIndicator={false}
             nestedScrollEnabled
             
+            // Auto-swipe Handlers (Pause on touch, resume on release)
+            onScrollBeginDrag={stopAutoPlay}
+            onMomentumScrollEnd={startAutoPlay}
+            onScrollToIndexFailed={handleScrollToIndexFailed}
+            
             // Layout & Memory Optimizations
             getItemLayout={getItemLayout}
             initialNumToRender={1}
             maxToRenderPerBatch={2}
-            windowSize={3} // Prevents rendering slides far off-screen
+            windowSize={3}
             removeClippedSubviews={true}
             
             // Viewability
@@ -322,7 +367,6 @@ const s = StyleSheet.create({
     fontSize: 14,
   },
 
-  // ── Slide ───────────────────────────────────────────────────────
   slide: {
     width: screenWidth,
     backgroundColor: WHITE,
@@ -338,7 +382,6 @@ const s = StyleSheet.create({
     marginBottom: 14,
   },
 
-  // ── Hero ────────────────────────────────────────────────────────
   heroWrap: {
     width: "100%",
     height: 150,
@@ -347,7 +390,6 @@ const s = StyleSheet.create({
     marginBottom: 16,
   },
 
-  // ── Grid ────────────────────────────────────────────────────────
   grid: {
     flexDirection: "row",
     flexWrap: "wrap",
@@ -435,7 +477,6 @@ const s = StyleSheet.create({
     color: "transparent",
   },
 
-  // ── CTA ─────────────────────────────────────────────────────────
   cta: {
     backgroundColor: BLUE,
     borderRadius: 50,
@@ -456,7 +497,6 @@ const s = StyleSheet.create({
     letterSpacing: -0.3,
   },
 
-  // ── Dot indicators ──────────────────────────────────────────────
   dotsRow: {
     flexDirection: "row",
     justifyContent: "center",

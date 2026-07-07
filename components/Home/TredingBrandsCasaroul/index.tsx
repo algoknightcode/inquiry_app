@@ -30,10 +30,15 @@ const mockBrands: Brand[] = [
 const BrandCard = React.memo(({ brand, dynamicStyles }: { brand: Brand; dynamicStyles: any }) => {
   return (
     <View
-      style={{ width: dynamicStyles.itemWidth }}
+      // ✅ 1. Fixed Card Height explicitly defined by marqueeHeight
+      style={{ 
+        width: dynamicStyles.itemWidth, 
+        height: dynamicStyles.marqueeHeight,
+      }}
       className="flex-row items-center justify-between pr-1.5"
     >
-      <Pressable className="flex-row items-center py-1 flex-1 active:opacity-70 transition-opacity">
+      <Pressable className="flex-row items-center flex-1 active:opacity-70 transition-opacity">
+        {/* Fixed Avatar Area */}
         <View
           style={[
             dynamicStyles.avatar,
@@ -44,11 +49,14 @@ const BrandCard = React.memo(({ brand, dynamicStyles }: { brand: Brand; dynamicS
           <Text
             style={dynamicStyles.avatarText}
             className="font-jakarta-bold text-white tracking-wide"
+            numberOfLines={1}
+            adjustsFontSizeToFit // ✅ 8. Account for font scaling safely
           >
             {brand.initials}
           </Text>
         </View>
 
+        {/* ✅ 2 & 3. Reserved fixed height for the text wrapper */}
         <View
           style={dynamicStyles.infoWrapper}
           className="ml-3 justify-center shrink"
@@ -56,22 +64,24 @@ const BrandCard = React.memo(({ brand, dynamicStyles }: { brand: Brand; dynamicS
           <Text
             style={dynamicStyles.brandName}
             className="text-slate-800 font-jakarta-bold tracking-tight"
-            numberOfLines={1}
+            numberOfLines={1} // ✅ 4. Strict line limits
+            ellipsizeMode="tail"
           >
             {brand.name}
           </Text>
           <Text
             style={dynamicStyles.category}
             className="text-slate-400 font-jakarta mt-0.5"
-            numberOfLines={1}
+            numberOfLines={1} // ✅ 4. Strict line limits
+            ellipsizeMode="tail"
           >
             {brand.category}
           </Text>
         </View>
       </Pressable>
 
-      {/* Divider */}
-      <View className="h-9 w-[1px] bg-slate-200/50" />
+      {/* Fixed height divider to ensure identical baseline across all cards */}
+      <View style={{ height: dynamicStyles.dividerHeight }} className="w-[1px] bg-slate-200/50" />
     </View>
   );
 });
@@ -90,38 +100,56 @@ function TrendingBrandsCarousel() {
     return isTablet ? 1.25 : Math.max(0.85, Math.min(1.15, screenWidth / 375));
   }, [screenWidth]);
 
+  // --- Rigid Layout Calculations ---
   const dynamicStyles = useMemo(() => {
     const avatarSize = 52 * scale;
     const paddingHorizontal = 16 * scale;
-
     const carouselWidth = screenWidth - paddingHorizontal * 2;
 
+    // ✅ 7. Responsive breakpoints for items per view
     let itemsPerView = 2;
-    if (screenWidth >= 1024) {
-      itemsPerView = 4;
-    } else if (screenWidth >= 768) {
-      itemsPerView = 3;
-    } else if (screenWidth >= 480) {
-      itemsPerView = 2.5;
-    } else if (screenWidth < 350) {
-      itemsPerView = 1.7;
-    }
+    if (screenWidth >= 1024) itemsPerView = 4;
+    else if (screenWidth >= 768) itemsPerView = 3;
+    else if (screenWidth >= 480) itemsPerView = 2.5;
+    else if (screenWidth < 350) itemsPerView = 1.7;
+
+    // Fixed Text Heights (prevent layout jumping on Android)
+    const brandNameSize = 15.5 * scale;
+    const brandNameLineHeight = brandNameSize * 1.3;
+    const categorySize = 12.5 * scale;
+    const categoryLineHeight = categorySize * 1.3;
+    const infoWrapperHeight = brandNameLineHeight + categoryLineHeight + (4 * scale); // Title + Desc + Gap
 
     return {
       paddingHorizontal,
       cardPaddingTop: 22 * scale,
       cardPaddingBottom: 20 * scale,
-      marqueeHeight: 62 * scale,
+      marqueeHeight: 64 * scale, // Strict height for the whole row
+      dividerHeight: 36 * scale, // Strict height for divider
+      
       titleSize: 22 * scale,
-      subtitleSize: 14 * scale,
-      bottomTextSize: 14.5 * scale,
+      subtitleSize: 13 * scale,
+      bottomTextSize: 13.5 * scale,
 
       itemWidth: carouselWidth / itemsPerView,
 
       avatarText: { fontSize: 18 * scale },
-      brandName: { fontSize: 16.5 * scale },
-      category: { fontSize: 13.5 * scale },
-      infoWrapper: { minWidth: 90 * scale },
+      
+      brandName: { 
+        fontSize: brandNameSize, 
+        lineHeight: brandNameLineHeight 
+      },
+      category: { 
+        fontSize: categorySize, 
+        lineHeight: categoryLineHeight 
+      },
+      
+      infoWrapper: { 
+        minWidth: 90 * scale, 
+        height: infoWrapperHeight, // Forced exact height for text box
+        justifyContent: 'center' 
+      },
+      
       avatar: {
         width: avatarSize,
         height: avatarSize,
@@ -134,7 +162,7 @@ function TrendingBrandsCarousel() {
 
   // ── INFINITE SCROLL LOGIC ──
   const replicatedData = useMemo(() => {
-    return Array(100).fill(mockBrands).flat();
+    return Array(150).fill(mockBrands).flat();
   }, []);
 
   const baseMiddleIndex = useMemo(() => {
@@ -259,7 +287,8 @@ function TrendingBrandsCarousel() {
         }}
         className="bg-white border border-slate-100 rounded-[28px] shadow-lg shadow-slate-100/50"
       >
-        <View style={{ height: dynamicStyles.marqueeHeight, width: "100%" }}>
+        {/* ✅ 1. Outer view physically restricts the list's bounds */}
+        <View style={{ height: dynamicStyles.marqueeHeight, width: "100%", justifyContent: 'center' }}>
           <FlatList
             ref={flatListRef}
             data={replicatedData}
@@ -270,17 +299,14 @@ function TrendingBrandsCarousel() {
               <BrandCard brand={item} dynamicStyles={dynamicStyles} />
             )}
             
-            // Replaces the Reanimated Carousel config
             snapToInterval={ITEM_SIZE}
             snapToAlignment="start"
             decelerationRate="fast"
             
-            // Event Listeners for Autoplay & Gestures
             onScrollBeginDrag={stopAutoPlay}
             onMomentumScrollEnd={handleMomentumScrollEnd}
             onScrollToIndexFailed={handleScrollToIndexFailed}
             
-            // CPU & Memory Layout Optimization
             getItemLayout={(_, index) => ({
               length: ITEM_SIZE,
               offset: ITEM_SIZE * index,
@@ -297,22 +323,22 @@ function TrendingBrandsCarousel() {
 
         {/* Bottom Details Info Row */}
         <View className="flex-row justify-between items-center w-full">
-          <View className="flex-row items-center py-0.5 px-2 bg-emerald-50/60 border border-emerald-100/40 rounded-full">
-            <View className="w-1 h-1 rounded-full bg-emerald-500 mr-1.5" />
+          <View className="flex-row items-center py-1 px-2.5 bg-emerald-50/60 border border-emerald-100/40 rounded-full">
+            <View className="w-1.5 h-1.5 rounded-full bg-emerald-500 mr-1.5" />
             <Text
-              style={{ fontSize: dynamicStyles.bottomTextSize * 0.82 }}
+              style={{ fontSize: dynamicStyles.bottomTextSize * 0.85 }}
               className="text-emerald-700 font-jakarta-semibold"
             >
-              100+ verified brands active on IB
+              100+ verified brands active
             </Text>
           </View>
 
           <Pressable
             onPress={handleFreeListingPress}
-            className="active:opacity-70 flex-row items-center py-0.5 px-2 bg-orange-50 border border-orange-100/80 rounded-full"
+            className="active:opacity-70 flex-row items-center py-1 px-2.5 bg-orange-50 border border-orange-100/80 rounded-full"
           >
             <Text
-              style={{ fontSize: dynamicStyles.bottomTextSize * 0.82 }}
+              style={{ fontSize: dynamicStyles.bottomTextSize * 0.85 }}
               className="text-slate-700 font-jakarta-semibold"
             >
               Want to be featured?{" "}

@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { MaterialCommunityIcons, Ionicons, Feather } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
 
 const COLORS = {
   background: '#0B1121', // Deep Navy Blue
@@ -25,6 +26,7 @@ const COLORS = {
 };
 
 export default function InquiryBazaarLanding() {
+  const router = useRouter();
   const { width: screenWidth } = useWindowDimensions();
 
   // 1. Detect Device Characteristics
@@ -71,12 +73,18 @@ export default function InquiryBazaarLanding() {
 
           {/* Action Buttons container with max-width constraints on Tablet */}
           <View style={[styles.actionBtnContainer, isTablet && styles.actionBtnContainerTablet]}>
-            <TouchableOpacity style={[styles.primaryBtn, { paddingVertical: 14 * scale }]}>
+            <TouchableOpacity 
+              style={[styles.primaryBtn, { paddingVertical: 14 * scale }]}
+              onPress={() => router.push('/HelpSupport')}
+            >
               <Text style={[styles.primaryBtnText, { fontSize: 15 * scale }]}>Start Your Visibility</Text>
               <Feather name="arrow-right" size={18 * scale} color="#FFF" />
             </TouchableOpacity>
 
-            <TouchableOpacity style={[styles.secondaryBtn, { paddingVertical: 14 * scale }]}>
+            <TouchableOpacity 
+              style={[styles.secondaryBtn, { paddingVertical: 14 * scale }]}
+              onPress={() => router.push('/HelpSupport')}
+            >
               <Text style={[styles.secondaryBtnText, { fontSize: 15 * scale }]}>See How It Works</Text>
             </TouchableOpacity>
           </View>
@@ -214,12 +222,18 @@ export default function InquiryBazaarLanding() {
           </Text>
 
           <View style={[styles.actionBtnContainer, isTablet && styles.actionBtnContainerTablet]}>
-            <TouchableOpacity style={[styles.primaryBtn, { paddingVertical: 14 * scale }]}>
+            <TouchableOpacity 
+              style={[styles.primaryBtn, { paddingVertical: 14 * scale }]}
+              onPress={() => router.push('/HelpSupport')}
+            >
               <Text style={[styles.primaryBtnText, { fontSize: 15 * scale }]}>List My Business Now</Text>
               <Feather name="arrow-right" size={18 * scale} color="#FFF" />
             </TouchableOpacity>
 
-            <TouchableOpacity style={[styles.secondaryBtn, { paddingVertical: 14 * scale }]}>
+            <TouchableOpacity 
+              style={[styles.secondaryBtn, { paddingVertical: 14 * scale }]}
+              onPress={() => router.push('/HelpSupport')}
+            >
               <Text style={[styles.secondaryBtnText, { fontSize: 15 * scale }]}>Talk to Our Team</Text>
             </TouchableOpacity>
           </View>

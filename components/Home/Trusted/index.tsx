@@ -189,7 +189,7 @@ const IBTrusted = () => {
   // Auto-scroll refs
   const flatListRef = useRef<FlatList>(null);
   const activeIndexRef = useRef(0);
-  const timerRef = useRef<NodeJS.Timeout | null>(null);
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // ── Responsive Scaling Engine ──
   const scale = useMemo(() => {

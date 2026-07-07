@@ -66,22 +66,33 @@ export default function MoreForYou() {
   const activeIndexRef = useRef(0);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  // Responsive configurations
+  // --- Responsive & Rigid Layout Configurations ---
   const isTablet = screenWidth >= 768;
   const scale = isTablet ? 1.15 : Math.max(0.85, Math.min(1.1, screenWidth / 375));
+  
+  // 1. Fixed dimensions
   const cardWidth = isTablet ? screenWidth / 4 : screenWidth / 2;
-
+  const cardHeight = 240 * scale; // Fixed overall height
+  
   const sectionTitleSize = 22 * scale;
-  const cardTitleSize = 16 * scale;
-  const descSize = 13.5 * scale;
-  const buttonTextSize = 14 * scale;
+  
+  // 2 & 3. Pre-calculated fixed heights for text containers
+  const cardTitleSize = 15 * scale;
+  const titleLineHeight = cardTitleSize * 1.3;
+  const titleContainerHeight = titleLineHeight * 2; // Exact height for 2 lines
 
-  // INCREASED TO 250 (1000 items). CPU/Mem is safe because of FlatList Virtualization props.
+  const descSize = 13 * scale;
+  const descLineHeight = descSize * 1.4;
+  const descContainerHeight = descLineHeight * 4.5; // Exact height for 4-5 lines
+
+  const buttonTextSize = 13 * scale;
+  const footerHeight = 44 * scale; // Fixed footer height
+
+  // Memory efficient data replication
   const replicatedData = useMemo(() => {
     return Array(250).fill(cardsData).flat();
   }, []);
 
-  // Base middle index calculated to perfectly align with index 0 of cardsData
   const baseMiddleIndex = useMemo(() => {
     const middle = Math.floor(replicatedData.length / 2);
     return middle - (middle % cardsData.length); 
@@ -89,19 +100,17 @@ export default function MoreForYou() {
 
   // --- PLAYBACK CONTROLS ---
   const startAutoPlay = useCallback(() => {
-    stopAutoPlay(); // Prevent duplicate intervals
+    stopAutoPlay();
     timerRef.current = setInterval(() => {
       let nextIndex = activeIndexRef.current + 1;
 
-      // INVISIBLE RESET: If we get too close to the end, silently jump to the middle
       if (nextIndex >= replicatedData.length - 5) {
-        // Calculate the exact matching card in the middle to make the jump invisible
         const remainder = nextIndex % cardsData.length;
         const safeMiddleIndex = baseMiddleIndex + remainder;
 
         flatListRef.current?.scrollToIndex({
           index: safeMiddleIndex,
-          animated: false, // Turn off animation for the reset
+          animated: false,
         });
         activeIndexRef.current = safeMiddleIndex;
       } else {
@@ -122,8 +131,6 @@ export default function MoreForYou() {
   useEffect(() => {
     if (replicatedData.length > 0) {
       activeIndexRef.current = baseMiddleIndex;
-      
-      // Delay ensures layout has mounted before calculating offsets
       const initTimer = setTimeout(() => {
         flatListRef.current?.scrollToIndex({
           index: baseMiddleIndex,
@@ -144,7 +151,6 @@ export default function MoreForYou() {
     const scrollOffset = event.nativeEvent.contentOffset.x;
     let currentIndex = Math.round(scrollOffset / cardWidth);
 
-    // If user manually swipes too far left or right, invisibly snap them back to the middle
     if (currentIndex < 5 || currentIndex > replicatedData.length - 5) {
       const remainder = currentIndex % cardsData.length;
       currentIndex = baseMiddleIndex + remainder;
@@ -156,7 +162,7 @@ export default function MoreForYou() {
     }
 
     activeIndexRef.current = currentIndex;
-    startAutoPlay(); // Resume auto-play after user finishes swiping
+    startAutoPlay();
   };
 
   const handlePress = (route: string) => {
@@ -169,16 +175,10 @@ export default function MoreForYou() {
     }
   };
 
-  // Prevent crash if auto-scroll triggers before an off-screen item is rendered
-  const handleScrollToIndexFailed = (info: {
-    index: number;
-    highestMeasuredFrameIndex: number;
-    averageItemLength: number;
-  }) => {
-    const wait = new Promise((resolve) => setTimeout(resolve, 500));
-    wait.then(() => {
+  const handleScrollToIndexFailed = (info: { index: number }) => {
+    setTimeout(() => {
       flatListRef.current?.scrollToIndex({ index: info.index, animated: true });
-    });
+    }, 500);
   };
 
   const renderCard = ({ item }: { item: MoreForYouCard }) => {
@@ -186,8 +186,8 @@ export default function MoreForYou() {
 
     return (
       <View
-        style={{ width: cardWidth }}
-        className={`flex-col items-center text-center justify-between px-3 py-5 min-h-[245px] border-r border-gray-200 relative ${
+        style={{ width: cardWidth, height: cardHeight }}
+        className={`flex-col items-center px-3 py-4 border-r border-gray-200 relative ${
           isPopular ? "bg-[#0E2347]" : "bg-white"
         }`}
       >
@@ -203,8 +203,11 @@ export default function MoreForYou() {
           </View>
         )}
 
-        <View className="flex-1 justify-center items-center w-full mt-1">
-          <View className="mb-2">
+        {/* --- Rigid Content Section --- */}
+        <View className="flex-1 w-full flex-col items-center">
+          
+          {/* Fixed Icon Area */}
+          <View style={{ height: 40 * scale, justifyContent: 'center' }} className="mb-2">
             <Ionicons
               name={item.icon}
               size={28 * scale}
@@ -212,51 +215,64 @@ export default function MoreForYou() {
             />
           </View>
 
-          <Text
-            style={{
-              fontSize: cardTitleSize,
-              lineHeight: cardTitleSize * 1.3,
-              fontFamily: "PlusJakartaSans-Bold",
-            }}
-            className={`text-center mb-1 px-1 ${
-              isPopular ? "text-white" : "text-gray-800"
-            }`}
-          >
-            {item.title}
-          </Text>
+          {/* Fixed Title Area + NumberOfLines constraint */}
+          <View style={{ height: titleContainerHeight, justifyContent: 'flex-start' }} className="w-full mb-2">
+            <Text
+              numberOfLines={2}
+              ellipsizeMode="tail"
+              style={{
+                fontSize: cardTitleSize,
+                lineHeight: titleLineHeight,
+                fontFamily: "PlusJakartaSans-Bold",
+              }}
+              className={`text-center px-1 ${isPopular ? "text-white" : "text-gray-800"}`}
+            >
+              {item.title}
+            </Text>
+          </View>
 
-          <Text
-            style={{
-              fontSize: descSize,
-              lineHeight: descSize * 1.4,
-              fontFamily: "PlusJakartaSans-Medium",
-            }}
-            className={`text-center opacity-90 mb-3 ${
-              isPopular ? "text-[#e2e8f0]" : "text-gray-600"
-            }`}
-          >
-            {item.desc}
-          </Text>
+          {/* Fixed Description Area + NumberOfLines constraint */}
+          <View style={{ height: descContainerHeight, justifyContent: 'flex-start' }} className="w-full">
+            <Text
+              numberOfLines={4}
+              ellipsizeMode="tail"
+              style={{
+                fontSize: descSize,
+                lineHeight: descLineHeight,
+                fontFamily: "PlusJakartaSans-Medium",
+              }}
+              className={`text-center opacity-90 ${isPopular ? "text-[#e2e8f0]" : "text-gray-600"}`}
+            >
+              {item.desc}
+            </Text>
+          </View>
+
         </View>
 
-        <Pressable
-          onPress={() => handlePress(item.route)}
-          className={`mt-auto px-4 py-1.5 rounded-full items-center justify-center border active:opacity-70 transition-opacity ${
-            isPopular
-              ? "bg-transparent border-white"
-              : "bg-transparent border-[#10316C]"
-          }`}
-        >
-          <Text
-            style={{
-              fontSize: buttonTextSize,
-              fontFamily: "PlusJakartaSans-Bold",
-            }}
-            className={isPopular ? "text-white" : "text-[#10316C]"}
+        {/* --- Fixed Footer Area --- */}
+        {/* Enforces strict baseline alignment for buttons regardless of text above */}
+        <View style={{ height: footerHeight, justifyContent: 'flex-end' }} className="w-full mt-2">
+          <Pressable
+            onPress={() => handlePress(item.route)}
+            className={`w-full py-2 rounded-full items-center justify-center border active:opacity-70 transition-opacity ${
+              isPopular
+                ? "bg-transparent border-white"
+                : "bg-transparent border-[#10316C]"
+            }`}
           >
-            {item.buttonText}
-          </Text>
-        </Pressable>
+            <Text
+              numberOfLines={1}
+              adjustsFontSizeToFit
+              style={{
+                fontSize: buttonTextSize,
+                fontFamily: "PlusJakartaSans-Bold",
+              }}
+              className={isPopular ? "text-white" : "text-[#10316C]"}
+            >
+              {item.buttonText}
+            </Text>
+          </Pressable>
+        </View>
       </View>
     );
   };
@@ -285,15 +301,13 @@ export default function MoreForYou() {
           showsHorizontalScrollIndicator={false}
           snapToInterval={cardWidth}
           decelerationRate="fast"
-          // Memory and CPU optimizations
           removeClippedSubviews={true}
           initialNumToRender={4}
           maxToRenderPerBatch={3}
           windowSize={5} 
-          // Event Listeners
-          onScrollBeginDrag={stopAutoPlay} // Pause when user touches
-          onMomentumScrollEnd={handleMomentumScrollEnd} // Resume when user lets go
-          onScrollToIndexFailed={handleScrollToIndexFailed} // Prevents rare crashes
+          onScrollBeginDrag={stopAutoPlay}
+          onMomentumScrollEnd={handleMomentumScrollEnd}
+          onScrollToIndexFailed={handleScrollToIndexFailed}
           getItemLayout={(_, index) => ({
             length: cardWidth,
             offset: cardWidth * index,

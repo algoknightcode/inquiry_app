@@ -1,6 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import React, { useState, useRef } from "react";
+import React, { useCallback, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
@@ -14,6 +14,7 @@ import {
   TextInput,
   TextInputProps,
   TouchableOpacity,
+  useWindowDimensions,
   View
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -32,21 +33,22 @@ if (!isExpoGo) {
   }
 }
 
+// ── Memoized Input Field (Prevents typing lag) ──
 interface InputFieldProps extends TextInputProps {
   label: string;
   required?: boolean;
+  scale: number;
 }
 
-const InputField: React.FC<InputFieldProps> = ({
-  label,
-  required,
-  ...props
-}) => {
+const InputField = React.memo(({ label, required, scale, ...props }: InputFieldProps) => {
   const [focused, setFocused] = useState(false);
 
   return (
-    <View style={styles.inputGroup}>
-      <Text style={[styles.label, focused && styles.labelFocused]}>
+    <View style={{ marginBottom: 16 * scale }}>
+      <Text 
+        style={[styles.label, { fontSize: 13 * scale }, focused && styles.labelFocused]}
+        maxFontSizeMultiplier={1.2}
+      >
         {label}
         {required && <Text style={styles.required}> *</Text>}
       </Text>
@@ -55,21 +57,33 @@ const InputField: React.FC<InputFieldProps> = ({
         {...props}
         style={[
           styles.input,
+          { 
+            height: props.multiline ? 120 * scale : 54 * scale,
+            fontSize: 15 * scale,
+            paddingHorizontal: 16 * scale,
+          },
           focused && styles.inputFocused,
-          props.multiline && styles.textArea,
+          props.multiline && { paddingTop: 16 * scale }
         ]}
         placeholderTextColor="#94A3B8"
         onFocus={() => setFocused(true)}
         onBlur={() => setFocused(false)}
+        maxFontSizeMultiplier={1.2}
       />
     </View>
   );
-};
+});
 
 export default function RequestQuoteForm() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const scrollViewRef = useRef<ScrollView>(null);
+  
+  // --- Responsive Engine ---
+  const { width: screenWidth } = useWindowDimensions();
+  const scale = useMemo(() => Math.max(0.85, Math.min(1.15, screenWidth / 375)), [screenWidth]);
+
+  // States
   const [loading, setLoading] = useState(false);
   const [showModal, setShowModal] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
@@ -78,7 +92,6 @@ export default function RequestQuoteForm() {
   const [otp, setOtp] = useState("");
   const [showOtpBox, setShowOtpBox] = useState(false);
   const [isPhoneVerified, setIsPhoneVerified] = useState(false);
-  // Store Firebase's confirmation object
   const [confirm, setConfirm] = useState<FirebaseAuthTypes.ConfirmationResult | null>(null);
 
   const [formData, setFormData] = useState({
@@ -90,21 +103,18 @@ export default function RequestQuoteForm() {
     requirement: "",
   });
 
-  const handleChange = (field: keyof typeof formData, value: string) => {
+  const handleChange = useCallback((field: keyof typeof formData, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
-    setErrorMessage(""); // Clear errors on typing
-  };
+    if (errorMessage) setErrorMessage("");
+  }, [errorMessage]);
 
-  // --- 1. SEND OTP (NO CAPTCHA) ---
+  // --- 1. SEND OTP ---
   const handleSendOTP = async () => {
-    console.log("🚀 [OTP] Starting handleSendOTP flow...");
     if (!formData.fullName || !formData.phoneNumber || !formData.requirement) {
-      console.log("⚠️ [OTP] Missing required fields:", { fullName: !!formData.fullName, phoneNumber: !!formData.phoneNumber, requirement: !!formData.requirement });
       setErrorMessage("Please fill all required fields before proceeding.");
       return;
     }
     if (formData.phoneNumber.trim().length !== 10) {
-      console.log("⚠️ [OTP] Invalid phone number length:", formData.phoneNumber);
       setErrorMessage("Enter a valid 10-digit phone number.");
       return;
     }
@@ -118,16 +128,13 @@ export default function RequestQuoteForm() {
         setLoading(false);
         return;
       }
-      console.log(`📤 [OTP] Requesting SMS OTP for: +91${formData.phoneNumber}`);
       const confirmation = await auth().signInWithPhoneNumber(`+91${formData.phoneNumber}`);
-      console.log("📥 [OTP] Firebase confirmation object received:", confirmation ? "SUCCESS" : "EMPTY");
       setConfirm(confirmation);
       setShowOtpBox(true);
       setTimeout(() => {
         scrollViewRef.current?.scrollToEnd({ animated: true });
       }, 150);
     } catch (error: any) {
-      console.error("❌ [OTP] Firebase Auth Error:", error);
       setErrorMessage(error?.message || "Failed to Send OTP");
     } finally {
       setLoading(false);
@@ -136,9 +143,7 @@ export default function RequestQuoteForm() {
 
   // --- 2. VERIFY OTP ---
   const handleVerifyOTP = async () => {
-    console.log("🚀 [OTP] Starting handleVerifyOTP flow...");
     if (!otp || otp.length < 4) {
-      console.log("⚠️ [OTP] Invalid OTP length entered:", otp);
       setErrorMessage("Please enter a valid OTP.");
       return;
     }
@@ -148,19 +153,14 @@ export default function RequestQuoteForm() {
 
     try {
       if (confirm) {
-        console.log(`📤 [OTP] Verifying code: "${otp}"`);
-        const userCredential = await confirm.confirm(otp);
-        console.log("📥 [OTP] Verification successful! User credential:", userCredential?.user?.uid);
+        await confirm.confirm(otp);
         setIsPhoneVerified(true);
-        // Proceed directly to submit form after successful verification
         await submitForm();
       } else {
-        console.error("❌ [OTP] No confirmation object found.");
         setErrorMessage("Please request an OTP first.");
         setLoading(false);
       }
     } catch (error: any) {
-      console.error("❌ [OTP] OTP Verification Error:", error);
       setErrorMessage("Invalid OTP. Please try again.");
       setLoading(false);
     }
@@ -168,7 +168,6 @@ export default function RequestQuoteForm() {
 
   // --- 3. SUBMIT FORM TO BACKEND ---
   const submitForm = async () => {
-    console.log("🚀 [API] Starting submitForm flow...");
     try {
       const payload = {
         platform: "App Request Quote",
@@ -182,33 +181,24 @@ export default function RequestQuoteForm() {
         message: `Company Name: ${formData.companyName || "N/A"}\nGST Number: ${formData.gstNumber || "N/A"}\nRequirement: ${formData.requirement}`,
       };
 
-      console.log("📤 [API] Sending payload to backend:", JSON.stringify(payload, null, 2));
-
       const res = await fetch("https://brandbnalo.com/api/form/add", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
 
-      console.log("📥 [API] Response status:", res.status);
       const data = await res.json();
-      console.log("📥 [API] Response JSON:", JSON.stringify(data, null, 2));
 
       if (res.ok || data?.success) {
-        console.log("✅ [API] Form submitted successfully!");
-        // Format text for WhatsApp redirection
         const whatsappText = `Hi, I am ${formData.fullName}.\n\nCompany Name: ${formData.companyName || "N/A"}\nGST Number: ${formData.gstNumber || "N/A"}\nEmail: ${formData.email || "N/A"}\nMessage: ${formData.requirement}\nContact: ${formData.phoneNumber}`;
         const waUrl = `whatsapp://send?phone=916306530720&text=${encodeURIComponent(whatsappText)}`;
 
         setShowModal(true);
 
-        // Redirect to WhatsApp after 1.5 seconds
         setTimeout(() => {
-          console.log("🔗 [Redirect] Opening WhatsApp...");
-          Linking.openURL(waUrl).catch((err) => console.error("❌ [Redirect] Failed to open WhatsApp:", err));
+          Linking.openURL(waUrl).catch((err) => console.error("❌ Failed to open WhatsApp:", err));
         }, 1500);
 
-        // Reset form
         setFormData({
           fullName: "", email: "", companyName: "",
           gstNumber: "", phoneNumber: "", requirement: "",
@@ -218,37 +208,42 @@ export default function RequestQuoteForm() {
         setConfirm(null);
         setIsPhoneVerified(false);
       } else {
-        console.error("❌ [API] Backend failed to process submission:", data?.message);
         setErrorMessage("Failed to submit form. Please try again.");
       }
     } catch (error) {
-      console.error("❌ [API] Server error during submission:", error);
       setErrorMessage("Server error. Please check your internet connection.");
     } finally {
       setLoading(false);
     }
   };
 
-  // --- ACTION BUTTON ROUTER ---
   const handleAction = () => {
-    if (!showOtpBox) {
-      handleSendOTP();
-    } else if (!isPhoneVerified) {
-      handleVerifyOTP();
-    }
+    if (!showOtpBox) handleSendOTP();
+    else if (!isPhoneVerified) handleVerifyOTP();
   };
 
   return (
     <View style={styles.safeArea}>
       <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
 
-      {/* Navbar */}
+      {/* Rigid Navbar */}
       <View style={{ paddingTop: insets.top, backgroundColor: "#FFFFFF", borderBottomWidth: 1, borderBottomColor: "#E2E8F0" }}>
         <View style={styles.navbar}>
-          <TouchableOpacity style={styles.backButton} onPress={() => router.back()} activeOpacity={0.7}>
+          <TouchableOpacity 
+            style={styles.backButton} 
+            onPress={() => {
+              if (router.canGoBack()) {
+                router.back();
+              } else {
+                router.replace("/(tabs)");
+              }
+            }} 
+            activeOpacity={0.7} 
+            hitSlop={10}
+          >
             <Ionicons name="chevron-back" size={26} color="#0F172A" />
           </TouchableOpacity>
-          <Text style={styles.navbarTitle}>Request Quote</Text>
+          <Text style={styles.navbarTitle} maxFontSizeMultiplier={1.2}>Request Quote</Text>
           <View style={{ width: 44 }} />
         </View>
       </View>
@@ -260,23 +255,26 @@ export default function RequestQuoteForm() {
       >
         <ScrollView
           ref={scrollViewRef}
-          contentContainerStyle={styles.scrollContent}
+          contentContainerStyle={[styles.scrollContent, { paddingHorizontal: 20 * scale }]}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
         >
           {/* Header */}
-          <View style={styles.header}>
-            <Text style={styles.title}>Request a Business Quote</Text>
-            <Text style={styles.subtitle}>
+          <View style={{ marginBottom: 24 * scale }}>
+            <Text style={[styles.title, { fontSize: 30 * scale }]} maxFontSizeMultiplier={1.2}>
+              Request a Business Quote
+            </Text>
+            <Text style={[styles.subtitle, { fontSize: 14 * scale }]} maxFontSizeMultiplier={1.2}>
               Share your requirements with us and our team will provide a customized quotation tailored to your business needs.
             </Text>
           </View>
 
           {/* Form Content Card */}
-          <View style={styles.card}>
+          <View style={[styles.card, { padding: 20 * scale, borderRadius: 24 * scale }]}>
             <InputField
               label="Full Name"
               required
+              scale={scale}
               placeholder="Your name"
               value={formData.fullName}
               onChangeText={(text) => handleChange("fullName", text)}
@@ -287,6 +285,7 @@ export default function RequestQuoteForm() {
               <View style={styles.halfInput}>
                 <InputField
                   label="Email"
+                  scale={scale}
                   placeholder="name@company.com"
                   keyboardType="email-address"
                   autoCapitalize="none"
@@ -298,6 +297,7 @@ export default function RequestQuoteForm() {
               <View style={styles.halfInput}>
                 <InputField
                   label="Company Name"
+                  scale={scale}
                   placeholder="Company name"
                   value={formData.companyName}
                   onChangeText={(text) => handleChange("companyName", text)}
@@ -310,6 +310,7 @@ export default function RequestQuoteForm() {
               <View style={styles.halfInput}>
                 <InputField
                   label="GST Number"
+                  scale={scale}
                   placeholder="15-digit GSTIN"
                   autoCapitalize="characters"
                   value={formData.gstNumber}
@@ -321,6 +322,7 @@ export default function RequestQuoteForm() {
                 <InputField
                   label="Phone Number"
                   required
+                  scale={scale}
                   placeholder="10-digit mobile"
                   keyboardType="phone-pad"
                   maxLength={10}
@@ -334,6 +336,7 @@ export default function RequestQuoteForm() {
             <InputField
               label="Business Requirement"
               required
+              scale={scale}
               placeholder="Describe your requirements..."
               multiline
               numberOfLines={4}
@@ -343,12 +346,14 @@ export default function RequestQuoteForm() {
               editable={!loading && !showOtpBox}
             />
 
-            {/* OTP BOX (Visible only after sending OTP) */}
+            {/* OTP BOX */}
             {showOtpBox && !isPhoneVerified && (
-              <View style={styles.otpContainer}>
-                <Text style={styles.otpLabel}>Enter OTP sent to +91 {formData.phoneNumber}</Text>
+              <View style={[styles.otpContainer, { padding: 16 * scale, marginBottom: 16 * scale }]}>
+                <Text style={[styles.otpLabel, { fontSize: 13 * scale }]} maxFontSizeMultiplier={1.2}>
+                  Enter OTP sent to +91 {formData.phoneNumber}
+                </Text>
                 <TextInput
-                  style={styles.otpInput}
+                  style={[styles.otpInput, { height: 56 * scale, fontSize: 24 * scale }]}
                   placeholder="• • • • • •"
                   placeholderTextColor="#94A3B8"
                   keyboardType="number-pad"
@@ -359,21 +364,25 @@ export default function RequestQuoteForm() {
                     setErrorMessage("");
                   }}
                   editable={!loading}
+                  maxFontSizeMultiplier={1} // Prevent massive OTP text
                 />
               </View>
             )}
 
             {/* Error Message */}
             {errorMessage ? (
-              <View style={styles.errorBox}>
-                <Text style={styles.errorText}>{errorMessage}</Text>
+              <View style={[styles.errorBox, { marginBottom: 16 * scale }]}>
+                <Text style={[styles.errorText, { fontSize: 13 * scale }]} maxFontSizeMultiplier={1.2}>
+                  {errorMessage}
+                </Text>
               </View>
             ) : null}
 
-            {/* Action Trigger Button */}
+            {/* Action Trigger Button (Rigid Height) */}
             <TouchableOpacity
               style={[
                 styles.submitButton,
+                { height: 56 * scale, marginTop: 6 * scale },
                 showOtpBox ? styles.submitButtonOtp : null,
                 loading && styles.buttonDisabled,
               ]}
@@ -383,19 +392,19 @@ export default function RequestQuoteForm() {
             >
               {loading ? (
                 <View style={styles.loaderContainer}>
-                  <ActivityIndicator color="#fff" />
-                  <Text style={styles.buttonText}>
+                  <ActivityIndicator color="#fff" size="small" />
+                  <Text style={[styles.buttonText, { fontSize: 15 * scale }]} maxFontSizeMultiplier={1.2}>
                     {showOtpBox ? "Verifying..." : "Processing..."}
                   </Text>
                 </View>
               ) : (
-                <Text style={styles.buttonText}>
+                <Text style={[styles.buttonText, { fontSize: 15 * scale }]} maxFontSizeMultiplier={1.2}>
                   {!showOtpBox ? "Send OTP" : "Verify & Submit"}
                 </Text>
               )}
             </TouchableOpacity>
 
-            <Text style={styles.secureText}>
+            <Text style={[styles.secureText, { fontSize: 11 * scale, marginTop: 20 * scale }]} maxFontSizeMultiplier={1.2}>
               🔒 All submitted information is encrypted and handled securely.
             </Text>
           </View>
@@ -403,27 +412,22 @@ export default function RequestQuoteForm() {
       </KeyboardAvoidingView>
 
       {/* SUCCESS MODAL POPUP */}
-      <Modal
-        visible={showModal}
-        transparent={true}
-        animationType="fade"
-        onRequestClose={() => setShowModal(false)}
-      >
+      <Modal visible={showModal} transparent={true} animationType="fade" onRequestClose={() => setShowModal(false)}>
         <View style={styles.modalOverlay}>
-          <View style={styles.modalCard}>
-            <View style={styles.successIconBadge}>
-              <Text style={styles.successIconText}>✓</Text>
+          <View style={[styles.modalCard, { padding: 28 * scale, borderRadius: 24 * scale }]}>
+            <View style={[styles.successIconBadge, { width: 56 * scale, height: 56 * scale, borderRadius: 28 * scale, marginBottom: 20 * scale }]}>
+              <Text style={[styles.successIconText, { fontSize: 24 * scale }]}>✓</Text>
             </View>
-            <Text style={styles.modalTitle}>Request Submitted</Text>
-            <Text style={styles.modalBody}>
+            <Text style={[styles.modalTitle, { fontSize: 20 * scale }]} maxFontSizeMultiplier={1.2}>Request Submitted</Text>
+            <Text style={[styles.modalBody, { fontSize: 13 * scale, marginBottom: 24 * scale }]} maxFontSizeMultiplier={1.2}>
               Thank you! Redirecting you to WhatsApp to connect with our corporate team...
             </Text>
             <TouchableOpacity
-              style={styles.modalCloseButton}
+              style={[styles.modalCloseButton, { height: 50 * scale }]}
               activeOpacity={0.8}
               onPress={() => setShowModal(false)}
             >
-              <Text style={styles.modalCloseButtonText}>Close</Text>
+              <Text style={[styles.modalCloseButtonText, { fontSize: 14 * scale }]} maxFontSizeMultiplier={1.2}>Close</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -432,106 +436,48 @@ export default function RequestQuoteForm() {
   );
 }
 
+// --- Styles (Rigid architecture foundations) ---
 const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: "#F5F7FA",
-  },
-  container: {
-    flex: 1,
-  },
-  scrollContent: {
-    paddingHorizontal: 20,
-    paddingTop: 12,
-    paddingBottom: 30,
-  },
-  header: {
-    marginBottom: 24,
-  },
-  title: {
-    fontSize: 32,
-    fontWeight: "800",
-    color: "#0F172A",
-    marginBottom: 10,
-  },
-  subtitle: {
-    fontSize: 15,
-    lineHeight: 24,
-    color: "#64748B",
-  },
+  safeArea: { flex: 1, backgroundColor: "#F5F7FA" },
+  container: { flex: 1 },
+  scrollContent: { paddingTop: 12, paddingBottom: 30 },
+  title: { fontWeight: "800", color: "#0F172A", marginBottom: 8, fontFamily: "PlusJakartaSans-ExtraBold" },
+  subtitle: { lineHeight: 22, color: "#64748B", fontFamily: "PlusJakartaSans-Medium" },
   card: {
     backgroundColor: "#FFFFFF",
-    borderRadius: 24,
-    padding: 24,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.05,
     shadowRadius: 18,
     elevation: 5,
   },
-  row: {
-    flexDirection: "row",
-    gap: 12,
-  },
-  halfInput: {
-    flex: 1,
-  },
-  inputGroup: {
-    marginBottom: 16,
-  },
-  label: {
-    fontSize: 13,
-    fontWeight: "600",
-    color: "#475569",
-    marginBottom: 8,
-  },
-  labelFocused: {
-    color: "#1E40AF",
-  },
-  required: {
-    color: "#EF4444",
-  },
+  row: { flexDirection: "row", gap: 12 },
+  halfInput: { flex: 1 },
+  label: { fontWeight: "600", color: "#475569", marginBottom: 8, fontFamily: "PlusJakartaSans-Bold" },
+  labelFocused: { color: "#1E40AF" },
+  required: { color: "#EF4444" },
   input: {
     backgroundColor: "#F8FAFC",
     borderWidth: 1.5,
     borderColor: '#E2E8F0',
     borderRadius: 14,
-    paddingHorizontal: 16,
-    paddingVertical: Platform.OS === 'ios' ? 16 : 12,
-    fontSize: 15,
     color: "#0F172A",
+    fontFamily: "PlusJakartaSans-Medium",
   },
-  inputFocused: {
-    borderColor: "#2563EB",
-    backgroundColor: "#EFF6FF",
-  },
-  textArea: {
-    minHeight: 110,
-    paddingTop: 16,
-  },
+  inputFocused: { borderColor: "#2563EB", backgroundColor: "#EFF6FF" },
   otpContainer: {
     backgroundColor: "#F0FDF4",
-    padding: 16,
     borderRadius: 16,
     borderWidth: 1,
     borderColor: "#BBF7D0",
-    marginBottom: 16,
     alignItems: "center",
   },
-  otpLabel: {
-    color: "#166534",
-    fontWeight: "600",
-    marginBottom: 12,
-    fontSize: 14,
-  },
+  otpLabel: { color: "#166534", fontWeight: "600", marginBottom: 12, fontFamily: "PlusJakartaSans-Bold" },
   otpInput: {
     backgroundColor: "#FFFFFF",
     borderWidth: 1.5,
     borderColor: "#22C55E",
     borderRadius: 12,
-    paddingVertical: 12,
-    paddingHorizontal: 24,
-    fontSize: 24,
     letterSpacing: 8,
     textAlign: "center",
     color: "#0F172A",
@@ -540,126 +486,39 @@ const styles = StyleSheet.create({
   },
   submitButton: {
     backgroundColor: "#1A365D",
-    borderRadius: 16,
-    paddingVertical: 18,
+    borderRadius: 14,
     justifyContent: "center",
     alignItems: "center",
-    marginTop: 6,
   },
-  submitButtonOtp: {
-    backgroundColor: "#16A34A",
-  },
-  buttonDisabled: {
-    opacity: 0.7,
-  },
-  loaderContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-  },
-  buttonText: {
-    color: "#FFFFFF",
-    fontSize: 16,
-    fontWeight: "700",
-  },
+  submitButtonOtp: { backgroundColor: "#16A34A" },
+  buttonDisabled: { opacity: 0.7 },
+  loaderContainer: { flexDirection: "row", alignItems: "center", gap: 10 },
+  buttonText: { color: "#FFFFFF", fontWeight: "700", fontFamily: "PlusJakartaSans-Bold" },
   errorBox: {
-    marginBottom: 16,
     padding: 14,
     borderRadius: 12,
     backgroundColor: "#FEF2F2",
     borderWidth: 1,
     borderColor: "#FCA5A5",
   },
-  errorText: {
-    color: "#991B1B",
-    fontSize: 14,
-    textAlign: "center",
-    fontWeight: "500",
-  },
-  secureText: {
-    textAlign: "center",
-    marginTop: 20,
-    color: "#94A3B8",
-    fontSize: 12,
-  },
+  errorText: { color: "#991B1B", textAlign: "center", fontWeight: "600", fontFamily: "PlusJakartaSans-Medium" },
+  secureText: { textAlign: "center", color: "#94A3B8", fontFamily: "PlusJakartaSans-Medium" },
   modalOverlay: {
-    flex: 1,
-    backgroundColor: "rgba(15, 23, 42, 0.5)", 
-    justifyContent: "center",
-    alignItems: "center",
-    padding: 24,
+    flex: 1, backgroundColor: "rgba(15, 23, 42, 0.5)", justifyContent: "center", alignItems: "center", padding: 24,
   },
   modalCard: {
-    backgroundColor: "#FFFFFF",
-    width: "100%",
-    maxWidth: 340,
-    borderRadius: 24,
-    padding: 28,
-    alignItems: "center",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 12 },
-    shadowOpacity: 0.15,
-    shadowRadius: 24,
-    elevation: 8,
+    backgroundColor: "#FFFFFF", width: "100%", maxWidth: 340, alignItems: "center",
+    shadowColor: "#000", shadowOffset: { width: 0, height: 12 }, shadowOpacity: 0.15, shadowRadius: 24, elevation: 8,
   },
-  successIconBadge: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: "#DCFCE7",
-    justifyContent: "center",
-    alignItems: "center",
-    marginBottom: 20,
-  },
-  successIconText: {
-    color: "#15803D",
-    fontSize: 24,
-    fontWeight: "700",
-  },
-  modalTitle: {
-    fontSize: 22,
-    fontWeight: "800",
-    color: "#0F172A",
-    marginBottom: 10,
-    textAlign: "center",
-  },
-  modalBody: {
-    fontSize: 14,
-    lineHeight: 22,
-    color: "#64748B",
-    textAlign: "center",
-    marginBottom: 24,
-  },
+  successIconBadge: { backgroundColor: "#DCFCE7", justifyContent: "center", alignItems: "center" },
+  successIconText: { color: "#15803D", fontWeight: "700" },
+  modalTitle: { fontWeight: "800", color: "#0F172A", marginBottom: 10, textAlign: "center", fontFamily: "PlusJakartaSans-ExtraBold" },
+  modalBody: { lineHeight: 22, color: "#64748B", textAlign: "center", fontFamily: "PlusJakartaSans-Medium" },
   modalCloseButton: {
-    backgroundColor: "#1A365D",
-    width: "100%",
-    borderRadius: 14,
-    paddingVertical: 14,
-    alignItems: "center",
-    justifyContent: "center",
+    backgroundColor: "#1A365D", width: "100%", borderRadius: 14, alignItems: "center", justifyContent: "center",
   },
-  modalCloseButtonText: {
-    color: "#FFFFFF",
-    fontSize: 15,
-    fontWeight: "700",
-  },
-  navbar: {
-    height: 56,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    backgroundColor: "#FFFFFF",
-    paddingHorizontal: 8,
-  },
-  backButton: {
-    width: 44,
-    height: 44,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  navbarTitle: {
-    fontSize: 18,
-    fontWeight: "700",
-    color: "#0F172A",
-  },
+  modalCloseButtonText: { color: "#FFFFFF", fontWeight: "700", fontFamily: "PlusJakartaSans-Bold" },
+  navbar: { height: 56, flexDirection: "row", alignItems: "center", justifyContent: "space-between", backgroundColor: "#FFFFFF", paddingHorizontal: 8 },
+  backButton: { width: 44, height: 44, justifyContent: "center", alignItems: "center" },
+  navbarTitle: { fontSize: 17, fontWeight: "700", color: "#0F172A", fontFamily: "PlusJakartaSans-Bold" },
 });

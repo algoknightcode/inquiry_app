@@ -57,12 +57,8 @@ export function usePushNotifications() {
           });
         }
 
-        // Check if we have already registered this token to avoid redundant network calls
-        const registeredToken = await AsyncStorage.getItem('registered_fcm_token');
-        if (registeredToken === fcmToken) {
-          console.log("Token already registered on backend.");
-          return;
-        }
+        // Send token to backend on startup to ensure registration is active
+
 
         // Prepare installation metadata
         const now = new Date();

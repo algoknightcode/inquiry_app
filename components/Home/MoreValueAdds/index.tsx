@@ -1,6 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
 import { Image } from "expo-image";
-import { useRouter } from "expo-router";
+import { useRouter, Href } from "expo-router";
 import React, { useEffect, useRef, useState } from "react";
 import { FlatList, Linking, Pressable, Text, useWindowDimensions, View } from "react-native";
 
@@ -37,7 +37,7 @@ const cardsData: ValueAddCard[] = [
   {
     id: "4",
     badge: "Inquiry Bazaar",
-    title: "Exhibitions Se Google\nTak Har Jagah Bas Aap",
+    title: "Be Everywhere:\nExhibitions to Google",
     imageSource: require("@/assets/images/more_value/5-5.webp"),
     route: "/ExhibitionPage",
   },
@@ -89,7 +89,7 @@ export default function MoreValueAdds() {
     if (route.startsWith("http://") || route.startsWith("https://")) {
       Linking.openURL(route).catch((err) => console.error("Failed to open external link", err));
     } else {
-      router.push(route);
+      router.push(route as Href);
     }
   };
 

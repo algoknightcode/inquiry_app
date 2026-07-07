@@ -1,6 +1,6 @@
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import React, { useCallback, useMemo } from "react";
-import { Linking, Pressable, Text, useWindowDimensions, View } from "react-native";
+import { DimensionValue, Linking, Pressable, Text, useWindowDimensions, View } from "react-native";
 
 // ── Interface Props ────────────────────────────────────────────────────────
 export interface HomeFooterHelpProps {
@@ -103,7 +103,7 @@ export default function HomeFooterHelp({
           <Pressable
             key={feat.id}
             onPress={() => feat.isCall && handleLinkPress(`tel:${phoneNumber}`)}
-            style={{ width: metrics.itemWidth }}
+            style={{ width: metrics.itemWidth as DimensionValue }}
             className="mb-3 items-start active:scale-[0.98] transition-transform p-3 rounded-xl bg-white/5 border border-white/5"
           >
             {/* Icon Header Row - Switched to items-start for wrapped text alignment */}

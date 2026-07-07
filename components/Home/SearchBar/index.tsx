@@ -1,10 +1,11 @@
 import { fetchWithCache } from "@/utils/apiCache";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Pressable,
+  StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
@@ -38,6 +39,41 @@ interface SearchBarProps {
   variant?: 'default' | 'compact';
 }
 
+// ── Memoized Recommendation Row (Prevents re-renders during typing) ──
+const RecommendationRow = React.memo(({ 
+  item, 
+  isLast, 
+  onPress 
+}: { 
+  item: SubCategory; 
+  isLast: boolean; 
+  onPress: (sub: SubCategory) => void 
+}) => {
+  return (
+    <Pressable
+      className={`flex-row items-center justify-between px-5 ${
+        !isLast ? 'border-b border-slate-50' : ''
+      }`}
+      style={styles.recommendationRow} // Rigid Height
+      android_ripple={{ color: "#F1F5F9" }}
+      onPress={() => onPress(item)}
+    >
+      <View className="flex-row items-center flex-1">
+        <Ionicons name="trending-up-outline" size={moderateScale(16)} color="#94A3B8" className="mr-3" />
+        <Text 
+          className="text-slate-700 font-jakarta-medium flex-1"
+          style={styles.recommendationText}
+          numberOfLines={1}
+          maxFontSizeMultiplier={1.2}
+        >
+          {item.name}
+        </Text>
+      </View>
+      <Ionicons name="arrow-forward" size={moderateScale(16)} color="#CBD5E1" />
+    </Pressable>
+  );
+});
+
 export default function SearchBar({ onFocus, variant = 'default' }: SearchBarProps) {
   const router = useRouter();
 
@@ -47,8 +83,11 @@ export default function SearchBar({ onFocus, variant = 'default' }: SearchBarPro
 
   // Search input & recommendation states
   const [inputText, setInputText] = useState("");
+  const [debouncedText, setDebouncedText] = useState(""); // UI Thread Optimizer
   const [selectedSubCategory, setSelectedSubCategory] = useState<SubCategory | null>(null);
   const [showRecommendations, setShowRecommendations] = useState(false);
+
+  const isCompact = variant === 'compact';
 
   // Fetch the full industry tree on mount
   useEffect(() => {
@@ -67,7 +106,16 @@ export default function SearchBar({ onFocus, variant = 'default' }: SearchBarPro
     loadTree();
   }, []);
 
-  // Flattened list of all subcategories in the tree
+  // ── PERFORMANCE UPGRADE: Debounce Typing ──
+  // Prevents the heavy fuzzy search from running on every single keystroke, saving CPU
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedText(inputText);
+    }, 150);
+    return () => clearTimeout(timer);
+  }, [inputText]);
+
+  // Flattened list of all subcategories in the tree (Memoized once)
   const allSubCategories = useMemo(() => {
     return industries.flatMap((ind) => 
       (ind.categories || []).flatMap((cat) => cat.subCategories || [])
@@ -75,7 +123,7 @@ export default function SearchBar({ onFocus, variant = 'default' }: SearchBarPro
   }, [industries]);
 
   // Fuzzy match scoring function
-  const getFuzzyScore = (text: string, query: string): number => {
+  const getFuzzyScore = useCallback((text: string, query: string): number => {
     const t = text.toLowerCase();
     const q = query.toLowerCase().trim();
     if (!q) return 1;
@@ -83,7 +131,6 @@ export default function SearchBar({ onFocus, variant = 'default' }: SearchBarPro
     if (t.startsWith(q)) return 80;
     if (t.includes(q)) return 60;
 
-    // Character sequence match
     let matches = 0;
     let qIdx = 0;
     for (let i = 0; i < t.length; i++) {
@@ -94,22 +141,23 @@ export default function SearchBar({ onFocus, variant = 'default' }: SearchBarPro
       }
     }
     return (matches / q.length) * 40;
-  };
+  }, []);
 
-  // Filtered recommendations list
+  // Filtered recommendations list (Runs against Debounced Text for 60FPS typing)
   const recommendations = useMemo(() => {
-    if (!inputText.trim() || (selectedSubCategory && selectedSubCategory.name === inputText)) {
+    if (!debouncedText.trim() || (selectedSubCategory && selectedSubCategory.name === debouncedText)) {
       return [];
     }
     return allSubCategories
-      .map((sub) => ({ sub, score: getFuzzyScore(sub.name, inputText) }))
+      .map((sub) => ({ sub, score: getFuzzyScore(sub.name, debouncedText) }))
       .filter((item) => item.score > 10)
       .sort((a, b) => b.score - a.score)
       .map((item) => item.sub)
-      .slice(0, 5); // Limit to top 5 recommendations
-  }, [inputText, allSubCategories, selectedSubCategory]);
+      .slice(0, 5); // Limit to top 5 recommendations strictly
+  }, [debouncedText, allSubCategories, selectedSubCategory, getFuzzyScore]);
 
-  const handleSelectRecommendation = (sub: SubCategory) => {
+  // ── Actions ──
+  const handleSelectRecommendation = useCallback((sub: SubCategory) => {
     setSelectedSubCategory(sub);
     setInputText(sub.name);
     setShowRecommendations(false);
@@ -121,10 +169,9 @@ export default function SearchBar({ onFocus, variant = 'default' }: SearchBarPro
         subCategorySlug: sub.slug,
       },
     });
-  };
+  }, [router]);
 
-  const handleSearchSubmit = () => {
-    // If we have a selected subcategory, route directly
+  const handleSearchSubmit = useCallback(() => {
     if (selectedSubCategory && selectedSubCategory.name === inputText) {
       router.push({
         pathname: "/Products_Page",
@@ -137,11 +184,10 @@ export default function SearchBar({ onFocus, variant = 'default' }: SearchBarPro
       return;
     }
 
-    // If no exact selection, look for closest matches
     if (inputText.trim()) {
       const bestMatch = allSubCategories
         .map((sub) => ({ sub, score: getFuzzyScore(sub.name, inputText) }))
-        .filter((item) => item.score > 25) // Minimum score threshold for fuzzy submit match
+        .filter((item) => item.score > 25) 
         .sort((a, b) => b.score - a.score)[0]?.sub;
 
       if (bestMatch) {
@@ -157,41 +203,48 @@ export default function SearchBar({ onFocus, variant = 'default' }: SearchBarPro
       }
     }
 
-    // Fallback: Go to general industries list if empty or no match
     router.push("/Industries");
-  };
+  }, [inputText, selectedSubCategory, allSubCategories, getFuzzyScore, router]);
 
-  const handleTextChange = (text: string) => {
+  const handleTextChange = useCallback((text: string) => {
     setInputText(text);
     setShowRecommendations(true);
     if (selectedSubCategory && selectedSubCategory.name !== text) {
       setSelectedSubCategory(null);
     }
-  };
+  }, [selectedSubCategory]);
 
-  const clearInput = () => {
+  const clearInput = useCallback(() => {
     setInputText("");
     setSelectedSubCategory(null);
     setShowRecommendations(false);
-  };
+  }, []);
 
   return (
-    <View className={variant === 'compact' ? "w-full z-50 relative" : "w-full px-4 my-2 z-50"}>
+    <View className={isCompact ? "w-full z-50 relative" : "w-full px-4 my-2 z-50"}>
       <View 
-        className={variant === 'compact' ? "bg-white rounded-full border border-slate-200 shadow-sm" : "bg-white rounded-[32px] p-2 shadow-2xl border border-slate-100/50"}
-        style={variant === 'compact' ? {} : {
-          shadowColor: "#0F172A",
-          shadowOffset: { width: 0, height: 16 },
-          shadowOpacity: 0.1,
-          shadowRadius: 32,
-          elevation: 10,
-        }}
+        className={isCompact 
+          ? "bg-white rounded-full border border-slate-200 shadow-sm" 
+          : "bg-white rounded-[32px] p-2 shadow-2xl border border-slate-100/50"
+        }
+        style={!isCompact ? styles.defaultShadow : {}}
       >
-        {/* Input Field Container */}
-        <View className={variant === 'compact' ? "flex-row items-center bg-slate-50/80 rounded-full pl-3 pr-1 py-1" : "flex-row items-center bg-slate-50/80 border border-slate-200/60 rounded-[28px] pl-4 pr-1.5 py-1.5"}>
-          <Ionicons name="search" size={variant === 'compact' ? 16 : moderateScale(20)} color="#94A3B8" />
+        {/* Input Field Container - Enforced Rigid Heights */}
+        <View 
+          className={isCompact 
+            ? "flex-row items-center bg-slate-50/80 rounded-full pl-3 pr-1 py-1" 
+            : "flex-row items-center bg-slate-50/80 border border-slate-200/60 rounded-[28px] pl-4 pr-1.5"
+          }
+          style={isCompact ? styles.compactInputWrapper : styles.defaultInputWrapper}
+        >
+          <Ionicons name="search" size={isCompact ? 16 : moderateScale(20)} color="#94A3B8" />
+          
           <TextInput
-            className={variant === 'compact' ? "flex-1 h-9 px-2 text-[13px] text-slate-800 font-jakarta" : "flex-1 h-14 px-3 text-[15px] text-slate-800 font-jakarta"}
+            className={isCompact 
+              ? "flex-1 px-2 text-[13px] text-slate-800 font-jakarta" 
+              : "flex-1 px-3 text-[15px] text-slate-800 font-jakarta"
+            }
+            style={isCompact ? styles.compactTextInput : styles.defaultTextInput}
             placeholder="Search Products"
             placeholderTextColor="#94A3B8"
             value={inputText}
@@ -203,25 +256,33 @@ export default function SearchBar({ onFocus, variant = 'default' }: SearchBarPro
             onSubmitEditing={handleSearchSubmit}
             returnKeyType="search"
             clearButtonMode="never"
+            maxFontSizeMultiplier={1.2} // Protects UI from massive accessibility fonts
           />
           
           {inputText.length > 0 && (
-            <TouchableOpacity onPress={clearInput} className="p-2 mr-1">
+            <TouchableOpacity onPress={clearInput} className="p-2 mr-1" hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
               <Ionicons name="close-circle" size={moderateScale(20)} color="#CBD5E1" />
             </TouchableOpacity>
           )}
 
           {/* Search Action Button */}
-          {variant !== 'compact' && (
+          {!isCompact && (
             <TouchableOpacity
-              className="bg-emerald-700 rounded-[24px] px-6 h-12 items-center justify-center shadow-md shadow-emerald-900/20 ml-1"
+              className="bg-emerald-700 rounded-[24px] px-6 items-center justify-center shadow-md shadow-emerald-900/20 ml-1"
+              style={styles.defaultSearchButton}
               activeOpacity={0.85}
               onPress={handleSearchSubmit}
             >
               {loading ? (
                 <ActivityIndicator size="small" color="#FFFFFF" />
               ) : (
-                <Text className="text-white text-[15px] font-jakarta-bold tracking-wide">Search</Text>
+                <Text 
+                  className="text-white font-jakarta-bold tracking-wide"
+                  style={{ fontSize: 15 }}
+                  maxFontSizeMultiplier={1.1}
+                >
+                  Search
+                </Text>
               )}
             </TouchableOpacity>
           )}
@@ -230,35 +291,19 @@ export default function SearchBar({ onFocus, variant = 'default' }: SearchBarPro
         {/* Dynamic Recommendations List */}
         {showRecommendations && recommendations.length > 0 && (
           <View 
-            className={variant === 'compact' ? "absolute left-0 right-0 top-[110%] bg-white rounded-[16px] shadow-lg border border-slate-100 overflow-hidden z-50" : "bg-white mt-1 rounded-[24px] overflow-hidden"}
-            style={variant === 'compact' ? {
-              shadowColor: "#0F172A",
-              shadowOffset: { width: 0, height: 8 },
-              shadowOpacity: 0.1,
-              shadowRadius: 16,
-              elevation: 5,
-            } : {}}
+            className={isCompact 
+              ? "absolute left-0 right-0 top-[110%] bg-white rounded-[16px] shadow-lg border border-slate-100 overflow-hidden z-50" 
+              : "bg-white mt-1 rounded-[24px] overflow-hidden"
+            }
+            style={isCompact ? styles.compactDropdownShadow : {}}
           >
             {recommendations.map((item, index) => (
-              <Pressable
+              <RecommendationRow 
                 key={item._id}
-                className={`flex-row items-center justify-between py-4 px-5 active:bg-slate-50 ${
-                  index !== recommendations.length - 1 ? 'border-b border-slate-50' : ''
-                }`}
-                android_ripple={{ color: "#F1F5F9" }}
-                onPress={() => handleSelectRecommendation(item)}
-              >
-                <View className="flex-row items-center flex-1">
-                  <Ionicons name="trending-up-outline" size={moderateScale(16)} color="#94A3B8" className="mr-3" />
-                  <Text 
-                    className="text-[15px] text-slate-700 font-jakarta-medium flex-1"
-                    numberOfLines={1}
-                  >
-                    {item.name}
-                  </Text>
-                </View>
-                <Ionicons name="arrow-forward" size={moderateScale(16)} color="#CBD5E1" />
-              </Pressable>
+                item={item}
+                isLast={index === recommendations.length - 1}
+                onPress={handleSelectRecommendation}
+              />
             ))}
           </View>
         )}
@@ -266,3 +311,43 @@ export default function SearchBar({ onFocus, variant = 'default' }: SearchBarPro
     </View>
   );
 }
+
+// ── Rigid Styles ───────────────────────────────────────────────────────────
+const styles = StyleSheet.create({
+  defaultShadow: {
+    shadowColor: "#0F172A",
+    shadowOffset: { width: 0, height: 16 },
+    shadowOpacity: 0.1,
+    shadowRadius: 32,
+    elevation: 10,
+  },
+  compactDropdownShadow: {
+    shadowColor: "#0F172A",
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.1,
+    shadowRadius: 16,
+    elevation: 5,
+  },
+  // Rigid Dimensions preventing layout shift
+  defaultInputWrapper: {
+    height: 60, // Locked height for default container
+  },
+  compactInputWrapper: {
+    height: 40, // Locked height for compact container
+  },
+  defaultTextInput: {
+    height: '100%', // Fills locked wrapper
+  },
+  compactTextInput: {
+    height: '100%', // Fills locked wrapper
+  },
+  defaultSearchButton: {
+    height: 48, // Rigid button height
+  },
+  recommendationRow: {
+    height: 56, // Locked height per recommendation (ensures exact touch targets)
+  },
+  recommendationText: {
+    fontSize: 15,
+  }
+});

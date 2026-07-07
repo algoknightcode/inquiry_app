@@ -1,20 +1,22 @@
 import { fetchWithCache, getCacheSync } from "@/utils/apiCache";
 import { productCache } from "@/utils/productCache";
+import { Ionicons } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import { useRouter } from "expo-router";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   FlatList,
+  Modal,
   NativeScrollEvent,
   NativeSyntheticEvent,
   Pressable,
   StyleSheet,
   Text,
+  TextInput,
   TouchableOpacity,
   View
 } from "react-native";
-import EnquiryModal from "../../EnquiryModal";
 
 // ── Types ──────────────────────────────────────────────────────────────────
 type Media = {
@@ -88,10 +90,12 @@ function getInitialCachedProducts(): { products: Product[]; categoryId: string |
   return { products: [], categoryId: null };
 }
 
-// ── Constants for Auto-Scroll ──
+// ── Constants for Auto-Scroll & Rigid Alignment ──
 const CARD_WIDTH = 160;
 const CARD_MARGIN = 16;
 const ITEM_SIZE = CARD_WIDTH + CARD_MARGIN;
+const TITLE_HEIGHT = 36; // Exact height for 2 lines of title text
+const PRICE_HEIGHT = 20; // Exact height for 1 line of price text
 
 const NewOnes = () => {
   const router = useRouter();
@@ -109,7 +113,7 @@ const NewOnes = () => {
   // Auto-scroll Refs
   const flatListRef = useRef<FlatList>(null);
   const activeIndexRef = useRef(0);
-  const timerRef = useRef<NodeJS.Timeout | null>(null);
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // Fetch Data
   useEffect(() => {
@@ -118,11 +122,11 @@ const NewOnes = () => {
         const json = await fetchWithCache("https://backend.inquirybazaar.com/api/industries/tree");
         if (json.success && json.data) {
           const industry = json.data.find(
-            (ind: any) => ind.name.toLowerCase().includes("plants") || ind.name.toLowerCase().includes("machinery")
+            (ind: any) => ind.name?.toLowerCase().includes("plants") || ind.name?.toLowerCase().includes("machinery")
           );
           if (industry && industry.categories) {
             const categoryObj = industry.categories.find(
-              (cat: any) => cat.name.toLowerCase().includes("machines") || cat.name.toLowerCase().includes("equipment")
+              (cat: any) => cat.name?.toLowerCase().includes("machines") || cat.name?.toLowerCase().includes("equipment")
             );
             if (categoryObj) {
               setCategoryObjId(categoryObj._id);
@@ -252,7 +256,7 @@ const NewOnes = () => {
     setIsModalVisible(true);
   };
 
-  // ── Render Card ──
+  // ── Render Card (Rigid Design) ──
   const renderProductCard = useCallback(({ item }: { item: Product }) => {
     const primaryImage =
       item.media && item.media.length > 0
@@ -266,7 +270,8 @@ const NewOnes = () => {
       <Pressable style={flatStyles.card} onPress={() => handleCardPress(item)}>
         {({ pressed }) => (
           <View style={{ opacity: pressed ? 0.95 : 1, transform: [{ scale: pressed ? 0.98 : 1 }], flex: 1 }}>
-            {/* Image */}
+            
+            {/* Rigid Image Wrapper */}
             <View style={flatStyles.imageWrapper}>
               <Image
                 source={{ uri: primaryImage }}
@@ -277,18 +282,24 @@ const NewOnes = () => {
               />
             </View>
 
-            {/* Content */}
+            {/* Rigid Content Wrapper */}
             <View style={flatStyles.content}>
               <Text style={flatStyles.company} numberOfLines={1}>
                 {company}
               </Text>
-              <Text style={flatStyles.title} numberOfLines={2}>
-                {item.name}
-              </Text>
 
-              {/* Price Area */}
-              <View style={flatStyles.priceContainer}>
-                {!isPriceOnRequest && (
+              {/* Rigid Title Block */}
+              <View style={{ height: TITLE_HEIGHT, justifyContent: 'flex-start' }}>
+                <Text style={flatStyles.title} numberOfLines={2} ellipsizeMode="tail">
+                  {item.name}
+                </Text>
+              </View>
+
+              {/* Rigid Price Block */}
+              <View style={[flatStyles.priceContainer, { height: PRICE_HEIGHT }]}>
+                {isPriceOnRequest ? (
+                  <Text style={flatStyles.priceRequest}>Price on Request</Text>
+                ) : (
                   <Text style={flatStyles.price} numberOfLines={1} adjustsFontSizeToFit>
                     ₹{item.price.toLocaleString()}
                     <Text style={flatStyles.unit}> / {item.unit || "pc"}</Text>
@@ -296,7 +307,7 @@ const NewOnes = () => {
                 )}
               </View>
 
-              {/* Action Button */}
+              {/* Action Button - Securely aligned at the bottom */}
               <TouchableOpacity
                 activeOpacity={0.8}
                 onPress={() => handleOpenQuote(item)}
@@ -368,12 +379,52 @@ const NewOnes = () => {
         />
       )}
 
-      {/* Enquiry Modal */}
-      <EnquiryModal
+      {/* Inline Enquiry Modal (Standalone or hook up to EnquiryModal) */}
+      <Modal
         visible={isModalVisible}
-        onClose={() => setIsModalVisible(false)}
-        product={selectedProduct}
-      />
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setIsModalVisible(false)}
+      >
+        <View style={flatStyles.modalOverlay}>
+          <View style={flatStyles.modalContainer}>
+            <View style={flatStyles.modalHeader}>
+              <Text style={flatStyles.modalTitle}>Request a Quote</Text>
+              <TouchableOpacity onPress={() => setIsModalVisible(false)} hitSlop={10}>
+                <Ionicons name="close" size={24} color="#64748b" />
+              </TouchableOpacity>
+            </View>
+
+            {selectedProduct && (
+              <View style={flatStyles.modalProductInfo}>
+                <Text style={flatStyles.modalProductText} numberOfLines={1}>
+                  Product: <Text style={{ color: '#0f172a' }}>{selectedProduct.name}</Text>
+                </Text>
+              </View>
+            )}
+
+            {/* Form Fields */}
+            <TextInput style={flatStyles.input} placeholder="Your Name" placeholderTextColor="#94a3b8" />
+            <TextInput style={flatStyles.input} placeholder="Phone Number" keyboardType="phone-pad" placeholderTextColor="#94a3b8" />
+            <TextInput 
+              style={[flatStyles.input, { height: 80, textAlignVertical: 'top' }]} 
+              placeholder="Describe your requirement (Quantity, Location, etc.)" 
+              multiline 
+              placeholderTextColor="#94a3b8"
+            />
+
+            <TouchableOpacity 
+              style={flatStyles.submitBtn} 
+              onPress={() => {
+                // Submit Form Logic
+                setIsModalVisible(false);
+              }}
+            >
+              <Text style={flatStyles.submitBtnText}>Send Requirement</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 };
@@ -398,7 +449,7 @@ const flatStyles = StyleSheet.create({
     color: "#64748b",
     letterSpacing: 1.5,
     marginBottom: 4,
-    uppercase: true,
+    textTransform: "uppercase",
   },
   mainTitle: {
     fontSize: 24,
@@ -417,7 +468,7 @@ const flatStyles = StyleSheet.create({
     color: "#0f172a",
   },
   loader: {
-    height: 220,
+    height: 250,
     justifyContent: "center",
     alignItems: "center",
   },
@@ -440,10 +491,10 @@ const flatStyles = StyleSheet.create({
     shadowRadius: 12,
     elevation: 3,
     flexDirection: 'column',
-    height: 240, // Reduced height to look compact when some items have no price
+    height: 256, // Exactly calculated rigid height
   },
   imageWrapper: {
-    height: 120,
+    height: 110,
     backgroundColor: "#f8fafc",
     width: "100%",
   },
@@ -464,14 +515,15 @@ const flatStyles = StyleSheet.create({
     marginBottom: 4,
   },
   title: {
-    fontSize: 14,
+    fontSize: 13,
     fontFamily: "PlusJakartaSans-Bold",
     color: "#1e293b",
     lineHeight: 18,
-    marginBottom: 6,
   },
   priceContainer: {
-    marginBottom: 10,
+    justifyContent: 'center',
+    marginBottom: 8,
+    marginTop: 2,
   },
   price: {
     fontSize: 15,
@@ -482,6 +534,11 @@ const flatStyles = StyleSheet.create({
     fontSize: 11,
     fontFamily: "PlusJakartaSans-Medium",
     color: "#64748b",
+  },
+  priceRequest: {
+    fontSize: 13,
+    fontFamily: "PlusJakartaSans-Bold",
+    color: "#d97706",
   },
   quoteBtn: {
     backgroundColor: "#0E2347",
@@ -495,5 +552,67 @@ const flatStyles = StyleSheet.create({
     color: "#ffffff",
     fontSize: 12,
     fontFamily: "PlusJakartaSans-Bold",
+  },
+  
+  // Modal Styles
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(15, 23, 42, 0.6)',
+    justifyContent: 'flex-end',
+  },
+  modalContainer: {
+    backgroundColor: '#ffffff',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    padding: 24,
+    paddingBottom: 40,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontFamily: 'PlusJakartaSans-ExtraBold',
+    color: '#0f172a',
+  },
+  modalProductInfo: {
+    backgroundColor: '#f8fafc',
+    padding: 12,
+    borderRadius: 8,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+  },
+  modalProductText: {
+    fontSize: 13,
+    fontFamily: 'PlusJakartaSans-Medium',
+    color: '#64748b',
+  },
+  input: {
+    backgroundColor: '#f8fafc',
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    marginBottom: 12,
+    fontSize: 14,
+    fontFamily: 'PlusJakartaSans-Medium',
+    color: '#0f172a',
+  },
+  submitBtn: {
+    backgroundColor: '#0E2347',
+    paddingVertical: 16,
+    borderRadius: 12,
+    alignItems: 'center',
+    marginTop: 8,
+  },
+  submitBtnText: {
+    color: '#ffffff',
+    fontSize: 15,
+    fontFamily: 'PlusJakartaSans-Bold',
   },
 });
