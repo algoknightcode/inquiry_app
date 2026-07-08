@@ -1,5 +1,5 @@
-import { setSessionSkipRole } from "@/app/index";
 import { setGlobalRole } from "@/utils/roleCache";
+import { setSessionSkipRole } from "@/utils/sessionCache";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";

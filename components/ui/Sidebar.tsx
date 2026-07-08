@@ -1,30 +1,27 @@
-import { isSellerSignedIn, setGlobalBuyerId, setGlobalRole, setGlobalSellerId, setSellerSignedIn } from "@/utils/roleCache";
 import { Ionicons } from "@expo/vector-icons";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import { router } from "expo-router";
 import React, { memo, useCallback, useEffect, useMemo, useState } from "react";
 import {
-  FlatList,
-  InteractionManager,
-  Modal,
-  Platform,
-  Pressable,
-  Text,
-  TouchableOpacity,
-  TouchableWithoutFeedback,
-  View,
-  useWindowDimensions,
+    FlatList,
+    InteractionManager,
+    Modal,
+    Pressable,
+    Text,
+    TouchableOpacity,
+    TouchableWithoutFeedback,
+    View,
+    useWindowDimensions
 } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
-import Animated, { 
-  Easing, 
-  interpolate, 
-  runOnJS, 
-  useAnimatedStyle, 
-  useSharedValue, 
-  withSpring, 
-  withTiming 
+import Animated, {
+    Easing,
+    interpolate,
+    runOnJS,
+    useAnimatedStyle,
+    useSharedValue,
+    withSpring,
+    withTiming
 } from "react-native-reanimated";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 type SidebarProps = {
   visible: boolean;
@@ -41,7 +38,6 @@ type MenuItem = {
 
 const baseMenuItems: MenuItem[] = [
   { icon: "home-outline", title: "Home", route: "/(tabs)" },
-  { icon: "person-outline", title: "Profile", route: "/Buyer/profile" },
   { icon: "grid-outline", title: "Explore Industries", route: "/Industries" },
   { icon: "briefcase-outline", title: "Free Listing", route: "/Seller/auth/Signup", highlight: true },
   { icon: "notifications-outline", title: "Notifications", route: "/NotificationPanel" },
@@ -167,6 +163,23 @@ const Sidebar = ({ visible, onClose, currentRole }: SidebarProps) => {
   const [showModal, setShowModal] = useState(false);
   const [isContentReady, setIsContentReady] = useState(false);
 
+  // Build role-aware menu items
+  const roleMenuItems = useMemo<MenuItem[]>(() => {
+    const profileRoute = activeRole === "seller" ? "/Seller/Profile" : "/Buyer/profile";
+    const items: MenuItem[] = [
+      { icon: "home-outline", title: "Home", route: "/(tabs)" },
+      { icon: "person-outline", title: "Profile", route: profileRoute },
+      { icon: "person-circle-outline", title: "Account", route: "/Account" },
+      { icon: "grid-outline", title: "Explore Industries", route: "/Industries" },
+      { icon: "notifications-outline", title: "Notifications", route: "/NotificationPanel" },
+      { icon: "help-circle-outline", title: "Help & Support", route: "/HelpSupport" },
+    ];
+    if (activeRole !== "seller") {
+      items.splice(3, 0, { icon: "briefcase-outline", title: "Free Listing", route: "/Seller/auth/Signup", highlight: true });
+    }
+    return items;
+  }, [activeRole]);
+
   const slideAnim = useSharedValue(-400);
   const fadeAnim = useSharedValue(0);
 
@@ -234,7 +247,7 @@ const Sidebar = ({ visible, onClose, currentRole }: SidebarProps) => {
             </Pressable>
           </View>
           <FlatList
-            data={isContentReady ? (activeRole === "seller" ? baseMenuItems.filter(i => i.title !== "Free Listing") : baseMenuItems) : []}
+            data={isContentReady ? roleMenuItems : []}
             keyExtractor={(i) => i.route}
             renderItem={({ item }) => <RenderMenuItem item={item} metrics={metrics} onPress={handleNavigation} />}
             ListHeaderComponent={isContentReady && activeRole === 'seller' ? <SellerHeader metrics={metrics} onNavigate={handleNavigation} /> : null}

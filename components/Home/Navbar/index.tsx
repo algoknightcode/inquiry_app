@@ -4,11 +4,11 @@ import { StatusBar } from "expo-status-bar";
 import React from "react";
 import { Image, Platform, Pressable, View } from "react-native";
 import Animated, {
-  Extrapolation,
-  interpolate,
-  SharedValue,
-  useAnimatedStyle,
-  useSharedValue
+    Extrapolation,
+    interpolate,
+    SharedValue,
+    useAnimatedStyle,
+    useSharedValue
 } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -63,7 +63,8 @@ const Navbar = ({ onMenuPress, scrollY: externalScrollY }: NavbarProps) => {
     <View 
       style={{ 
         paddingTop: Platform.OS === 'android' ? Math.max(insets.top, 10) : 0, 
-        zIndex: 50 
+        zIndex: 999,
+        overflow: 'visible',
       }}
       className="flex flex-row items-center justify-between px-5 bg-white border-b border-gray-100 shadow-sm"
     >
@@ -79,8 +80,7 @@ const Navbar = ({ onMenuPress, scrollY: externalScrollY }: NavbarProps) => {
       </Pressable>
 
       {/* Center Container for Logo & Search Bar */}
-      <View className="flex-1 h-16 items-center justify-center relative mx-2 overflow-hidden">
-        
+        <View className="flex-1 h-16 items-center justify-center relative mx-2">
         {/* Animated Logo */}
         <Animated.View 
           style={[
@@ -99,12 +99,12 @@ const Navbar = ({ onMenuPress, scrollY: externalScrollY }: NavbarProps) => {
         {/* Animated Sticky Search Bar */}
         <Animated.View 
           style={[
-            { position: 'absolute', width: '100%', height: 40, justifyContent: 'center' },
+            { position: 'absolute', width: '100%', height: 40, justifyContent: 'center', overflow: 'visible', zIndex: 100 },
             searchAnimatedStyle // Applied safely on UI thread
           ]}
           pointerEvents="box-none"
         >
-          <View style={{ width: '100%', marginTop: -8 }}>
+          <View style={{ width: '100%', marginTop: -8, zIndex: 100 }}>
             <SearchBar variant="compact" />
           </View>
         </Animated.View>

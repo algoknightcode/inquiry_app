@@ -4,14 +4,11 @@ import React, { useEffect, useState } from "react";
 import { ActivityIndicator, View } from "react-native";
 import { prefetchHomeData } from "../utils/prefetchHome";
 import { setGlobalBuyerId, setGlobalRole, setGlobalSellerId, setSellerSignedIn } from "../utils/roleCache";
-
-let sessionWelcomeShown = false;
-let sessionSkippedRole = false;
-
-// Export function to allow other screens to set skip state for this session
-export function setSessionSkipRole() {
-  sessionSkippedRole = true;
-}
+import {
+    getSessionSkippedRole,
+    getSessionWelcomeShown,
+    setSessionWelcomeShown,
+} from "../utils/sessionCache";
 
 export default function Index() {
   const router = useRouter();
@@ -38,14 +35,14 @@ export default function Index() {
           // Pre-warm home data so tabs load instantly
           prefetchHomeData().catch(() => {});
           router.replace("/(tabs)");
-        } else if (sessionSkippedRole) {
+        } else if (getSessionSkippedRole()) {
           // User skipped role selection in this session — stay in tabs
           prefetchHomeData().catch(() => {});
           router.replace("/(tabs)");
-        } else if (!sessionWelcomeShown) {
+        } else if (!getSessionWelcomeShown()) {
           // First launch of this app session - show welcome screen
           // (welcome.tsx handles its own prefetchHomeData call)
-          sessionWelcomeShown = true;
+          setSessionWelcomeShown();
           router.replace("/welcome");
         } else {
           // Choose role
