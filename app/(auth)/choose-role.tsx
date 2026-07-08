@@ -2,6 +2,7 @@ import { setGlobalRole } from "@/utils/roleCache";
 import { setSessionSkipRole } from "@/utils/sessionCache";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useRouter } from "expo-router";
 import React, { useState } from "react";
 import {
@@ -35,6 +36,7 @@ const ChooseRole = () => {
     try {
       // Set session-level flag so app doesn't show welcome again until restart
       setSessionSkipRole();
+      await AsyncStorage.setItem("skippedRole", "true");
       router.replace("/(tabs)");
     } catch (e) {
       console.log("Error navigating", e);
@@ -268,7 +270,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingVertical: moderateScale(14),
     width: "100%",
-    // The footer automatically sits at the bottom now.
+    marginTop: verticalScale(20),
   },
   footerText: {
     fontSize: moderateScale(15),
@@ -276,7 +278,6 @@ const styles = StyleSheet.create({
     color: "#6B7280",
     textDecorationLine: "underline",
     textAlign: "center",
-    marginTop: -150,
   },
 });
 

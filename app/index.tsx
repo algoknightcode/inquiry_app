@@ -19,6 +19,7 @@ export default function Index() {
       try {
         const supplierId = await AsyncStorage.getItem("supplierId");
         const buyerId = await AsyncStorage.getItem("buyerId");
+        const skippedRole = await AsyncStorage.getItem("skippedRole");
 
         if (supplierId) {
           // Restore seller session in cache
@@ -35,8 +36,8 @@ export default function Index() {
           // Pre-warm home data so tabs load instantly
           prefetchHomeData().catch(() => {});
           router.replace("/(tabs)");
-        } else if (getSessionSkippedRole()) {
-          // User skipped role selection in this session — stay in tabs
+        } else if (skippedRole === "true" || getSessionSkippedRole()) {
+          // User skipped role selection — stay in tabs
           prefetchHomeData().catch(() => {});
           router.replace("/(tabs)");
         } else if (!getSessionWelcomeShown()) {
