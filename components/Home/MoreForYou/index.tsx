@@ -2,23 +2,24 @@ import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import React, { useCallback, useEffect, useMemo } from "react";
 import {
-  Linking,
-  Text,
-  TouchableOpacity,
-  useWindowDimensions,
-  View,
+    Linking,
+    Text,
+    TouchableOpacity,
+    useWindowDimensions,
+    View,
 } from "react-native";
 // 1. Import Reanimated for purely Native UI scrolling
-import Animated, { 
-  cancelAnimation, 
-  runOnUI, 
-  scrollTo, 
-  useAnimatedReaction, 
-  useAnimatedRef, 
-  useAnimatedScrollHandler, 
-  useSharedValue, 
-  withRepeat, 
-  withTiming 
+import Animated, {
+    cancelAnimation,
+    runOnUI,
+    scrollTo,
+    SharedValue,
+    useAnimatedReaction,
+    useAnimatedRef,
+    useAnimatedScrollHandler,
+    useSharedValue,
+    withRepeat,
+    withTiming,
 } from "react-native-reanimated";
 
 export interface MoreForYouCard {
@@ -163,7 +164,7 @@ const MoreForYouCardItem = React.memo(({
 }, (prev, next) => prev.item.id === next.item.id && prev.cardWidth === next.cardWidth);
 
 
-export default function MoreForYou() {
+export default function MoreForYou({ isScrolling }: { isScrolling?: SharedValue<boolean> }) {
   const { width: screenWidth } = useWindowDimensions();
   const router = useRouter();
 
@@ -196,6 +197,20 @@ export default function MoreForYou() {
     'worklet';
     cancelAnimation(autoplayPulse);
   };
+
+  // ── Pause carousel during main feed scroll ──
+  useAnimatedReaction(
+    () => isScrolling?.value ?? false,
+    (scrolling) => {
+      if (scrolling) {
+        // User is scrolling main feed - pause carousel
+        stopAutoPlayUI();
+      } else {
+        // Scroll ended - resume carousel
+        startAutoPlayUI();
+      }
+    }
+  );
 
   // 6. Native Reaction: Listens to the UI ticker and performs smooth or silent snaps
   useAnimatedReaction(

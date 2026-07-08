@@ -5,27 +5,28 @@ import { Image } from "expo-image";
 import { useRouter } from "expo-router";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
-  Linking,
-  NativeScrollEvent,
-  NativeSyntheticEvent,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-  useWindowDimensions,
+    Linking,
+    NativeScrollEvent,
+    NativeSyntheticEvent,
+    Pressable,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    useWindowDimensions,
+    View,
 } from "react-native";
 // 1. Reanimated hooks for UI-thread animation
 import Animated, {
-  runOnUI,
-  scrollTo,
-  useAnimatedRef,
-  useSharedValue,
-  useAnimatedReaction,
-  withRepeat,
-  withTiming,
-  cancelAnimation,
+    cancelAnimation,
+    runOnUI,
+    scrollTo,
+    SharedValue,
+    useAnimatedReaction,
+    useAnimatedRef,
+    useSharedValue,
+    withRepeat,
+    withTiming,
 } from "react-native-reanimated";
 import EnquiryModal from "../../EnquiryModal";
 
@@ -294,7 +295,7 @@ const SkeletonProductCard = ({ layout }: { layout: DynamicLayout }) => (
   </View>
 );
 
-const IBTrusted = () => {
+const IBTrusted = ({ isScrolling }: { isScrolling?: SharedValue<boolean> }) => {
   const router = useRouter();
   const [products, setProducts] = useState<Product[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -370,6 +371,20 @@ const IBTrusted = () => {
     'worklet';
     cancelAnimation(autoplayPulse);
   };
+
+  // ── Pause carousel during main feed scroll ──
+  useAnimatedReaction(
+    () => isScrolling?.value ?? false,
+    (scrolling) => {
+      if (scrolling) {
+        // User is scrolling main feed - pause carousel
+        stopAutoPlayUI();
+      } else {
+        // Scroll ended - resume carousel
+        startAutoPlayUI();
+      }
+    }
+  );
 
   // Listen to autoplay pulse and scroll
   useAnimatedReaction(

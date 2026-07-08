@@ -5,17 +5,17 @@ import { Image } from "expo-image";
 import { useRouter } from "expo-router";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
-  Linking,
-  NativeScrollEvent,
-  NativeSyntheticEvent,
-  ScrollView,
-  Text,
-  TouchableOpacity,
-  useWindowDimensions,
-  View,
+    Linking,
+    NativeScrollEvent,
+    NativeSyntheticEvent,
+    ScrollView,
+    Text,
+    TouchableOpacity,
+    useWindowDimensions,
+    View,
 } from "react-native";
 // 1. Import Reanimated for UI Thread scrolling
-import Animated, { runOnUI, scrollTo, useAnimatedRef } from "react-native-reanimated";
+import Animated, { runOnJS, runOnUI, scrollTo, SharedValue, useAnimatedReaction, useAnimatedRef } from "react-native-reanimated";
 
 type Media = {
   _id: string;
@@ -181,7 +181,7 @@ const SkeletonProductCard = ({ cardWidth }: { cardWidth: number }) => (
   </View>
 );
 
-export default function HorizontalProductList() {
+export default function HorizontalProductList({ isScrolling }: { isScrolling?: SharedValue<boolean> }) {
   const router = useRouter();
   const { width: screenWidth } = useWindowDimensions();
   
@@ -267,6 +267,20 @@ export default function HorizontalProductList() {
   const stopAutoPlay = useCallback(() => {
     if (timerRef.current) clearInterval(timerRef.current);
   }, []);
+
+  // ── Monitor scroll state and pause/resume autoplay ──
+  useAnimatedReaction(
+    () => isScrolling?.value ?? false,
+    (scrolling) => {
+      if (scrolling) {
+        // User is scrolling - pause autoplay
+        runOnJS(stopAutoPlay)();
+      } else {
+        // Scroll ended - resume autoplay
+        runOnJS(startAutoPlay)();
+      }
+    }
+  );
 
   useEffect(() => {
     if (replicatedData.length > 0) {

@@ -1,20 +1,21 @@
+import { useRouter } from "expo-router";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
-  View,
-  Text,
-  Image,
-  StyleSheet,
-  Animated,
-  TouchableOpacity,
-  StatusBar,
+    Animated,
+    Image,
+    StatusBar,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
 } from "react-native";
-import { useRouter } from "expo-router";
-import { scale, verticalScale, moderateScale } from "react-native-size-matters";
-import { prefetchHomeData } from "../utils/prefetchHome";
+import { moderateScale, scale, verticalScale } from "react-native-size-matters";
 import Logo from "../assets/images/logoo-Photoroom.png";
+import { prefetchHomeData } from "../utils/prefetchHome";
 
 // Duration for the loading bar to fill (ms). All home data loads within this window.
-const LOADING_DURATION = 2600;
+// 4.2 seconds is the optimal balance for preloading industries/tree without excessive wait
+const LOADING_DURATION = 4200;
 
 export default function Welcome() {
   const router = useRouter();

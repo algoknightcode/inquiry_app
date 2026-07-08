@@ -1,11 +1,17 @@
-import React, { useEffect, useState } from "react";
-import { View, ActivityIndicator } from "react-native";
-import { useRouter } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { setGlobalSellerId, setSellerSignedIn, setGlobalBuyerId, setGlobalRole } from "../utils/roleCache";
+import { useRouter } from "expo-router";
+import React, { useEffect, useState } from "react";
+import { ActivityIndicator, View } from "react-native";
 import { prefetchHomeData } from "../utils/prefetchHome";
+import { setGlobalBuyerId, setGlobalRole, setGlobalSellerId, setSellerSignedIn } from "../utils/roleCache";
 
 let sessionWelcomeShown = false;
+let sessionSkippedRole = false;
+
+// Export function to allow other screens to set skip state for this session
+export function setSessionSkipRole() {
+  sessionSkippedRole = true;
+}
 
 export default function Index() {
   const router = useRouter();
@@ -16,7 +22,6 @@ export default function Index() {
       try {
         const supplierId = await AsyncStorage.getItem("supplierId");
         const buyerId = await AsyncStorage.getItem("buyerId");
-        const hasSkipped = await AsyncStorage.getItem("hasSkippedRole");
 
         if (supplierId) {
           // Restore seller session in cache
@@ -33,8 +38,8 @@ export default function Index() {
           // Pre-warm home data so tabs load instantly
           prefetchHomeData().catch(() => {});
           router.replace("/(tabs)");
-        } else if (hasSkipped === "true") {
-          // Permitted skip state — pre-warm then go to tabs
+        } else if (sessionSkippedRole) {
+          // User skipped role selection in this session — stay in tabs
           prefetchHomeData().catch(() => {});
           router.replace("/(tabs)");
         } else if (!sessionWelcomeShown) {

@@ -1,20 +1,20 @@
+import { setSessionSkipRole } from "@/app/index";
 import { setGlobalRole } from "@/utils/roleCache";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import React, { useState } from "react";
 import {
-  Image,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
+    Image,
+    Pressable,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { moderateScale, scale, verticalScale } from "react-native-size-matters";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import Logo from "../../assets/images/logoo-Photoroom.png";
 
 const ChooseRole = () => {
@@ -33,10 +33,11 @@ const ChooseRole = () => {
 
   const handleSkip = async () => {
     try {
-      await AsyncStorage.setItem("hasSkippedRole", "true");
+      // Set session-level flag so app doesn't show welcome again until restart
+      setSessionSkipRole();
       router.replace("/(tabs)");
     } catch (e) {
-      console.log("Error saving skip state", e);
+      console.log("Error navigating", e);
       router.replace("/(tabs)");
     }
   };

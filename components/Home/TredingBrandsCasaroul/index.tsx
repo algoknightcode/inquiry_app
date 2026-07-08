@@ -1,14 +1,15 @@
 import { useRouter } from "expo-router";
 import React, { useCallback, useEffect, useMemo, useRef } from "react";
 import {
-  FlatList,
-  NativeScrollEvent,
-  NativeSyntheticEvent,
-  Pressable,
-  Text,
-  View,
-  useWindowDimensions,
+    FlatList,
+    NativeScrollEvent,
+    NativeSyntheticEvent,
+    Pressable,
+    Text,
+    View,
+    useWindowDimensions,
 } from "react-native";
+import { SharedValue, runOnJS, useAnimatedReaction } from "react-native-reanimated";
 
 type Brand = {
   id: string;
@@ -86,7 +87,7 @@ const BrandCard = React.memo(({ brand, dynamicStyles }: { brand: Brand; dynamicS
   );
 });
 
-function TrendingBrandsCarousel() {
+function TrendingBrandsCarousel({ isScrolling }: { isScrolling?: SharedValue<boolean> }) {
   const router = useRouter();
   const { width: screenWidth } = useWindowDimensions();
 
@@ -216,6 +217,21 @@ function TrendingBrandsCarousel() {
       };
     }
   }, [replicatedData, baseMiddleIndex, startAutoPlay, stopAutoPlay]);
+
+  // ── Pause carousel during main feed scroll ──
+  useAnimatedReaction(
+    () => isScrolling?.value ?? false,
+    (scrolling) => {
+      if (scrolling) {
+        // User is scrolling main feed - pause carousel
+        runOnJS(stopAutoPlay)();
+      } else {
+        // Scroll ended - resume carousel
+        runOnJS(startAutoPlay)();
+      }
+    },
+    [startAutoPlay, stopAutoPlay]
+  );
 
   // Handle manual swipe ending to ensure perfect alignment
   const handleMomentumScrollEnd = (

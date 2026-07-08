@@ -1,30 +1,30 @@
 import { fetchWithCache } from "@/utils/apiCache";
-import { Ionicons } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import { useRouter } from "expo-router";
 import React, { useCallback, useEffect, useState } from "react";
 import {
-  ActivityIndicator,
-  Dimensions,
-  Platform,
-  Pressable,
-  StyleSheet,
-  Text,
-  View,
+    ActivityIndicator,
+    Dimensions,
+    Platform,
+    Pressable,
+    StyleSheet,
+    Text,
+    View,
 } from "react-native";
 import Animated, {
-  Extrapolation,
-  interpolate,
-  runOnUI,
-  scrollTo,
-  useAnimatedReaction,
-  useAnimatedRef,
-  useAnimatedScrollHandler,
-  useAnimatedStyle,
-  useSharedValue,
-  withRepeat,
-  withTiming,
-  cancelAnimation, // ⚡ ADDED: Proper way to stop native animations
+    cancelAnimation,
+    Extrapolation,
+    interpolate,
+    runOnUI,
+    scrollTo, // ⚡ ADDED: Proper way to stop native animations
+    SharedValue,
+    useAnimatedReaction,
+    useAnimatedRef,
+    useAnimatedScrollHandler,
+    useAnimatedStyle,
+    useSharedValue,
+    withRepeat,
+    withTiming,
 } from "react-native-reanimated";
 
 const { width: screenWidth } = Dimensions.get("window");
@@ -133,7 +133,7 @@ const PaginationDot = React.memo(({ index, scrollX }: { index: number, scrollX: 
 // ------------------------------------------------------------------
 // Main Component
 // ------------------------------------------------------------------
-export default function IndustryTreeCarousel() {
+export default function IndustryTreeCarousel({ isScrolling }: { isScrolling?: SharedValue<boolean> }) {
   const router = useRouter();
   const [data, setData] = useState<Industry[]>([]);
   const [loading, setLoading] = useState(true);
@@ -176,6 +176,12 @@ export default function IndustryTreeCarousel() {
     );
   };
 
+  // ⚡ Stop autoplay on scroll
+  const stopAutoPlayUI = () => {
+    'worklet';
+    cancelAnimation(autoplayPulse);
+  };
+
   // ⚡ FIX 2: Check current vs previous to prevent reaction spam/crashes
   useAnimatedReaction(
     () => Math.floor(autoplayPulse.value),
@@ -194,7 +200,21 @@ export default function IndustryTreeCarousel() {
     if (data.length > 1) {
       runOnUI(startAutoPlayUI)();
     }
-  }, [data]); 
+  }, [data]);
+
+  // ⚡ Pause carousel during main feed scroll
+  useAnimatedReaction(
+    () => isScrolling?.value ?? false,
+    (scrolling) => {
+      if (scrolling) {
+        // User is scrolling main feed - pause carousel
+        stopAutoPlayUI();
+      } else {
+        // Scroll ended - resume carousel
+        startAutoPlayUI();
+      }
+    }
+  ); 
 
   // --- Fully Bridgeless Scroll Handler ---
   const scrollHandler = useAnimatedScrollHandler({

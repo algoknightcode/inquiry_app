@@ -9,16 +9,17 @@ import {
 } from "react-native";
 // 1. Reanimated imports for UI-Thread optimization
 import Animated, {
+  cancelAnimation,
   runOnJS,
   runOnUI,
   scrollTo,
-  useAnimatedRef,
+  SharedValue,
   useAnimatedReaction,
+  useAnimatedRef,
   useAnimatedScrollHandler,
   useSharedValue,
   withRepeat,
   withTiming,
-  cancelAnimation,
 } from "react-native-reanimated";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
@@ -133,7 +134,7 @@ const getItemLayout = (_: any, index: number) => ({
 });
 
 // ── Main Component ─────────────────────────────────────────────────────────
-export default function TestimonialCarousel() {
+export default function TestimonialCarousel({ isScrolling }: { isScrolling?: SharedValue<boolean> }) {
   const isFocused = useIsFocused();
   const [activeDotIndex, setActiveDotIndex] = useState(0);
 
@@ -231,6 +232,29 @@ export default function TestimonialCarousel() {
       );
     },
   });
+
+  // ── Pause carousel during main feed scroll ──
+  useAnimatedReaction(
+    () => isScrolling?.value ?? false,
+    (scrolling) => {
+      if (scrolling) {
+        // User is scrolling main feed - pause carousel
+        isAutoPlaying.value = false;
+        cancelAnimation(autoplayPulse);
+      } else {
+        // Scroll ended - resume carousel if focused
+        if (isFocused) {
+          isAutoPlaying.value = true;
+          cancelAnimation(autoplayPulse);
+          autoplayPulse.value = withRepeat(
+            withTiming(1, { duration: 4000 }),
+            -1,
+            true
+          );
+        }
+      }
+    }
+  );
 
   const renderItem = useCallback(({ item }: { item: TestimonialData }) => (
     <TestimonialCard item={item} />

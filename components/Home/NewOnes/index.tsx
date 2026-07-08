@@ -5,28 +5,28 @@ import { Image } from "expo-image";
 import { useRouter } from "expo-router";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
-  ActivityIndicator,
-  Modal,
-  NativeScrollEvent,
-  NativeSyntheticEvent,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
+    Modal,
+    NativeScrollEvent,
+    NativeSyntheticEvent,
+    Pressable,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View
 } from "react-native";
 // 1. Import Reanimated for UI-Thread animations
 import Animated, {
-  runOnUI,
-  scrollTo,
-  useAnimatedRef,
-  useSharedValue,
-  useAnimatedReaction,
-  withRepeat,
-  withTiming,
-  cancelAnimation,
+    cancelAnimation,
+    runOnUI,
+    scrollTo,
+    SharedValue,
+    useAnimatedReaction,
+    useAnimatedRef,
+    useSharedValue,
+    withRepeat,
+    withTiming,
 } from "react-native-reanimated";
 
 // ── Types ──────────────────────────────────────────────────────────────────
@@ -197,7 +197,7 @@ const SkeletonProductCard = () => (
   </View>
 );
 
-const NewOnes = () => {
+const NewOnes = ({ isScrolling }: { isScrolling?: SharedValue<boolean> }) => {
   const router = useRouter();
 
   // Data State
@@ -330,6 +330,29 @@ const NewOnes = () => {
       };
     }
   }, [replicatedData, baseMiddleIndex, productsList.length]);
+
+  // ── Pause carousel during main feed scroll ──
+  useEffect(() => {
+    if (!isScrolling) return;
+
+    // When user is scrolling main feed, pause this carousel's autoplay
+    if (isScrolling.value) {
+      runOnUI(() => {
+        'worklet';
+        isAutoPlaying.value = false;
+        stopAutoPlayUI();
+      })();
+    } else {
+      // Resume autoplay when scroll stops
+      runOnUI(() => {
+        'worklet';
+        if (productsList.length > 0) {
+          isAutoPlaying.value = true;
+          startAutoPlayUI();
+        }
+      })();
+    }
+  }, [isScrolling, productsList.length]);
 
   // ── Manual Scroll Handling ──
   const handleScrollBegin = useCallback(() => {

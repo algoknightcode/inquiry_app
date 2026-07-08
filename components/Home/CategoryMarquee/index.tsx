@@ -2,24 +2,25 @@ import { fetchWithCache } from "@/utils/apiCache";
 import { useRouter } from "expo-router";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
-  ActivityIndicator,
-  LayoutChangeEvent,
-  Pressable,
-  StyleSheet,
-  Text,
-  useWindowDimensions,
-  View,
+    ActivityIndicator,
+    LayoutChangeEvent,
+    Pressable,
+    StyleSheet,
+    Text,
+    useWindowDimensions,
+    View,
 } from "react-native";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import Animated, {
-  cancelAnimation,
-  Easing,
-  useAnimatedReaction,
-  useAnimatedStyle,
-  useSharedValue,
-  withDecay,
-  withRepeat,
-  withTiming,
+    cancelAnimation,
+    Easing,
+    SharedValue,
+    useAnimatedReaction,
+    useAnimatedStyle,
+    useSharedValue,
+    withDecay,
+    withRepeat,
+    withTiming,
 } from "react-native-reanimated";
 
 type Industry = {
@@ -67,7 +68,7 @@ const PillItem = React.memo(
     prev.combinedTextStyle === next.combinedTextStyle
 );
 
-const CategoryMarquee = () => {
+const CategoryMarquee = ({ isScrolling }: { isScrolling?: SharedValue<boolean> }) => {
   const router = useRouter();
   const [industries, setIndustries] = useState<Industry[]>([]);
   const [loading, setLoading] = useState(true);
@@ -143,6 +144,22 @@ const CategoryMarquee = () => {
     (width, prevWidth) => {
       if (width > 0 && width !== prevWidth && !isDragging.value) {
         startMarquee();
+      }
+    }
+  );
+
+  // ── Pause marquee during main feed scroll ──
+  useAnimatedReaction(
+    () => isScrolling?.value ?? false,
+    (scrolling) => {
+      if (scrolling) {
+        // User is scrolling main feed - pause marquee
+        cancelAnimation(translateX);
+      } else {
+        // Scroll ended - resume marquee
+        if (!isDragging.value && sharedContentWidth.value > 0) {
+          startMarquee();
+        }
       }
     }
   );
