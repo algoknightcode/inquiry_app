@@ -19,12 +19,10 @@ import HorizontalProductList from '@/components/Home/Trending';
 import TrustedBy from '@/components/Home/Trusted';
 import VideoSection from '@/components/Home/Video_component';
 import WeConnectBuyerSeller from '@/components/Home/WeConnect_BuyerSeller';
-import Sidebar from '@/components/ui/Sidebar';
-import { userRole } from '@/utils/roleCache';
 import React, { useCallback, useMemo, useRef, useState } from 'react';
 import { FlatList, Platform, SafeAreaView, StyleSheet } from 'react-native';
 // Added Reanimated imports
-import Animated, { useAnimatedScrollHandler, useSharedValue } from 'react-native-reanimated';
+import Animated, { runOnJS, useAnimatedScrollHandler, useSharedValue } from 'react-native-reanimated';
 
 // Memoize all home components to prevent unnecessary re-renders during scrolls
 const MemoizedBanner2 = React.memo(Banner2);
@@ -49,7 +47,6 @@ const MemoizedVideoSection = React.memo(VideoSection);
 const MemoizedWeConnectBuyerSeller = React.memo(WeConnectBuyerSeller);
 
 export default function HomeScreen() {
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [renderBelowFold, setRenderBelowFold] = useState(false);
   const flatListRef = useRef<FlatList>(null);
   
@@ -58,7 +55,7 @@ export default function HomeScreen() {
   
   // 2. Track if user is currently scrolling (for pausing carousels)
   const isScrolling = useSharedValue(false);
-  const scrollEndTimer = useRef<NodeJS.Timeout | null>(null);
+  const scrollEndTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   React.useEffect(() => {
     const timer = setTimeout(() => {
@@ -122,7 +119,7 @@ export default function HomeScreen() {
       case 'industries':
         return <MemoizedTop_Industries />;
       case 'valueadds':
-        return <MemoizedMoreValueAdds />;
+        return <MemoizedMoreValueAdds isScrolling={isScrolling} />;
       case 'brands':
         return <MemoizedTrendingBrandsCarousel isScrolling={isScrolling} />;
       case 'products':
@@ -163,28 +160,32 @@ export default function HomeScreen() {
 
   const keyExtractor = useCallback((item: string) => item, []);
 
+  const handleScrollEnd = useCallback(() => {
+    if (scrollEndTimer.current) {
+      clearTimeout(scrollEndTimer.current);
+    }
+    scrollEndTimer.current = setTimeout(() => {
+      isScrolling.value = false;
+    }, 500);
+  }, [isScrolling]);
+
   // 3. Map standard scroll events directly to the UI thread using Reanimated
   const scrollHandler = useAnimatedScrollHandler({
     onScroll: (event) => {
       scrollY.value = event.contentOffset.y;
-      // Mark as scrolling
-      isScrolling.value = true;
+      if (!isScrolling.value) {
+        isScrolling.value = true;
+      }
     },
     onEndDrag: () => {
-      // Debounce scroll end - resume autoplay after 500ms of no scroll
-      if (scrollEndTimer.current) {
-        clearTimeout(scrollEndTimer.current);
-      }
-      scrollEndTimer.current = setTimeout(() => {
-        isScrolling.value = false;
-      }, 500);
+      runOnJS(handleScrollEnd)();
     },
   });
 
   return (
     <SafeAreaView style={styles.container}>
       {/* 3. Pass the Reanimated SharedValue safely to the Navbar */}
-      <Navbar onMenuPress={() => setIsSidebarOpen(true)} scrollY={scrollY} />
+      <Navbar scrollY={scrollY} />
 
       <Animated.FlatList
         ref={flatListRef}
@@ -204,12 +205,6 @@ export default function HomeScreen() {
         overScrollMode="never"
         decelerationRate={Platform.OS === 'android' ? 'normal' : 'normal'}
         contentContainerStyle={{ paddingBottom: 100 }}
-      />
-
-      <Sidebar 
-        visible={isSidebarOpen} 
-        onClose={() => setIsSidebarOpen(false)} 
-        currentRole={userRole}
       />
     </SafeAreaView>
   );

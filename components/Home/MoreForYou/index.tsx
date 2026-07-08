@@ -1,4 +1,5 @@
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
+import { useIsFocused } from "@react-navigation/native";
 import { useRouter } from "expo-router";
 import React, { useCallback, useEffect, useMemo } from "react";
 import {
@@ -165,6 +166,7 @@ const MoreForYouCardItem = React.memo(({
 
 
 export default function MoreForYou({ isScrolling }: { isScrolling?: SharedValue<boolean> }) {
+  const isFocused = useIsFocused();
   const { width: screenWidth } = useWindowDimensions();
   const router = useRouter();
 
@@ -187,6 +189,7 @@ export default function MoreForYou({ isScrolling }: { isScrolling?: SharedValue<
   // 5. Native Engine: Generates ticks strictly on the UI thread
   const startAutoPlayUI = () => {
     'worklet';
+    if (!isFocused) return;
     autoplayPulse.value = withRepeat(
       withTiming(autoplayPulse.value + 1, { duration: 2500 }),
       -1
@@ -202,6 +205,10 @@ export default function MoreForYou({ isScrolling }: { isScrolling?: SharedValue<
   useAnimatedReaction(
     () => isScrolling?.value ?? false,
     (scrolling) => {
+      if (!isFocused) {
+        stopAutoPlayUI();
+        return;
+      }
       if (scrolling) {
         // User is scrolling main feed - pause carousel
         stopAutoPlayUI();
@@ -209,13 +216,17 @@ export default function MoreForYou({ isScrolling }: { isScrolling?: SharedValue<
         // Scroll ended - resume carousel
         startAutoPlayUI();
       }
-    }
+    },
+    [isFocused]
   );
 
   // 6. Native Reaction: Listens to the UI ticker and performs smooth or silent snaps
   useAnimatedReaction(
     () => Math.floor(autoplayPulse.value),
     (currentPulse, prevPulse) => {
+      if (!isFocused) {
+        return;
+      }
       if (currentPulse !== prevPulse && prevPulse !== null && !isDragging.value) {
         let nextIndex = currentIndex.value + 1;
         
@@ -233,7 +244,8 @@ export default function MoreForYou({ isScrolling }: { isScrolling?: SharedValue<
           scrollTo(flatListRef, nextIndex * cardWidth, 0, true);
         }
       }
-    }
+    },
+    [isFocused]
   );
 
   // 7. Bridgeless scroll handler for user touches
@@ -259,6 +271,11 @@ export default function MoreForYou({ isScrolling }: { isScrolling?: SharedValue<
   });
 
   useEffect(() => {
+    if (!isFocused) {
+      stopAutoPlayUI();
+      return;
+    }
+
     const initTimer = setTimeout(() => {
       if (flatListRef.current) {
         flatListRef.current.scrollToIndex({ index: BASE_MIDDLE, animated: false });
@@ -267,7 +284,7 @@ export default function MoreForYou({ isScrolling }: { isScrolling?: SharedValue<
     }, 300);
 
     return () => clearTimeout(initTimer);
-  }, []);
+  }, [isFocused]);
 
   const handlePress = useCallback((route: string) => {
     if (route.startsWith("http://") || route.startsWith("https://")) {

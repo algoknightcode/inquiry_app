@@ -1,24 +1,22 @@
 import Navbar from "@/components/Home/Navbar";
-import Sidebar from "@/components/ui/Sidebar";
 import { globalSellerId } from "@/utils/roleCache";
 import { Ionicons } from "@expo/vector-icons";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import React, { useCallback, useEffect, useState } from "react";
 import {
-  ActivityIndicator,
-  RefreshControl,
-  ScrollView,
-  Text,
-  TouchableOpacity,
-  View,
-  StyleSheet,
+    ActivityIndicator,
+    FlatList,
+    InteractionManager,
+    RefreshControl,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
 } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { scale, verticalScale, moderateScale } from "react-native-size-matters";
-import AsyncStorage from "@react-native-async-storage/async-storage";
+import { moderateScale, scale, verticalScale } from "react-native-size-matters";
 
 const Dashboard = () => {
-  const insets = useSafeAreaInsets();
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [productsCount, setProductsCount] = useState(0);
   const [inquiries, setInquiries] = useState<any[]>([]);
@@ -32,8 +30,20 @@ const Dashboard = () => {
       const supplierId = globalSellerId || await AsyncStorage.getItem("supplierId");
 
       if (supplierId) {
-        // 1. Fetch Products
-        const prodRes = await fetch(`https://seller.inquirybazaar.com/api/product?supplierId=${supplierId}`);
+        // 🔥 PARALLEL: All 3 API calls fire simultaneously with Promise.all
+        const [prodRes, leadRes, businessRes] = await Promise.all([
+          fetch(`https://seller.inquirybazaar.com/api/product?supplierId=${supplierId}`),
+          fetch(`https://brandbnalo.com/api/form/get-forms/${supplierId}?filter=today`),
+          fetch("https://seller.inquirybazaar.com/api/profile/business", {
+            method: "GET",
+            headers: {
+              "Content-Type": "application/json",
+              "x-user-id": supplierId,
+            },
+          }),
+        ]);
+
+        // Process products
         const prodJson = await prodRes.json();
         const productsArray = prodJson.data || prodJson.products || prodJson || [];
         setProductsCount(productsArray.length);
@@ -50,21 +60,13 @@ const Dashboard = () => {
         });
         setCategoriesList(Array.from(categorySet));
 
-        // 2. Fetch Latest Inquiries/Forms
-        const leadRes = await fetch(`https://brandbnalo.com/api/form/get-forms/${supplierId}?filter=today`);
+        // Process inquiries
         const leadJson = await leadRes.json();
         if (leadJson.success && leadJson.data) {
           setInquiries(leadJson.data);
         }
 
-        // 3. Fetch Business Profile details
-        const businessRes = await fetch("https://seller.inquirybazaar.com/api/profile/business", {
-          method: "GET",
-          headers: {
-            "Content-Type": "application/json",
-            "x-user-id": supplierId,
-          },
-        });
+        // Process business profile
         if (businessRes.ok) {
           const businessJson = await businessRes.json();
           const bData = businessJson.data || businessJson.profile || businessJson || null;
@@ -75,11 +77,16 @@ const Dashboard = () => {
       console.error("Error fetching dashboard data:", error);
     } finally {
       setIsLoading(false);
+      setRefreshing(false);
     }
   }, []);
 
   useEffect(() => {
-    fetchDashboardData(true);
+    // Wait for the navigation transition to complete before doing heavy data processing
+    const task = InteractionManager.runAfterInteractions(() => {
+      fetchDashboardData(true);
+    });
+    return () => task.cancel();
   }, [fetchDashboardData]);
 
   const onRefresh = useCallback(async () => {
@@ -90,7 +97,7 @@ const Dashboard = () => {
 
   return (
     <View style={s.flexContainer}>
-      <Navbar onMenuPress={() => setIsSidebarOpen(true)} />
+      <Navbar />
       <ScrollView
         contentContainerStyle={s.scrollContent}
         showsVerticalScrollIndicator={false}
@@ -165,15 +172,10 @@ const Dashboard = () => {
             </TouchableOpacity>
           </View>
 
-          <ScrollView style={s.inquiriesList} nestedScrollEnabled={true} showsVerticalScrollIndicator={false}>
-            {isLoading ? (
-              <ActivityIndicator size="small" color="#4F46E5" />
-            ) : inquiries.length === 0 ? (
-              <View style={s.emptyWrapper}>
-                <Text style={s.emptyText}>No inquiries found today.</Text>
-              </View>
-            ) : (
-              inquiries.map((item, index) => {
+          <View style={{ flex: 1, height: verticalScale(300) }}>
+            <FlatList
+              data={inquiries.slice(0, 10)}
+              renderItem={({ item, index }) => {
                 const userName = item.name || item.fullName || item.userName || "Anonymous";
                 const timeString = item.createdAt ? new Date(item.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : "N/A";
                 const messageDetail = item.message || item.query || item.requirements || "Inquiry Request";
@@ -188,9 +190,17 @@ const Dashboard = () => {
                     </Text>
                   </TouchableOpacity>
                 );
-              })
-            )}
-          </ScrollView>
+              }}
+              keyExtractor={(item, index) => item._id || index.toString()}
+              ListEmptyComponent={
+                <View style={s.emptyWrapper}>
+                  <Text style={s.emptyText}>No inquiries found today.</Text>
+                </View>
+              }
+              scrollEnabled={false}
+              nestedScrollEnabled={false}
+            />
+          </View>
         </View>
 
         {/* --- COMPANY PROFILE --- */}
@@ -269,12 +279,6 @@ const Dashboard = () => {
           )}
         </View>
       </ScrollView>
-
-      <Sidebar
-        visible={isSidebarOpen}
-        onClose={() => setIsSidebarOpen(false)}
-        currentRole="seller"
-      />
     </View>
   );
 };

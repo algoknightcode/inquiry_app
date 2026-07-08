@@ -1,11 +1,11 @@
+import { useRole } from "@/contexts/RoleContext";
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import React, { memo, useCallback, useEffect, useMemo, useState } from "react";
 import {
-    FlatList,
-    InteractionManager,
     Modal,
     Pressable,
+    ScrollView,
     Text,
     TouchableOpacity,
     TouchableWithoutFeedback,
@@ -158,14 +158,18 @@ const SellerHeader = memo(({ metrics, onNavigate }: { metrics: any; onNavigate: 
 const Sidebar = ({ visible, onClose, currentRole }: SidebarProps) => {
   const insets = useSafeAreaInsets();
   const { width: screenWidth, height: screenHeight } = useWindowDimensions();
-  const [activeRole] = useState<"buyer" | "seller">(currentRole);
   const [logoutConfirmVisible, setLogoutConfirmVisible] = useState(false);
-  const [showModal, setShowModal] = useState(false);
-  const [isContentReady, setIsContentReady] = useState(false);
+  const [isMounted, setIsMounted] = useState(false);
+  
+  // 👉 USE REACTIVE ROLE STATE FROM CONTEXT
+  const { globalBuyerId, globalSellerId, setGlobalSellerId, setSellerSignedIn, setGlobalBuyerId, setGlobalRole, clearRoleState } = useRole();
+
+  // Only treat user as seller if they have an actual seller session (not just a stale role in storage)
+  const isActuallySeller = currentRole === "seller" && !!globalSellerId;
 
   // Build role-aware menu items
   const roleMenuItems = useMemo<MenuItem[]>(() => {
-    const profileRoute = activeRole === "seller" ? "/Seller/Profile" : "/Buyer/profile";
+    const profileRoute = isActuallySeller ? "/Seller/Profile" : "/Buyer/profile";
     const items: MenuItem[] = [
       { icon: "home-outline", title: "Home", route: "/(tabs)" },
       { icon: "person-outline", title: "Profile", route: profileRoute },
@@ -174,11 +178,11 @@ const Sidebar = ({ visible, onClose, currentRole }: SidebarProps) => {
       { icon: "notifications-outline", title: "Notifications", route: "/NotificationPanel" },
       { icon: "help-circle-outline", title: "Help & Support", route: "/HelpSupport" },
     ];
-    if (activeRole !== "seller") {
+    if (!isActuallySeller) {
       items.splice(3, 0, { icon: "briefcase-outline", title: "Free Listing", route: "/Seller/auth/Signup", highlight: true });
     }
     return items;
-  }, [activeRole]);
+  }, [isActuallySeller]);
 
   const slideAnim = useSharedValue(-400);
   const fadeAnim = useSharedValue(0);
@@ -194,45 +198,66 @@ const Sidebar = ({ visible, onClose, currentRole }: SidebarProps) => {
     return { sidebarWidth, scale: baseScale, headerPaddingHorizontal: 20 * baseScale, headerPaddingTop: 12 * hScale, headerPaddingBottom: 16 * hScale, logoSize: 40 * baseScale, logoTextSize: 17 * baseScale, logoSubTextSize: 13 * baseScale, closeBtnSize: 32 * baseScale, closeIconSize: 18 * baseScale, scrollPaddingHorizontal: 12 * baseScale, scrollPaddingTop: 12 * hScale, itemMarginBottom: 8 * hScale, itemPaddingVertical: 12 * hScale, itemPaddingHorizontal: 14 * baseScale, itemIconBoxSize: 36 * baseScale, itemIconSize: 18 * baseScale, itemTextSize: 16.5 * baseScale, chevronSize: 15 * baseScale, subItemPaddingVertical: 9 * hScale, subItemPaddingHorizontal: 10 * baseScale, subItemIconBoxSize, subItemIconSize: 14 * baseScale, subItemTextSize: 15 * baseScale, totalSubmenuHeight, planCardPadding: 12 * baseScale, planCardMarginBottom: 16 * hScale, logoutPaddingHorizontal: 16 * baseScale, logoutPaddingVertical: 10 * hScale, logoutButtonPaddingVertical: 12 * hScale, logoutTextSize: 15.5 * baseScale, logoutIconSize: 17 * baseScale, footerPaddingHorizontal: 24 * baseScale, footerPaddingTop: 10 * hScale, footerPaddingBottom: 8 * hScale, footerTextSize: 12 * baseScale };
   }, [screenWidth, screenHeight]);
 
-  useEffect(() => { slideAnim.value = -metrics.sidebarWidth; }, [metrics.sidebarWidth, slideAnim]);
+  useEffect(() => { 
+    slideAnim.value = -metrics.sidebarWidth; 
+  }, [metrics.sidebarWidth]);
 
   useEffect(() => {
     if (visible) {
-      setShowModal(true);
+      setIsMounted(true);
       slideAnim.value = withSpring(0, { damping: 15, stiffness: 90, mass: 0.8 });
       fadeAnim.value = withTiming(1, { duration: 250 });
-      setTimeout(() => setIsContentReady(true), 50);
-    } else {
-      setIsContentReady(false);
+    } else if (isMounted) {
+      slideAnim.value = withTiming(-metrics.sidebarWidth, { duration: 250, easing: Easing.out(Easing.cubic) });
+      fadeAnim.value = withTiming(0, { duration: 250 }, (finished) => {
+        if (finished) { runOnJS(setIsMounted)(false); }
+      });
     }
-  }, [visible, slideAnim, fadeAnim]);
+  }, [visible, isMounted, metrics.sidebarWidth]);
 
   const handleClose = useCallback(() => {
-    slideAnim.value = withTiming(-metrics.sidebarWidth, { duration: 250, easing: Easing.out(Easing.cubic) });
-    fadeAnim.value = withTiming(0, { duration: 250 }, (finished) => {
-      if (finished) { runOnJS(setShowModal)(false); runOnJS(onClose)(); }
-    });
-  }, [metrics.sidebarWidth, onClose, slideAnim, fadeAnim]);
+    onClose();
+  }, [onClose]);
 
-  const handleNavigation = useCallback(async (route: string) => {
-    handleClose();
-    InteractionManager.runAfterInteractions(async () => {
-      router.push(route as any);
+  const protectedRoutes = useMemo(() => new Set([
+    "/Buyer/profile", 
+    "/Seller/Profile", 
+    "/Account",
+    "/NotificationPanel",
+    "/Seller/dashboard",
+    "/Seller/ViewAllProduct",
+    "/Seller/AddProduct",
+    "/Seller/Lead"
+  ]), []);
+
+  const handleNavigation = useCallback((route: string) => {
+    onClose();
+    
+    let finalRoute = route;
+    const isGuest = !globalBuyerId && !globalSellerId;
+
+    if (isGuest && protectedRoutes.has(route)) {
+      finalRoute = "/(auth)/choose-role";
+    }
+
+    // Navigate immediately without waiting for animations
+    requestAnimationFrame(() => {
+      router.navigate(finalRoute as any);
     });
-  }, [handleClose]);
+  }, [onClose, globalBuyerId, globalSellerId, protectedRoutes]);
 
   const backdropStyle = useAnimatedStyle(() => ({ opacity: fadeAnim.value }));
   const drawerStyle = useAnimatedStyle(() => ({ transform: [{ translateX: slideAnim.value }] }));
 
-  if (!showModal && !visible) return null;
+  if (!isMounted && !visible) return null;
 
   return (
-    <Modal visible={showModal} transparent animationType="none" onRequestClose={handleClose}>
+    <Modal visible={visible || isMounted} transparent animationType="none" onRequestClose={handleClose}>
       <View style={{ flex: 1 }}>
         <TouchableWithoutFeedback onPress={handleClose}>
           <Animated.View style={[{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, backgroundColor: "rgba(15, 23, 42, 0.45)" }, backdropStyle]} />
         </TouchableWithoutFeedback>
-        <Animated.View style={[{ position: "absolute", top: 0, left: 0, bottom: 0, width: metrics.sidebarWidth, backgroundColor: "#ffffff", shadowColor: "#0F172A", shadowOffset: { width: 4, height: 0 }, shadowOpacity: 0.1, shadowRadius: 16, elevation: 16, paddingTop: insets.top + (metrics.scale * 12), paddingBottom: Math.max(insets.bottom, 12 * metrics.scale) }, drawerStyle]}>
+        <Animated.View style={[{ position: "absolute", top: 0, left: 0, bottom: 0, width: metrics.sidebarWidth, backgroundColor: "#ffffff", borderRightWidth: 1, borderRightColor: "#E2E8F0", paddingTop: insets.top + (metrics.scale * 12), paddingBottom: Math.max(insets.bottom, 12 * metrics.scale) }, drawerStyle]}>
           <View style={{ paddingHorizontal: metrics.headerPaddingHorizontal, paddingBottom: metrics.headerPaddingBottom, paddingTop: metrics.headerPaddingTop }} className="border-b border-slate-100 flex-row items-center justify-between">
             <View className="flex-row items-center">
               <View style={{ width: metrics.logoSize, height: metrics.logoSize }} className="rounded-xl bg-slate-900 items-center justify-center mr-3">
@@ -246,21 +271,54 @@ const Sidebar = ({ visible, onClose, currentRole }: SidebarProps) => {
               <Ionicons name="close" size={20} color="#64748b" />
             </Pressable>
           </View>
-          <FlatList
-            data={isContentReady ? roleMenuItems : []}
-            keyExtractor={(i) => i.route}
-            renderItem={({ item }) => <RenderMenuItem item={item} metrics={metrics} onPress={handleNavigation} />}
-            ListHeaderComponent={isContentReady && activeRole === 'seller' ? <SellerHeader metrics={metrics} onNavigate={handleNavigation} /> : null}
+          <ScrollView
             contentContainerStyle={{ paddingHorizontal: metrics.scrollPaddingHorizontal, paddingTop: metrics.scrollPaddingTop }}
             showsVerticalScrollIndicator={false}
-          />
+            bounces={false}
+            scrollEnabled={false}
+            nestedScrollEnabled={false}
+          >
+            {isActuallySeller && <SellerHeader metrics={metrics} onNavigate={handleNavigation} />}
+            {roleMenuItems.map((item) => (
+              <RenderMenuItem key={item.route} item={item} metrics={metrics} onPress={handleNavigation} />
+            ))}
+          </ScrollView>
           <View style={{ padding: 20 }} className="border-t border-slate-100">
-             <TouchableOpacity onPress={() => setLogoutConfirmVisible(true)} className="flex-row items-center justify-center bg-rose-50 p-3 rounded-xl">
-               <Text className="font-jakarta-bold text-rose-600">Log Out</Text>
-             </TouchableOpacity>
+             {(!globalBuyerId && !globalSellerId) ? (
+               <TouchableOpacity onPress={() => handleNavigation("/(auth)/choose-role")} className="flex-row items-center justify-center bg-blue-50 p-3 rounded-xl">
+                 <Text className="font-jakarta-bold text-blue-600">Log In / Sign Up</Text>
+               </TouchableOpacity>
+             ) : (
+               <TouchableOpacity onPress={() => setLogoutConfirmVisible(true)} className="flex-row items-center justify-center bg-rose-50 p-3 rounded-xl">
+                 <Text className="font-jakarta-bold text-rose-600">Log Out</Text>
+               </TouchableOpacity>
+             )}
           </View>
         </Animated.View>
       </View>
+
+      {/* Logout Confirmation Modal */}
+      <Modal visible={logoutConfirmVisible} transparent animationType="fade" onRequestClose={() => setLogoutConfirmVisible(false)}>
+        <View style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.5)", justifyContent: "center", alignItems: "center", paddingHorizontal: 24 }}>
+          <View style={{ backgroundColor: "white", borderRadius: 16, padding: 24, width: "100%", maxWidth: 300 }}>
+            <Text style={{ fontSize: 16, fontWeight: "700", color: "#0f172a", marginBottom: 12 }}>Confirm Logout</Text>
+            <Text style={{ fontSize: 14, color: "#64748b", marginBottom: 24, lineHeight: 20 }}>Are you sure you want to log out? You can log back in anytime.</Text>
+            <View style={{ flexDirection: "row", gap: 12 }}>
+              <TouchableOpacity onPress={() => setLogoutConfirmVisible(false)} style={{ flex: 1, paddingVertical: 12, borderRadius: 8, borderWidth: 1, borderColor: "#e2e8f0", alignItems: "center" }}>
+                <Text style={{ fontSize: 14, fontWeight: "600", color: "#64748b" }}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity onPress={async () => {
+                setLogoutConfirmVisible(false);
+                onClose();
+                await clearRoleState();
+                router.replace("/(auth)/choose-role");
+              }} style={{ flex: 1, paddingVertical: 12, borderRadius: 8, backgroundColor: "#ef4444", alignItems: "center" }}>
+                <Text style={{ fontSize: 14, fontWeight: "600", color: "white" }}>Log Out</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </Modal>
   );
 };

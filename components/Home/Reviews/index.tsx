@@ -155,12 +155,16 @@ export default function TestimonialCarousel({ isScrolling }: { isScrolling?: Sha
   useAnimatedReaction(
     () => Math.floor(autoplayPulse.value),
     (currentPulse, prevPulse) => {
+      if (!isFocused) {
+        return;
+      }
       if (currentPulse !== prevPulse && isAutoPlaying.value) {
         scrollIndex.value = scrollIndex.value + 1;
         scrollTo(flatListRef, scrollIndex.value * ITEM_SIZE, 0, true);
         runOnJS(setActiveDotIndex)(scrollIndex.value % testimonials.length);
       }
-    }
+    },
+    [isFocused]
   );
 
   // Start autoplay timer on component focus
@@ -204,11 +208,11 @@ export default function TestimonialCarousel({ isScrolling }: { isScrolling?: Sha
 
   // 5. Scroll Handler completely on the UI Thread
   const scrollHandler = useAnimatedScrollHandler({
-    onScrollBeginDrag: () => {
+    onBeginDrag: () => {
       isAutoPlaying.value = false; // Pause on user interaction
       cancelAnimation(autoplayPulse);
     },
-    onMomentumScrollEnd: (event) => {
+    onMomentumEnd: (event: any) => {
       const scrollOffset = event.contentOffset.x;
       let currentIndex = Math.round(scrollOffset / ITEM_SIZE);
 
@@ -237,6 +241,11 @@ export default function TestimonialCarousel({ isScrolling }: { isScrolling?: Sha
   useAnimatedReaction(
     () => isScrolling?.value ?? false,
     (scrolling) => {
+      if (!isFocused) {
+        isAutoPlaying.value = false;
+        cancelAnimation(autoplayPulse);
+        return;
+      }
       if (scrolling) {
         // User is scrolling main feed - pause carousel
         isAutoPlaying.value = false;
@@ -253,7 +262,8 @@ export default function TestimonialCarousel({ isScrolling }: { isScrolling?: Sha
           );
         }
       }
-    }
+    },
+    [isFocused]
   );
 
   const renderItem = useCallback(({ item }: { item: TestimonialData }) => (
@@ -329,11 +339,6 @@ const styles = StyleSheet.create({
     borderColor: "#e2e8f0",
     paddingHorizontal: 24,
     paddingVertical: 28,
-    elevation: 3,
-    shadowColor: "#1e3a8a",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.07,
-    shadowRadius: 12,
   },
   logoContainer: {
     alignItems: "center",

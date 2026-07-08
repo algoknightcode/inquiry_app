@@ -1,16 +1,17 @@
+import { fetchWithCache } from "@/utils/apiCache";
 import { productCache } from "@/utils/productCache";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
 import {
-  ActivityIndicator,
-  Dimensions,
-  RefreshControl,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
+    ActivityIndicator,
+    Dimensions,
+    RefreshControl,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -74,11 +75,10 @@ export default function NotificationScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [readProductIds, setReadProductIds] = useState<Set<string>>(new Set());
 
-  const fetchLiveNotifications = async () => {
+  const fetchLiveNotifications = useCallback(async () => {
     try {
-      // 1. Fetch industry tree
-      const response = await fetch("https://backend.inquirybazaar.com/api/industries/tree");
-      const json = await response.json();
+      // 1. Fetch industry tree with cache
+      const json = await fetchWithCache("https://backend.inquirybazaar.com/api/industries/tree");
 
       if (json.success && json.data) {
         const subcategories: { name: string; slug: string }[] = [];
@@ -104,19 +104,20 @@ export default function NotificationScreen() {
           }
         }
 
-        // Fetch products in parallel for the selected subcategories (Delhi location default)
-        const productRequests = selectedSubs.map(async (sub) => {
-          try {
-            const res = await fetch(`https://backend.inquirybazaar.com/api/categories/sub/${sub.slug}/Delhi`);
-            const resJson = await res.json();
-            if (resJson.success && resJson.data && resJson.data.products) {
-              return resJson.data.products;
-            }
-          } catch (e) {
-            console.log(`Error fetching products for subcategory ${sub.slug}:`, e);
-          }
-          return [];
-        });
+        // 2. Fetch products in parallel with cache
+        const productRequests = selectedSubs.map((sub) =>
+          fetchWithCache(`https://backend.inquirybazaar.com/api/categories/sub/${sub.slug}/Delhi`)
+            .then((resJson) => {
+              if (resJson.success && resJson.data && resJson.data.products) {
+                return resJson.data.products;
+              }
+              return [];
+            })
+            .catch((e) => {
+              console.log(`Error fetching products for subcategory ${sub.slug}:`, e);
+              return [];
+            })
+        );
 
         const allProductsArrays = await Promise.all(productRequests);
         const flattened = allProductsArrays.flat();
@@ -145,16 +146,17 @@ export default function NotificationScreen() {
       setLoading(false);
       setRefreshing(false);
     }
-  };
-
-  useEffect(() => {
-    fetchLiveNotifications();
   }, []);
 
-  const handleRefresh = () => {
+  useEffect(() => {
+    setLoading(true);
+    fetchLiveNotifications();
+  }, [fetchLiveNotifications]);
+
+  const handleRefresh = useCallback(() => {
     setRefreshing(true);
     fetchLiveNotifications();
-  };
+  }, [fetchLiveNotifications]);
 
   const handleNotificationPress = (item: Product) => {
     // Add to read set

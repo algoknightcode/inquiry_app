@@ -1,7 +1,8 @@
+import { fetchWithCache } from "@/utils/apiCache";
 import { Image } from "expo-image";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import React, { useEffect, useState } from "react";
-import { ActivityIndicator, Pressable, ScrollView, Text, View, InteractionManager } from "react-native";
+import React, { useCallback, useEffect, useState } from "react";
+import { ActivityIndicator, FlatList, Pressable, ScrollView, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { CategoryImage } from "@/assets/images"; // Make sure your path is correct
@@ -19,39 +20,36 @@ const Grid_mainCategory = () => {
   const [loading, setLoading] = useState(true);
   const insets = useSafeAreaInsets();
 
-  useEffect(() => {
-    const fetchCategories = async () => {
-      try {
-        setLoading(true);
-        // Request with industryId parameter
-        const url = id 
-          ? `https://backend.inquirybazaar.com/api/categories/main?industryId=${id}`
-          : "https://backend.inquirybazaar.com/api/categories/main";
+  const fetchCategories = useCallback(async () => {
+    try {
+      setLoading(true);
+      const url = id 
+        ? `https://backend.inquirybazaar.com/api/categories/main?industryId=${id}`
+        : "https://backend.inquirybazaar.com/api/categories/main";
 
-        const response = await fetch(url);
-        const json = await response.json();
+      const json = await fetchWithCache(url);
 
-        if (json.success && json.data) {
-          let data = json.data;
-          
-          // Client-side filter: matches industryId._id against selected id
-          if (id && Array.isArray(data)) {
-            data = data.filter((cat: any) => {
-              return cat.industryId && cat.industryId._id === id;
-            });
-          }
-          
-          setCategoriesList(data);
+      if (json.success && json.data) {
+        let data = json.data;
+        
+        if (id && Array.isArray(data)) {
+          data = data.filter((cat: any) => {
+            return cat.industryId && cat.industryId._id === id;
+          });
         }
-      } catch (error) {
-        console.error("Error fetching categories:", error);
-      } finally {
-        setLoading(false);
+        
+        setCategoriesList(data);
       }
-    };
-
-    fetchCategories();
+    } catch (error) {
+      console.error("Error fetching categories:", error);
+    } finally {
+      setLoading(false);
+    }
   }, [id]);
+
+  useEffect(() => {
+    fetchCategories();
+  }, [fetchCategories]);
 
   return (
     <ScrollView 
@@ -73,40 +71,41 @@ const Grid_mainCategory = () => {
         <View className="py-20 items-center justify-center">
           <ActivityIndicator size="large" color="#0f172a" />
         </View>
-      ) : (
-        <View className="flex-row flex-wrap gap-x-[2.6%] gap-y-6 pb-10">
-          {categoriesList.map((item) => (
-              <Pressable 
-                key={item._id}
-                className={styles.card}
-                // Adds a soft native tap effect on Android
-                android_ripple={{ color: "#f1f5f9", radius: 35, borderless: true }}
-                onPress={() => router.push({
-                  pathname: "/SubCategory",
-                  params: { categoryId: item._id, categoryName: item.name, industryId: id, location }
-                })}
-              >
-              {/* The Image Wrapper (Squircle) */}
-              <View className={styles.imageWrapper}>
-                <Image
-                  source={item.imageUrl ? { uri: item.imageUrl } : CategoryImage}
-                  style={styles.image}
-                  contentFit="cover"
-                  transition={200}
-                />
-              </View>
+      ) : null}
+      
+      <FlatList
+        data={categoriesList}
+        renderItem={({ item }) => (
+          <Pressable 
+            style={{ width: '23%', alignItems: 'center', marginVertical: 12, marginHorizontal: '1.3%' }}
+            android_ripple={{ color: "#f1f5f9", radius: 35, borderless: true }}
+            onPress={() => router.push({
+              pathname: "/SubCategory",
+              params: { categoryId: item._id, categoryName: item.name, industryId: id, location }
+            })}
+          >
+            <View className={styles.imageWrapper}>
+              <Image
+                source={item.imageUrl ? { uri: item.imageUrl } : CategoryImage}
+                style={styles.image}
+                contentFit="cover"
+                transition={200}
+              />
+            </View>
 
-              {/* Typography */}
-              <Text
-                className={styles.title}
-                numberOfLines={2}
-              >
-                {item.name}
-              </Text>
-            </Pressable>
-          ))}
-        </View>
-      )}
+            <Text
+              className={styles.title}
+              numberOfLines={2}
+            >
+              {item.name}
+            </Text>
+          </Pressable>
+        )}
+        keyExtractor={(item) => item._id}
+        numColumns={4}
+        scrollEnabled={false}
+        contentContainerStyle={{ paddingBottom: 40 }}
+      />
     </ScrollView>
   );
 };

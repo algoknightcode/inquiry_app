@@ -1,32 +1,33 @@
+import { useRole } from "@/contexts/RoleContext";
 import { Ionicons } from "@expo/vector-icons";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useRouter } from "expo-router";
 import React, { useState } from "react";
 import {
-  ActivityIndicator,
-  Alert,
-  Image,
-  KeyboardAvoidingView,
-  Modal,
-  Platform,
-  Pressable,
-  ScrollView,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
-  StyleSheet,
+    ActivityIndicator,
+    Alert,
+    Image,
+    KeyboardAvoidingView,
+    Modal,
+    Platform,
+    Pressable,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { scale, verticalScale, moderateScale } from "react-native-size-matters";
+import { moderateScale, scale, verticalScale } from "react-native-size-matters";
 import Logo from "../../../assets/images/logoo-Photoroom.png";
-import { setSellerSignedIn, setGlobalSellerId, setGlobalBuyerId, setGlobalRole } from "../../../utils/roleCache";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const SellerLogin = () => {
   const [loading, setLoading] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { setSellerSignedIn, setGlobalSellerId, setGlobalBuyerId, setGlobalRole } = useRole();
 
   const [loginMode, setLoginMode] = useState<"password" | "otp">("password");
   const [otp, setOtp] = useState("");
@@ -62,7 +63,7 @@ const SellerLogin = () => {
         setIsSuccess(true);
         setTimeout(() => {
           setIsSuccess(false);
-          router.replace("/(tabs)");
+          router.navigate("/(tabs)");
         }, 1500);
         return;
       }
@@ -87,7 +88,7 @@ const SellerLogin = () => {
           setIsSuccess(true);
           setTimeout(() => {
             setIsSuccess(false);
-            router.replace("/(tabs)");
+            router.navigate("/(tabs)");
           }, 1500);
         } else {
           Alert.alert("Login Failed", response.message || "Invalid credentials.");
@@ -116,7 +117,7 @@ const SellerLogin = () => {
         setIsSuccess(true);
         setTimeout(() => {
           setIsSuccess(false);
-          router.replace("/(tabs)");
+          router.navigate("/(tabs)");
         }, 1500);
         return;
       } else {

@@ -1,6 +1,7 @@
-import { fetchWithCache } from "@/utils/apiCache";
+import { fetchWithCache, getCacheSync } from "@/utils/apiCache";
 import { productCache } from "@/utils/productCache";
 import { Ionicons } from "@expo/vector-icons";
+import { useIsFocused } from "@react-navigation/native";
 import { Image } from "expo-image";
 import { useRouter } from "expo-router";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
@@ -42,7 +43,6 @@ type Business = {
   city: string;
   state: string;
 };
-
 type Supplier = {
   _id: string;
   name: string;
@@ -68,8 +68,18 @@ type DynamicLayout = {
   containerPadding: number;
   ITEM_SIZE: number;
 };
+// ── Cache Loader ───────────────────────────────────────────────────────────
+const TRUSTED_URL = "https://backend.inquirybazaar.com/api/categories/sub/titanium-dioxide/Delhi";
+function getInitialCachedTrustedProducts(): Product[] {
+  try {
+    const json = getCacheSync(TRUSTED_URL);
+    if (json?.success && Array.isArray(json.data?.products)) {
+      return json.data.products.slice(0, 10);
+    }
+  } catch (_) {}
+  return [];
+}
 
-// ── 2. Static Styles Extracted from Component ──
 const staticStyles = StyleSheet.create({
   container: {
     marginTop: 12,
@@ -264,7 +274,7 @@ const ProductCard = React.memo(
                 </TouchableOpacity>
 
                 {item.supplier?.phone && (
-                  <TouchableOpacity activeOpacity={0.8} onPress={() => Linking.openURL(`tel:${item.supplier.phone}`)} style={staticStyles.callButton}>
+                  <TouchableOpacity activeOpacity={0.8} onPress={() => Linking.openURL(`tel:${item.supplier?.phone}`)} style={staticStyles.callButton}>
                     <Ionicons name="call" size={16} color="white" />
                   </TouchableOpacity>
                 )}
@@ -296,9 +306,11 @@ const SkeletonProductCard = ({ layout }: { layout: DynamicLayout }) => (
 );
 
 const IBTrusted = ({ isScrolling }: { isScrolling?: SharedValue<boolean> }) => {
+  const isFocused = useIsFocused();
   const router = useRouter();
-  const [products, setProducts] = useState<Product[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const initialProducts = getInitialCachedTrustedProducts();
+  const [products, setProducts] = useState<Product[]>(initialProducts);
+  const [isLoading, setIsLoading] = useState(initialProducts.length === 0);
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   
@@ -331,12 +343,16 @@ const IBTrusted = ({ isScrolling }: { isScrolling?: SharedValue<boolean> }) => {
   useEffect(() => {
     const fetchTrustedProducts = async () => {
       try {
-        const json = await fetchWithCache("https://backend.inquirybazaar.com/api/categories/sub/titanium-dioxide/Delhi");
+        const json = await fetchWithCache(TRUSTED_URL);
         if (json.success && json.data?.products) {
-          setProducts(json.data.products.slice(0, 10));
+          const sliced = json.data.products.slice(0, 10);
+          setProducts((prev) => {
+            if (prev.length === sliced.length && prev[0]?._id === sliced[0]?._id) return prev;
+            return sliced;
+          });
         }
       } catch (error) {
-        console.error("Error fetching trusted products:", error);
+        console.error("Error fetching Trusted products:", error);
       } finally {
         setIsLoading(false);
       }
@@ -372,24 +388,15 @@ const IBTrusted = ({ isScrolling }: { isScrolling?: SharedValue<boolean> }) => {
     cancelAnimation(autoplayPulse);
   };
 
-  // ── Pause carousel during main feed scroll ──
-  useAnimatedReaction(
-    () => isScrolling?.value ?? false,
-    (scrolling) => {
-      if (scrolling) {
-        // User is scrolling main feed - pause carousel
-        stopAutoPlayUI();
-      } else {
-        // Scroll ended - resume carousel
-        startAutoPlayUI();
-      }
-    }
-  );
+
 
   // Listen to autoplay pulse and scroll
   useAnimatedReaction(
     () => Math.floor(autoplayPulse.value),
     (currentPulse, prevPulse) => {
+      if (!isFocused) {
+        return;
+      }
       if (currentPulse !== prevPulse && prevPulse !== null && !isAutoPlaying.value) {
         return; // Don't scroll if user is dragging
       }
@@ -406,7 +413,8 @@ const IBTrusted = ({ isScrolling }: { isScrolling?: SharedValue<boolean> }) => {
           scrollTo(flatListRef, safeIndex * layout.ITEM_SIZE, 0, false);
         }
       }
-    }
+    },
+    [isFocused]
   );
 
   useEffect(() => {

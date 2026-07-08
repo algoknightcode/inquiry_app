@@ -1,21 +1,20 @@
+import EnquiryModal from "@/components/EnquiryModal";
 import { productCache } from "@/utils/productCache";
-import { globalSellerId } from "@/utils/roleCache";
 import { Feather, Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Image } from "expo-image";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import React, { useState } from "react";
 import {
-  Linking,
-  ScrollView,
-  Share,
-  Text,
-  TouchableOpacity,
-  Vibration,
-  View,
+    Linking,
+    ScrollView,
+    Share,
+    Text,
+    TouchableOpacity,
+    Vibration,
+    View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import EnquiryModal from "@/components/EnquiryModal";
 
 export default function ProductDetailPage() {
   const router = useRouter();
@@ -92,40 +91,48 @@ export default function ProductDetailPage() {
     }
   };
 
-  // Fetch full details from backend
+  // Fetch full details from backend using Promise.race for speed
   React.useEffect(() => {
     if (!productId && !slug) return;
 
     const fetchFullDetails = async () => {
+      // Prioritize cached data
+      if (productId && productCache[productId]) {
+        setProduct(productCache[productId]);
+      }
+
+      // Try multiple endpoints in parallel and use first successful response
       const urls = [
         `https://backend.inquirybazaar.com/api/products/${productId}`,
         `https://backend.inquirybazaar.com/api/products/single/${productId}`,
         `https://backend.inquirybazaar.com/api/product/${productId}`,
-        `https://backend.inquirybazaar.com/api/products/details/${productId}`,
-        `https://backend.inquirybazaar.com/api/products/get/${productId}`,
         `https://backend.inquirybazaar.com/api/products/slug/${slug}`,
-        `https://backend.inquirybazaar.com/api/product/slug/${slug}`,
-        `https://backend.inquirybazaar.com/api/products/${slug}`,
       ];
 
-      for (const url of urls) {
-        try {
-          const res = await fetch(url);
-          const text = await res.text();
-          if (text.startsWith("{")) {
-            const json = JSON.parse(text);
-            if (json.success && json.data) {
-              const fullProduct = json.data;
-              setProduct(fullProduct);
-              if (productId) {
-                productCache[productId] = fullProduct;
-              }
-              break;
-            }
+      try {
+        // Race: first successful fetch wins
+        const result = await Promise.race(
+          urls.map((url) =>
+            fetch(url)
+              .then((res) => {
+                if (!res.ok) throw new Error(`${res.status}`);
+                return res.json();
+              })
+              .then((json) => {
+                if (json.success && json.data) return json.data;
+                throw new Error("No data");
+              })
+          )
+        );
+
+        if (result) {
+          setProduct(result);
+          if (productId) {
+            productCache[productId] = result;
           }
-        } catch (e) {
-          // Continue to next URL
         }
+      } catch (e) {
+        console.log("Could not fetch product details from any endpoint", e);
       }
     };
 

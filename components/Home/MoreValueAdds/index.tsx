@@ -1,8 +1,10 @@
 import { Ionicons } from "@expo/vector-icons";
+import { useIsFocused } from "@react-navigation/native";
 import { Image } from "expo-image";
-import { useRouter, Href } from "expo-router";
-import React, { useEffect, useRef, useState } from "react";
+import { Href, useRouter } from "expo-router";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { FlatList, Linking, Pressable, Text, useWindowDimensions, View } from "react-native";
+import { SharedValue } from "react-native-reanimated";
 
 type ValueAddCard = {
   id: string;
@@ -43,7 +45,8 @@ const cardsData: ValueAddCard[] = [
   },
 ];
 
-export default function MoreValueAdds() {
+export default function MoreValueAdds({ isScrolling }: { isScrolling?: SharedValue<boolean> }) {
+  const isFocused = useIsFocused();
   const { width: screenWidth } = useWindowDimensions();
   const flatListRef = useRef<FlatList>(null);
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -64,6 +67,10 @@ export default function MoreValueAdds() {
   const maxScrollIndex = cardsData.length - 2;
 
   useEffect(() => {
+    if (!isFocused) {
+      return;
+    }
+
     const interval = setInterval(() => {
       // Use ref so we never need currentIndex in the dependency array
       let nextIndex = currentIndexRef.current + 1;
@@ -74,26 +81,26 @@ export default function MoreValueAdds() {
     }, 4500);
 
     return () => clearInterval(interval);
-  }, [maxScrollIndex]); // ✅ No currentIndex here — timer no longer restarts on every tick
+  }, [isFocused, maxScrollIndex]);
 
-  const handleScroll = (event: any) => {
+  const handleScroll = useCallback((event: any) => {
     const scrollPosition = event.nativeEvent.contentOffset.x;
     const index = Math.round(scrollPosition / (cardWidth + cardGap));
     if (index !== currentIndexRef.current && index <= maxScrollIndex) {
       currentIndexRef.current = index;
       setCurrentIndex(index);
     }
-  };
+  }, [cardWidth, cardGap, maxScrollIndex]);
 
-  const handlePress = (route: string) => {
+  const handlePress = useCallback((route: string) => {
     if (route.startsWith("http://") || route.startsWith("https://")) {
       Linking.openURL(route).catch((err) => console.error("Failed to open external link", err));
     } else {
       router.push(route as Href);
     }
-  };
+  }, [router]);
 
-  const renderItem = ({ item, index }: { item: ValueAddCard; index: number }) => {
+  const renderItem = useCallback(({ item, index }: { item: ValueAddCard; index: number }) => {
     const isLastItem = index === cardsData.length - 1;
 
     return (
@@ -104,7 +111,7 @@ export default function MoreValueAdds() {
           height: cardHeight,
           marginRight: isLastItem ? 0 : cardGap 
         }}
-        className="rounded-[20px] bg-[#F1F5F9] border border-[#F97316] relative overflow-hidden active:scale-[0.97] transition-transform shadow-sm shadow-slate-200"
+        className="rounded-[20px] bg-[#F1F5F9] border border-[#F97316] relative overflow-hidden active:scale-[0.97] transition-transform"
       >
         {/* User Provided Image */}
         <View className="absolute bottom-2 right-1 z-0 opacity-80">
@@ -139,14 +146,14 @@ export default function MoreValueAdds() {
             >
               Learn more
             </Text>
-            <View className="w-6 h-6 rounded-full bg-[#EA580C] items-center justify-center shadow-sm shadow-orange-500/30">
+            <View className="w-6 h-6 rounded-full bg-[#EA580C] items-center justify-center">
               <Ionicons name="arrow-forward" size={14} color="white" />
             </View>
           </View>
         </View>
       </Pressable>
     );
-  };
+  }, [cardWidth, cardHeight, cardGap, handlePress]);
 
   return (
     <View className="mt-8 mb-2">

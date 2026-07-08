@@ -1,11 +1,10 @@
+import { useRole } from "@/contexts/RoleContext";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { router, usePathname, useSegments } from "expo-router";
-import React from "react";
-import { Platform, Text, TouchableOpacity, View, useWindowDimensions, BackHandler } from "react-native";
+import React, { useCallback } from "react";
+import { BackHandler, Text, TouchableOpacity, View, useWindowDimensions } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { userRole, isSellerSignedIn } from "@/utils/roleCache";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 
 type IconName = React.ComponentProps<typeof Ionicons>["name"];
 
@@ -28,6 +27,9 @@ export default function CustomTabBar() {
   const pathname = usePathname();
   const insets = useSafeAreaInsets();
   const { width: screenWidth } = useWindowDimensions();
+  
+  // 👉 USE REACTIVE ROLE STATE FROM CONTEXT
+  const { userRole, isSellerSignedIn, globalSellerId, globalBuyerId } = useRole();
 
   // Derive responsive scaling values
   const isTablet = screenWidth >= 768;
@@ -100,37 +102,34 @@ export default function CustomTabBar() {
     return null;
   }
 
-  const handlePress = async (tabId: string) => {
+  const handlePress = useCallback((tabId: string) => {
+    // 1. Fire-and-forget haptics (do not await, it blocks navigation)
     try {
-      await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     } catch (e) {
       // Fail silently if not supported
     }
 
+    // 2. Use `router.navigate` instead of `router.replace` to keep screens alive and switch instantly
     if (tabId === "home") {
-      router.replace("/(tabs)");
+      router.navigate("/(tabs)");
     } else if (tabId === "request-quote") {
-      router.replace("/PostRequirenmentForm");
+      router.navigate("/PostRequirenmentForm");
     } else if (tabId === "account") {
-      try {
-        const storedBuyerId = await AsyncStorage.getItem("buyerId");
-        const storedSupplierId = await AsyncStorage.getItem("supplierId");
-        if (storedSupplierId) {
-          router.replace("/Seller/Profile");
-        } else if (storedBuyerId) {
-          router.replace("/Buyer/profile");
-        } else {
-          router.replace("/(auth)/choose-role");
-        }
-      } catch (e) {
-        router.replace("/(auth)/choose-role");
+      // 3. Use reactive roleContext instead of stale module variables
+      if (userRole === "seller" && globalSellerId) {
+        router.navigate("/Seller/Profile");
+      } else if (userRole === "buyer" && globalBuyerId) {
+        router.navigate("/Buyer/profile");
+      } else {
+        router.navigate("/(auth)/choose-role");
       }
     } else if (tabId === "wishlist") {
-      router.replace("/Wishlist");
+      router.navigate("/Wishlist");
     } else if (tabId === "categories") {
-      router.replace("/Industries");
+      router.navigate("/Industries");
     }
-  };
+  }, [userRole, globalSellerId, globalBuyerId]);
 
   return (
     <View 
@@ -145,17 +144,6 @@ export default function CustomTabBar() {
         backgroundColor: '#ffffff',
         borderTopWidth: 1,
         borderTopColor: '#e2e8f0',
-        ...Platform.select({
-          ios: {
-            shadowColor: '#0f172a',
-            shadowOffset: { width: 0, height: -4 },
-            shadowOpacity: 0.05,
-            shadowRadius: 8,
-          },
-          android: {
-            elevation: 8,
-          },
-        }),
       }}
     >
       <View 

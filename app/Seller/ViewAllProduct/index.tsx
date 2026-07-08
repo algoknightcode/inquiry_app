@@ -1,22 +1,22 @@
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useRouter } from "expo-router";
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
-  ActivityIndicator,
-  FlatList,
-  Image,
-  KeyboardAvoidingView,
-  Platform,
-  RefreshControl,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
-  StyleSheet,
+    ActivityIndicator,
+    FlatList,
+    Image,
+    KeyboardAvoidingView,
+    Platform,
+    RefreshControl,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { scale, verticalScale, moderateScale } from "react-native-size-matters";
+import { moderateScale, scale, verticalScale } from "react-native-size-matters";
 
 const ManageProducts = () => {
   const router = useRouter();
@@ -26,12 +26,7 @@ const ManageProducts = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
-  // --- API INTEGRATION ---
-  useEffect(() => {
-    fetchProducts(true);
-  }, []);
-
-  const fetchProducts = async (showGlobalLoader = true) => {
+  const fetchProducts = useCallback(async (showGlobalLoader = true) => {
     if (showGlobalLoader) setIsLoading(true);
     try {
       const storedId = await AsyncStorage.getItem('supplierId');
@@ -48,22 +43,29 @@ const ManageProducts = () => {
     } finally {
       if (showGlobalLoader) setIsLoading(false);
     }
-  };
+  }, []);
 
-  const onRefresh = async () => {
+  useEffect(() => {
+    fetchProducts(true);
+  }, [fetchProducts]);
+
+  const onRefresh = useCallback(async () => {
     setRefreshing(true);
     await fetchProducts(false);
     setRefreshing(false);
-  };
+  }, [fetchProducts]);
 
-  // --- FILTER LOGIC ---
-  const filteredProducts = products.filter(product => {
-    const name = product.productName || product.name || "";
-    return name.toLowerCase().includes(searchQuery.toLowerCase());
-  });
+  // ✅ MEMOIZED: Filter runs only when searchQuery or products change
+  const filteredProducts = useMemo(() =>
+    products.filter(product => {
+      const name = product.productName || product.name || "";
+      return name.toLowerCase().includes(searchQuery.toLowerCase());
+    }),
+    [products, searchQuery]
+  );
 
-  // --- PRODUCT CARD COMPONENT ---
-  const renderProductCard = ({ item }: { item: any }) => {
+  // ✅ MEMOIZED RENDERER: Stable reference for FlatList
+  const renderProductCard = useCallback(({ item }: { item: any }) => {
     const displayImage = item.media?.[0]?.url || item.imageUri || item.images?.[0] || item.image || "https://images.unsplash.com/photo-1585202900225-6d3ac20a6962?q=80&w=400&auto=format&fit=crop";
     const displayName = item.productName || item.name || "Unnamed Product";
     const displayPrice = item.newPrice || item.price || "N/A";
@@ -157,7 +159,7 @@ const ManageProducts = () => {
         </View>
       </View>
     );
-  };
+  }, [router]);
 
   return (
     <SafeAreaView style={s.safeArea} edges={["top", "bottom"]}>

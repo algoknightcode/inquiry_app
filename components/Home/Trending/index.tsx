@@ -1,6 +1,7 @@
 import EnquiryModal from "@/components/EnquiryModal";
 import { fetchWithCache, getCacheSync } from "@/utils/apiCache";
 import { productCache } from "@/utils/productCache";
+import { useIsFocused } from "@react-navigation/native";
 import { Image } from "expo-image";
 import { useRouter } from "expo-router";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -94,7 +95,7 @@ const ProductCard = React.memo(({
 
   return (
     <TouchableOpacity
-      className="bg-white rounded-2xl shadow-md shadow-slate-200/50 border border-slate-100 overflow-hidden"
+      className="bg-white rounded-2xl border border-slate-100 overflow-hidden"
       style={{ width: cardWidth, marginRight: CARD_MARGIN }}
       activeOpacity={1} 
       onPress={handlePress}
@@ -162,7 +163,7 @@ const ProductCard = React.memo(({
 const SkeletonProductCard = ({ cardWidth }: { cardWidth: number }) => (
   <View
     style={{ width: cardWidth, marginRight: CARD_MARGIN }}
-    className="bg-white rounded-2xl shadow-md shadow-slate-200/50 border border-slate-100 overflow-hidden"
+    className="bg-white rounded-2xl border border-slate-100 overflow-hidden"
   >
     <View className="h-36 w-full bg-slate-200" />
     <View className="p-3 flex-1 bg-white justify-between">
@@ -182,6 +183,7 @@ const SkeletonProductCard = ({ cardWidth }: { cardWidth: number }) => (
 );
 
 export default function HorizontalProductList({ isScrolling }: { isScrolling?: SharedValue<boolean> }) {
+  const isFocused = useIsFocused();
   const router = useRouter();
   const { width: screenWidth } = useWindowDimensions();
   
@@ -237,6 +239,7 @@ export default function HorizontalProductList({ isScrolling }: { isScrolling?: S
   }, [replicatedData.length, products.length]);
 
   const startAutoPlay = useCallback(() => {
+    if (!isFocused) return;
     stopAutoPlay();
     if (replicatedData.length <= 1) return;
 
@@ -262,40 +265,26 @@ export default function HorizontalProductList({ isScrolling }: { isScrolling?: S
         })(targetOffset);
       }
     }, 3000); 
-  }, [baseMiddleIndex, replicatedData.length, products.length, ITEM_SIZE]);
+  }, [baseMiddleIndex, replicatedData.length, products.length, ITEM_SIZE, isFocused]);
 
   const stopAutoPlay = useCallback(() => {
     if (timerRef.current) clearInterval(timerRef.current);
   }, []);
 
-  // ── Monitor scroll state and pause/resume autoplay ──
-  useAnimatedReaction(
-    () => isScrolling?.value ?? false,
-    (scrolling) => {
-      if (scrolling) {
-        // User is scrolling - pause autoplay
-        runOnJS(stopAutoPlay)();
-      } else {
-        // Scroll ended - resume autoplay
-        runOnJS(startAutoPlay)();
-      }
+
+
+  useEffect(() => {
+    if (!isFocused) {
+      stopAutoPlay();
     }
-  );
+    return () => stopAutoPlay();
+  }, [isFocused, stopAutoPlay]);
 
   useEffect(() => {
     if (replicatedData.length > 0) {
       activeIndexRef.current = baseMiddleIndex;
-      const initTimer = setTimeout(() => {
-        if (flatListRef.current) {
-          flatListRef.current.scrollToIndex({ index: baseMiddleIndex, animated: false });
-        }
-        startAutoPlay();
-      }, 500);
-
-      return () => {
-        clearTimeout(initTimer);
-        stopAutoPlay();
-      };
+      startAutoPlay();
+      return () => stopAutoPlay();
     }
   }, [replicatedData, baseMiddleIndex, startAutoPlay, stopAutoPlay]);
 
@@ -398,6 +387,8 @@ export default function HorizontalProductList({ isScrolling }: { isScrolling?: S
           showsHorizontalScrollIndicator={false}
           keyExtractor={keyExtractor}
           renderItem={renderItem}
+          getItemLayout={getItemLayout}
+          initialScrollIndex={baseMiddleIndex}
           className="pl-5 py-2" 
           contentContainerStyle={{ paddingRight: 40 }} 
           snapToInterval={ITEM_SIZE}
@@ -408,7 +399,6 @@ export default function HorizontalProductList({ isScrolling }: { isScrolling?: S
           maxToRenderPerBatch={4}
           windowSize={5}
           updateCellsBatchingPeriod={40} // 6. Optimized batching speed
-          getItemLayout={getItemLayout}
           onScrollBeginDrag={stopAutoPlay}
           onMomentumScrollEnd={handleMomentumScrollEnd}
           onScrollToIndexFailed={handleScrollToIndexFailed}

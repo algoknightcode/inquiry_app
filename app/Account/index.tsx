@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import {
   View,
   Text,
@@ -7,24 +7,59 @@ import {
   SafeAreaView,
   StyleSheet,
   Dimensions,
+  Modal,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter, Stack } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { setGlobalRole } from "@/utils/roleCache";
-
+import { 
+  setGlobalRole, 
+  globalBuyerId, 
+  globalSellerId, 
+  setGlobalBuyerId, 
+  setGlobalSellerId, 
+  setSellerSignedIn 
+} from "@/utils/roleCache";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 const { width } = Dimensions.get("window");
 
 export default function AccountChoicePage() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const [modalVisible, setModalVisible] = useState(false);
+  const [targetRole, setTargetRole] = useState<"buyer" | "seller" | null>(null);
+
+  const activeLoggedInRole = globalSellerId ? "seller" : (globalBuyerId ? "buyer" : null);
 
   const handleSelectRole = (role: "buyer" | "seller") => {
+    if (activeLoggedInRole && activeLoggedInRole !== role) {
+      setTargetRole(role);
+      setModalVisible(true);
+      return;
+    }
+
     setGlobalRole(role);
     if (role === "buyer") {
       router.push("/Buyer/auth/Login");
     } else {
       router.push("/Seller/auth/Login");
+    }
+  };
+
+  const handleLogout = async () => {
+    try {
+      await AsyncStorage.multiRemove(["supplierId", "buyerId", "skippedRole"]);
+      setGlobalBuyerId(null);
+      setGlobalSellerId(null);
+      setSellerSignedIn(false);
+      setGlobalRole("buyer");
+      setModalVisible(false);
+      if (router.canDismiss()) {
+        router.dismissAll();
+      }
+      router.replace("/(auth)/choose-role");
+    } catch (e) {
+      console.error("Logout error", e);
     }
   };
 
@@ -60,6 +95,12 @@ export default function AccountChoicePage() {
             onPress={() => handleSelectRole("buyer")}
             style={[styles.card, styles.buyerCard]}
           >
+            {activeLoggedInRole === "buyer" && (
+              <View style={styles.loggedInBadge}>
+                <Ionicons name="checkmark-circle" size={14} color="#1E3A8A" />
+                <Text style={styles.loggedInText}>Logged In</Text>
+              </View>
+            )}
             <View style={styles.cardHeader}>
               <View style={[styles.cardIconBox, styles.buyerIconBox]}>
                 <Ionicons name="cart-outline" size={28} color="#1E3A8A" />
@@ -86,6 +127,12 @@ export default function AccountChoicePage() {
             onPress={() => handleSelectRole("seller")}
             style={[styles.card, styles.sellerCard]}
           >
+            {activeLoggedInRole === "seller" && (
+              <View style={styles.loggedInBadge}>
+                <Ionicons name="checkmark-circle" size={14} color="#D9650A" />
+                <Text style={styles.loggedInText}>Logged In</Text>
+              </View>
+            )}
             <View style={styles.cardHeader}>
               <View style={[styles.cardIconBox, styles.sellerIconBox]}>
                 <Ionicons name="storefront-outline" size={28} color="#D9650A" />
@@ -116,6 +163,33 @@ export default function AccountChoicePage() {
           <Text style={styles.backLinkText}>Go Back</Text>
         </TouchableOpacity>
       </ScrollView>
+
+      {/* Role Switch Warning Modal */}
+      <Modal
+        visible={modalVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalIconBox}>
+              <Ionicons name="alert-circle" size={40} color="#EF4444" />
+            </View>
+            <Text style={styles.modalTitle}>Action Required</Text>
+            <Text style={styles.modalText}>
+              You are currently logged in as a <Text style={{fontWeight: "bold"}}>{activeLoggedInRole === "seller" ? "Seller" : "Buyer"}</Text>. 
+              To switch to a {targetRole === "seller" ? "Seller" : "Buyer"} account, you must log out first.
+            </Text>
+            <TouchableOpacity onPress={() => setModalVisible(false)} style={styles.modalCloseBtn}>
+              <Text style={styles.modalCloseText}>Understood</Text>
+            </TouchableOpacity>
+            <TouchableOpacity onPress={handleLogout} style={styles.modalLogoutBtn}>
+              <Text style={styles.modalLogoutText}>Log Out</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -162,6 +236,25 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.05,
     shadowRadius: 16,
     elevation: 4,
+    position: "relative",
+  },
+  loggedInBadge: {
+    position: "absolute",
+    top: 16,
+    right: 16,
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#F1F5F9",
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+    gap: 4,
+  },
+  loggedInText: {
+    fontSize: 12,
+    fontWeight: "700",
+    color: "#475569",
+    fontFamily: "PlusJakartaSans-Bold",
   },
   buyerCard: {
     borderColor: "#E2E8F0",
@@ -249,5 +342,70 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     color: "#64748B",
     fontFamily: "PlusJakartaSans-SemiBold",
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(15, 23, 42, 0.6)",
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 24,
+  },
+  modalContent: {
+    backgroundColor: "#ffffff",
+    borderRadius: 24,
+    padding: 24,
+    width: "100%",
+    alignItems: "center",
+  },
+  modalIconBox: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: "#FEF2F2",
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 16,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: "800",
+    color: "#0F172A",
+    fontFamily: "PlusJakartaSans-Bold",
+    marginBottom: 8,
+  },
+  modalText: {
+    fontSize: 15,
+    color: "#475569",
+    textAlign: "center",
+    lineHeight: 22,
+    fontFamily: "PlusJakartaSans-Medium",
+    marginBottom: 24,
+  },
+  modalCloseBtn: {
+    backgroundColor: "#0F172A",
+    width: "100%",
+    paddingVertical: 14,
+    borderRadius: 14,
+    alignItems: "center",
+  },
+  modalCloseText: {
+    color: "#ffffff",
+    fontSize: 16,
+    fontWeight: "700",
+    fontFamily: "PlusJakartaSans-Bold",
+  },
+  modalLogoutBtn: {
+    width: "100%",
+    paddingVertical: 14,
+    borderRadius: 14,
+    alignItems: "center",
+    marginTop: 8,
+    backgroundColor: "#FEF2F2",
+  },
+  modalLogoutText: {
+    color: "#EF4444",
+    fontSize: 16,
+    fontWeight: "700",
+    fontFamily: "PlusJakartaSans-Bold",
   },
 });

@@ -1,32 +1,33 @@
+import { useRole } from "@/contexts/RoleContext";
 import { Ionicons } from "@expo/vector-icons";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useRouter } from "expo-router";
 import React, { useState } from "react";
 import {
-  ActivityIndicator,
-  Alert,
-  Image,
-  KeyboardAvoidingView,
-  Modal,
-  Platform,
-  Pressable,
-  ScrollView,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
-  StyleSheet,
+    ActivityIndicator,
+    Alert,
+    Image,
+    KeyboardAvoidingView,
+    Modal,
+    Platform,
+    Pressable,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { scale, verticalScale, moderateScale } from "react-native-size-matters";
+import { moderateScale, scale, verticalScale } from "react-native-size-matters";
 import Logo from "../../../assets/images/logoo-Photoroom.png";
-import { setGlobalRole, setGlobalBuyerId, setGlobalSellerId, setSellerSignedIn } from "../../../utils/roleCache";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const BuyerLogin = () => {
   const [loading, setLoading] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { setGlobalRole, setGlobalBuyerId, setGlobalSellerId, setSellerSignedIn } = useRole();
 
   const [showPassword, setShowPassword] = useState(false);
   const [formdata, setFormData] = useState({
@@ -58,7 +59,7 @@ const BuyerLogin = () => {
       setIsSuccess(true);
       setTimeout(() => {
         setIsSuccess(false);
-        router.replace("/Buyer/profile");
+        router.navigate("/Buyer/profile");
       }, 1500);
       return;
     }
@@ -93,7 +94,7 @@ const BuyerLogin = () => {
           setIsSuccess(true);
           setTimeout(() => {
             setIsSuccess(false);
-            router.replace("/Buyer/profile");
+            router.navigate("/Buyer/profile");
           }, 1500);
         } else {
           Alert.alert("Error", "Could not retrieve User ID from response.");

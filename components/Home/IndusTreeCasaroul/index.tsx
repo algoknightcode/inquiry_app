@@ -1,4 +1,4 @@
-import { fetchWithCache } from "@/utils/apiCache";
+import { fetchWithCache, getCacheSync } from "@/utils/apiCache";
 import { Image } from "expo-image";
 import { useRouter } from "expo-router";
 import React, { useCallback, useEffect, useState } from "react";
@@ -120,7 +120,7 @@ const IndustrySlide = React.memo(({
 // ------------------------------------------------------------------
 // UI Thread Pagination Dot Component
 // ------------------------------------------------------------------
-const PaginationDot = React.memo(({ index, scrollX }: { index: number, scrollX: Animated.SharedValue<number> }) => {
+const PaginationDot = React.memo(({ index, scrollX }: { index: number, scrollX: SharedValue<number> }) => {
   const animatedStyle = useAnimatedStyle(() => {
     const inputRange = [(index - 1) * screenWidth, index * screenWidth, (index + 1) * screenWidth];
     const dotWidth = interpolate(scrollX.value, inputRange, [6, 12, 6], Extrapolation.CLAMP);
@@ -131,12 +131,28 @@ const PaginationDot = React.memo(({ index, scrollX }: { index: number, scrollX: 
 });
 
 // ------------------------------------------------------------------
+// Cache helpers
+// ------------------------------------------------------------------
+const TREE_URL = "https://backend.inquirybazaar.com/api/industries/tree";
+
+function getInitialData(): Industry[] {
+  try {
+    const cached: ApiResponse | null = getCacheSync(TREE_URL);
+    if (cached?.success && cached.data) {
+      return cached.data.filter((i) => (i.categories?.length ?? 0) >= 4);
+    }
+  } catch (_) {}
+  return [];
+}
+
+// ------------------------------------------------------------------
 // Main Component
 // ------------------------------------------------------------------
 export default function IndustryTreeCarousel({ isScrolling }: { isScrolling?: SharedValue<boolean> }) {
   const router = useRouter();
-  const [data, setData] = useState<Industry[]>([]);
-  const [loading, setLoading] = useState(true);
+  const initialData = getInitialData();
+  const [data, setData] = useState<Industry[]>(initialData);
+  const [loading, setLoading] = useState(initialData.length === 0); // skip loader if cache hit
   const [error, setError] = useState<string | null>(null);
   
   const flatRef = useAnimatedRef<Animated.FlatList<Industry>>();
@@ -144,21 +160,27 @@ export default function IndustryTreeCarousel({ isScrolling }: { isScrolling?: Sh
   const currentIndex = useSharedValue(0);
   const autoplayPulse = useSharedValue(0);
   const isDragging = useSharedValue(false);
-  const dataLength = useSharedValue(0);
+  const dataLength = useSharedValue(initialData.length);
 
   useEffect(() => {
+    // Already have data from cache — still fetch silently in background to keep fresh,
+    // but don't show loader or reset state if we already have content.
     (async () => {
       try {
-        const json: ApiResponse = await fetchWithCache("https://backend.inquirybazaar.com/api/industries/tree");
+        const json: ApiResponse = await fetchWithCache(TREE_URL);
         if (json.success && json.data) {
           const filtered = json.data.filter((i) => (i.categories?.length ?? 0) >= 4);
-          setData(filtered);
-          dataLength.value = filtered.length; 
+          // Only update state if we got new data (avoids unnecessary re-renders on cache hits)
+          setData((prev) => {
+            if (prev.length === filtered.length && prev[0]?._id === filtered[0]?._id) return prev;
+            return filtered;
+          });
+          dataLength.value = filtered.length;
         } else {
           throw new Error("Invalid response");
         }
       } catch (e: any) {
-        setError(e.message);
+        if (data.length === 0) setError(e.message);
       } finally {
         setLoading(false);
       }

@@ -1,8 +1,8 @@
-import { setGlobalRole } from "@/utils/roleCache";
+import { useRole } from "@/contexts/RoleContext";
 import { setSessionSkipRole } from "@/utils/sessionCache";
 import { Ionicons } from "@expo/vector-icons";
-import { LinearGradient } from "expo-linear-gradient";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import React, { useState } from "react";
 import {
@@ -20,6 +20,7 @@ import Logo from "../../assets/images/logoo-Photoroom.png";
 
 const ChooseRole = () => {
   const router = useRouter();
+  const { setGlobalRole } = useRole();
   const [pressedRole, setPressedRole] = useState<"buyer" | "seller" | null>(null);
 
   const handleSelectRole = (role: "buyer" | "seller") => {
@@ -37,10 +38,10 @@ const ChooseRole = () => {
       // Set session-level flag so app doesn't show welcome again until restart
       setSessionSkipRole();
       await AsyncStorage.setItem("skippedRole", "true");
-      router.replace("/(tabs)");
+      router.navigate("/(tabs)");
     } catch (e) {
       console.log("Error navigating", e);
-      router.replace("/(tabs)");
+      router.navigate("/(tabs)");
     }
   };
 

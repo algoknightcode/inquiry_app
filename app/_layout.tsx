@@ -1,12 +1,17 @@
-import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
-import { Stack, useRouter, router } from 'expo-router';
+import CustomTabBar from '@/components/Home/Footer';
+import { RoleProvider, useRole } from '@/contexts/RoleContext';
+import { useColorScheme } from '@/hooks/use-color-scheme';
+import { usePushNotifications } from '@/hooks/usePushNotifications';
+import { Ionicons } from '@expo/vector-icons';
+import { DefaultTheme, ThemeProvider } from '@react-navigation/native';
+import { router, Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
+import { useEffect } from 'react';
+import { Text, TouchableOpacity, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import 'react-native-reanimated';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import "../global.css";
-import { Ionicons } from '@expo/vector-icons';
-import { Text, TouchableOpacity, View } from 'react-native';
-import CustomTabBar from '@/components/Home/Footer';
 
 const CustomBackButton = () => {
   return (
@@ -26,33 +31,15 @@ const CustomBackButton = () => {
   );
 };
 
-import { useColorScheme } from '@/hooks/use-color-scheme';
-import { useEffect } from 'react';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { setGlobalSellerId, setSellerSignedIn, setGlobalBuyerId, setGlobalRole } from '@/utils/roleCache';
-import { usePushNotifications } from '@/hooks/usePushNotifications';
-import { SafeAreaProvider } from 'react-native-safe-area-context';
-
-export default function RootLayout() {
+// Inner layout component that has access to RoleProvider context
+function RootLayoutContent() {
   const colorScheme = useColorScheme();
+  const { initializeFromStorage } = useRole();
   usePushNotifications();
 
   useEffect(() => {
-    const restoreSession = async () => {
-      const storedSellerId = await AsyncStorage.getItem("supplierId");
-      const storedBuyerId = await AsyncStorage.getItem("buyerId");
-      
-      if (storedSellerId) {
-        setGlobalSellerId(storedSellerId);
-        setSellerSignedIn(true);
-        setGlobalRole("seller");
-      } else if (storedBuyerId) {
-        setGlobalBuyerId(storedBuyerId);
-        setGlobalRole("buyer");
-      }
-    };
-    restoreSession();
-  }, []);
+    initializeFromStorage();
+  }, [initializeFromStorage]);
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
@@ -185,5 +172,14 @@ export default function RootLayout() {
       </ThemeProvider>
       </SafeAreaProvider>
     </GestureHandlerRootView>
+  );
+}
+
+// Export default wrapped with RoleProvider
+export default function RootLayout() {
+  return (
+    <RoleProvider>
+      <RootLayoutContent />
+    </RoleProvider>
   );
 }

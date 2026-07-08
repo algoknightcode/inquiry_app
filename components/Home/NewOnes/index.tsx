@@ -1,6 +1,7 @@
 import { fetchWithCache, getCacheSync } from "@/utils/apiCache";
 import { productCache } from "@/utils/productCache";
 import { Ionicons } from "@expo/vector-icons";
+import { useIsFocused } from "@react-navigation/native";
 import { Image } from "expo-image";
 import { useRouter } from "expo-router";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
@@ -198,6 +199,7 @@ const SkeletonProductCard = () => (
 );
 
 const NewOnes = ({ isScrolling }: { isScrolling?: SharedValue<boolean> }) => {
+  const isFocused = useIsFocused();
   const router = useRouter();
 
   // Data State
@@ -244,7 +246,10 @@ const NewOnes = ({ isScrolling }: { isScrolling?: SharedValue<boolean> }) => {
                 });
                 const allProductsArrays = await Promise.all(productRequests);
                 const flattened = allProductsArrays.flat().slice(0, 10);
-                setProductsList(flattened);
+                setProductsList((prev) => {
+                  if (prev.length === flattened.length && prev[0]?._id === flattened[0]?._id) return prev;
+                  return flattened;
+                });
               }
             }
           }
@@ -291,6 +296,9 @@ const NewOnes = ({ isScrolling }: { isScrolling?: SharedValue<boolean> }) => {
   useAnimatedReaction(
     () => Math.floor(autoplayPulse.value),
     (currentPulse, prevPulse) => {
+      if (!isFocused) {
+        return;
+      }
       if (currentPulse !== prevPulse && prevPulse !== null && !isAutoPlaying.value) {
         return; // Don't scroll if user is dragging
       }
@@ -307,60 +315,42 @@ const NewOnes = ({ isScrolling }: { isScrolling?: SharedValue<boolean> }) => {
           scrollTo(flatListRef, safeIndex * ITEM_SIZE, 0, false);
         }
       }
-    }
+    },
+    [isFocused]
   );
 
   useEffect(() => {
+    if (!isFocused) {
+      runOnUI(stopAutoPlayUI)();
+      isAutoPlaying.value = false;
+      return;
+    }
+
     if (replicatedData.length > 0 && productsList.length > 0) {
       scrollIndex.value = baseMiddleIndex;
-      const initTimer = setTimeout(() => {
-        flatListRef.current?.scrollToIndex({ index: baseMiddleIndex, animated: false });
-        
-        runOnUI(() => {
-          'worklet';
-          isAutoPlaying.value = true;
-          startAutoPlayUI();
-        })();
-      }, 500);
+      runOnUI(() => {
+        'worklet';
+        isAutoPlaying.value = true;
+        startAutoPlayUI();
+      })();
 
       return () => {
-        clearTimeout(initTimer);
         runOnUI(stopAutoPlayUI)();
         isAutoPlaying.value = false;
       };
     }
-  }, [replicatedData, baseMiddleIndex, productsList.length]);
+  }, [isFocused, replicatedData, baseMiddleIndex, productsList.length]);
 
-  // ── Pause carousel during main feed scroll ──
-  useEffect(() => {
-    if (!isScrolling) return;
 
-    // When user is scrolling main feed, pause this carousel's autoplay
-    if (isScrolling.value) {
-      runOnUI(() => {
-        'worklet';
-        isAutoPlaying.value = false;
-        stopAutoPlayUI();
-      })();
-    } else {
-      // Resume autoplay when scroll stops
-      runOnUI(() => {
-        'worklet';
-        if (productsList.length > 0) {
-          isAutoPlaying.value = true;
-          startAutoPlayUI();
-        }
-      })();
-    }
-  }, [isScrolling, productsList.length]);
 
   // ── Manual Scroll Handling ──
   const handleScrollBegin = useCallback(() => {
     runOnUI(() => {
       'worklet';
       isAutoPlaying.value = false;
+      cancelAnimation(autoplayPulse);
     })();
-  }, [isAutoPlaying]);
+  }, []);
 
   const handleMomentumScrollEnd = useCallback((event: NativeSyntheticEvent<NativeScrollEvent>) => {
     const scrollOffset = event.nativeEvent.contentOffset.x;
@@ -373,12 +363,6 @@ const NewOnes = ({ isScrolling }: { isScrolling?: SharedValue<boolean> }) => {
     }
 
     scrollIndex.value = currentIndex;
-    
-    runOnUI(() => {
-      'worklet';
-      isAutoPlaying.value = true;
-      startAutoPlayUI();
-    })();
   }, [ITEM_SIZE, replicatedData.length, productsList.length, baseMiddleIndex]);
 
   const handleScrollToIndexFailed = useCallback((info: { index: number }) => {
@@ -470,9 +454,9 @@ const NewOnes = ({ isScrolling }: { isScrolling?: SharedValue<boolean> }) => {
           onScrollToIndexFailed={handleScrollToIndexFailed}
           
           getItemLayout={getItemLayout}
-          initialNumToRender={4}
-          maxToRenderPerBatch={4}
-          windowSize={5}
+          initialNumToRender={5}
+          initialScrollIndex={baseMiddleIndex}
+          windowSize={11}
           updateCellsBatchingPeriod={40} // 6. Optimized React Native Batching
           removeClippedSubviews={true}
         />
@@ -577,13 +561,8 @@ const flatStyles = StyleSheet.create({
     backgroundColor: "#fff",
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: "#f1f5f9",
+    borderColor: "#e2e8f0",
     overflow: "hidden",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.05,
-    shadowRadius: 12,
-    elevation: 3,
     flexDirection: 'column',
     height: 256, 
   },

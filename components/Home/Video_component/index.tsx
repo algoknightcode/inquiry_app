@@ -70,11 +70,6 @@ const VideoSection = () => {
         style={{
           width: CARD_WIDTH,
           height: CARD_HEIGHT,
-          shadowColor: "#0f172a",
-          shadowOffset: { width: 0, height: 16 },
-          shadowOpacity: 0.1,
-          shadowRadius: 24,
-          elevation: 10,
           borderTopWidth: 1.5,
           borderBottomWidth: 1.5,
           borderColor: "rgba(226, 232, 240, 0.5)",
@@ -94,7 +89,7 @@ const VideoSection = () => {
           {/* Play/Pause Button */}
           <Pressable 
             onPress={togglePlay}
-            className="w-12 h-12 rounded-full backdrop-blur-lg items-center justify-center border border-white/20 active:scale-95 transition-all shadow-md bg-black/50"
+            className="w-12 h-12 rounded-full backdrop-blur-lg items-center justify-center border border-white/20 active:scale-95 transition-all bg-black/50"
           >
             <FontAwesome 
               name={isPlaying ? "pause" : "play"} 
@@ -107,7 +102,7 @@ const VideoSection = () => {
           {/* Mute/Unmute Button */}
           <Pressable 
             onPress={toggleMute}
-            className="w-12 h-12 rounded-full backdrop-blur-lg items-center justify-center border border-white/20 active:scale-95 transition-all shadow-md bg-black/50"
+            className="w-12 h-12 rounded-full backdrop-blur-lg items-center justify-center border border-white/20 active:scale-95 transition-all bg-black/50"
           >
             <Ionicons 
               name={isMuted ? "volume-mute" : "volume-high"} 

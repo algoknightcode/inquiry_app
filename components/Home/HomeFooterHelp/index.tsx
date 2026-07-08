@@ -95,7 +95,7 @@ export default function HomeFooterHelp({
   return (
     <View 
       style={{ padding: metrics.containerPadding }}
-      className="bg-[#0f172a] rounded-[24px] my-4 mx-4 shadow-lg"
+      className="bg-[#0f172a] rounded-[24px] my-4 mx-4 border border-slate-800"
     >
       {/* Features Grid */}
       <View className="flex-row flex-wrap justify-between" style={{ gap: metrics.columnGap }}>

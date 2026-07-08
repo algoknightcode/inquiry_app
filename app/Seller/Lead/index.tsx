@@ -1,22 +1,22 @@
 import { globalSellerId } from "@/utils/roleCache";
 import { FontAwesome, Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
-  ActivityIndicator,
-  FlatList,
-  KeyboardAvoidingView,
-  Linking,
-  Platform,
-  RefreshControl,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
-  StyleSheet,
+    ActivityIndicator,
+    FlatList,
+    KeyboardAvoidingView,
+    Linking,
+    Platform,
+    RefreshControl,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { scale, verticalScale, moderateScale } from "react-native-size-matters";
+import { moderateScale, scale, verticalScale } from "react-native-size-matters";
 
 const TIME_FILTERS = [
   { label: "Today", value: "today" },
@@ -35,8 +35,8 @@ const LeadsScreen = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
-  // --- API FETCH LOGIC ---
-  const fetchLeads = async (showLoader = false) => {
+  // ✅ WRAPPED IN useCallback: fetchLeads won't cause deps to spiral
+  const fetchLeads = useCallback(async (showLoader = false) => {
     if (showLoader) setIsLoading(true);
     try {
       let supplierId = globalSellerId;
@@ -66,18 +66,19 @@ const LeadsScreen = () => {
       setIsLoading(false);
       setRefreshing(false);
     }
-  };
+  }, [activeFilter]);
 
   useEffect(() => {
     fetchLeads(true);
-  }, [activeFilter]);
+  }, [fetchLeads]);
 
   const onRefresh = useCallback(() => {
     setRefreshing(true);
     fetchLeads(false);
-  }, [activeFilter]);
+  }, [fetchLeads]);
 
-  const filteredLeads = leads.filter((lead) => {
+  // ✅ MEMOIZED: Filter logic only recalculates when leads, searchQuery, or activeFilter change
+  const filteredLeads = useMemo(() => leads.filter((lead) => {
     // 1. Search Query filter
     const query = searchQuery.toLowerCase();
     const name = String(lead.name || lead.fullName || lead.userName || "").toLowerCase();
@@ -114,10 +115,10 @@ const LeadsScreen = () => {
     }
 
     return true;
-  });
+  }), [leads, searchQuery, activeFilter]);
 
-  // --- CARD RENDERER ---
-  const renderLeadCard = ({ item }: { item: any }) => {
+  // ✅ MEMOIZED RENDERER: Stable reference for FlatList
+  const renderLeadCard = useCallback(({ item }: { item: any }) => {
     let dateStr = "N/A";
     let timeStr = "";
     
@@ -209,7 +210,7 @@ const LeadsScreen = () => {
         </View>
       </View>
     );
-  };
+  }, []);
 
   return (
     <View style={s.flexContainer}>

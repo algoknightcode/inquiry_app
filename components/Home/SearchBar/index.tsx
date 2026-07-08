@@ -224,8 +224,8 @@ export default function SearchBar({ onFocus, variant = 'default' }: SearchBarPro
     <View className={isCompact ? "w-full z-50 relative" : "w-full px-4 my-2 z-50"}>
       <View 
         className={isCompact 
-          ? "bg-white rounded-full border border-slate-200 shadow-sm" 
-          : "bg-white rounded-[32px] p-2 shadow-2xl border border-slate-100/50"
+          ? "bg-white rounded-full border border-slate-200" 
+          : "bg-white rounded-[32px] p-2 border border-slate-200"
         }
         style={!isCompact ? styles.defaultShadow : {}}
       >
@@ -268,7 +268,7 @@ export default function SearchBar({ onFocus, variant = 'default' }: SearchBarPro
           {/* Search Action Button */}
           {!isCompact && (
             <TouchableOpacity
-              className="bg-emerald-700 rounded-[24px] px-6 items-center justify-center shadow-md shadow-emerald-900/20 ml-1"
+              className="bg-emerald-700 rounded-[24px] px-6 items-center justify-center ml-1"
               style={styles.defaultSearchButton}
               activeOpacity={0.85}
               onPress={handleSearchSubmit}
@@ -292,8 +292,8 @@ export default function SearchBar({ onFocus, variant = 'default' }: SearchBarPro
         {showRecommendations && recommendations.length > 0 && (
           <View 
             className={isCompact 
-              ? "absolute left-0 right-0 top-[110%] bg-white rounded-[16px] shadow-lg border border-slate-100 overflow-hidden z-50" 
-              : "bg-white mt-1 rounded-[24px] overflow-hidden"
+              ? "absolute left-0 right-0 top-[110%] bg-white rounded-[16px] border border-slate-200 overflow-hidden z-50" 
+              : "bg-white mt-1 rounded-[24px] border border-slate-200 overflow-hidden"
             }
             style={isCompact ? styles.compactDropdownShadow : {}}
           >
@@ -314,20 +314,8 @@ export default function SearchBar({ onFocus, variant = 'default' }: SearchBarPro
 
 // ── Rigid Styles ───────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
-  defaultShadow: {
-    shadowColor: "#0F172A",
-    shadowOffset: { width: 0, height: 16 },
-    shadowOpacity: 0.1,
-    shadowRadius: 32,
-    elevation: 10,
-  },
-  compactDropdownShadow: {
-    shadowColor: "#0F172A",
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.1,
-    shadowRadius: 16,
-    elevation: 5,
-  },
+  defaultShadow: {},
+  compactDropdownShadow: {},
   // Rigid Dimensions preventing layout shift
   defaultInputWrapper: {
     height: 60, // Locked height for default container

@@ -1,4 +1,5 @@
 import { fetchWithCache } from "@/utils/apiCache";
+import { useIsFocused } from "@react-navigation/native";
 import { useRouter } from "expo-router";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
@@ -69,6 +70,7 @@ const PillItem = React.memo(
 );
 
 const CategoryMarquee = ({ isScrolling }: { isScrolling?: SharedValue<boolean> }) => {
+  const isFocused = useIsFocused();
   const router = useRouter();
   const [industries, setIndustries] = useState<Industry[]>([]);
   const [loading, setLoading] = useState(true);
@@ -142,16 +144,24 @@ const CategoryMarquee = ({ isScrolling }: { isScrolling?: SharedValue<boolean> }
   useAnimatedReaction(
     () => sharedContentWidth.value,
     (width, prevWidth) => {
+      if (!isFocused) {
+        return;
+      }
       if (width > 0 && width !== prevWidth && !isDragging.value) {
         startMarquee();
       }
-    }
+    },
+    [isFocused]
   );
 
   // ── Pause marquee during main feed scroll ──
   useAnimatedReaction(
     () => isScrolling?.value ?? false,
     (scrolling) => {
+      if (!isFocused) {
+        cancelAnimation(translateX);
+        return;
+      }
       if (scrolling) {
         // User is scrolling main feed - pause marquee
         cancelAnimation(translateX);
@@ -161,7 +171,8 @@ const CategoryMarquee = ({ isScrolling }: { isScrolling?: SharedValue<boolean> }
           startMarquee();
         }
       }
-    }
+    },
+    [isFocused]
   );
 
   // 2. Optimized Gesture: Explicit worklets, empty dependency array

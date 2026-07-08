@@ -1,29 +1,29 @@
 import Navbar from "@/components/Home/Navbar";
-import Sidebar from "@/components/ui/Sidebar";
-import { setGlobalSellerId, setSellerSignedIn, globalSellerId, setGlobalBuyerId, setGlobalRole } from "@/utils/roleCache";
+import { useRole } from "@/contexts/RoleContext";
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { router } from "expo-router";
 import React, { useEffect, useState } from "react";
-import { locations, employeNumber } from "../data/data";
 import {
-  ActivityIndicator,
-  Alert,
-  FlatList,
-  Image,
-  KeyboardAvoidingView,
-  Modal,
-  Platform,
-  Pressable,
-  RefreshControl,
-  ScrollView,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
+    ActivityIndicator,
+    Alert,
+    FlatList,
+    Image,
+    InteractionManager,
+    KeyboardAvoidingView,
+    Modal,
+    Platform,
+    Pressable,
+    RefreshControl,
+    ScrollView,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { scale, verticalScale, moderateScale } from "react-native-size-matters";
+import { moderateScale, scale, verticalScale } from "react-native-size-matters";
+import { employeNumber, locations } from "../data/data";
 
 // --- REUSABLE INPUT COMPONENT ---
 const InputField = ({ label, icon, placeholder, value, onChangeText, keyboardType = "default" }: any) => (
@@ -160,17 +160,14 @@ const DropdownField = ({ label, icon, placeholder, value, options, onSelect }: a
 // --- MAIN SCREEN ---
 const SellerProfileSettings = () => {
   const insets = useSafeAreaInsets();
+  const { globalSellerId, setSellerSignedIn, setGlobalSellerId, setGlobalBuyerId, setGlobalRole, clearRoleState } = useRole();
   const [activeTab, setActiveTab] = useState("Business");
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [sellerId, setSellerId] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
 
   const handleLogout = async () => {
-    setSellerSignedIn(false);
-    setGlobalSellerId(null);
-    setGlobalBuyerId(null);
-    setGlobalRole("buyer");
+    clearRoleState();
     try {
       await AsyncStorage.removeItem("supplierId");
       await AsyncStorage.removeItem("buyerId");
@@ -259,7 +256,10 @@ const SellerProfileSettings = () => {
       }
     };
 
-    fetchIndustries();
+    const task = InteractionManager.runAfterInteractions(() => {
+      fetchIndustries();
+    });
+    return () => task.cancel();
   }, []);
 
   // Fetch Business, Bank, and Social Profiles from backend
@@ -379,7 +379,10 @@ const SellerProfileSettings = () => {
   };
 
   useEffect(() => {
-    fetchProfileData(true);
+    const task = InteractionManager.runAfterInteractions(() => {
+      fetchProfileData(true);
+    });
+    return () => task.cancel();
   }, []);
 
   const onRefresh = async () => {
@@ -611,11 +614,9 @@ const SellerProfileSettings = () => {
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === "ios" ? "padding" : "padding"}
-      keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 20}
-      className="flex-1 bg-slate-50"
-      style={{ flex: 1 }}
+      style={{ flex: 1, backgroundColor: "#F8FAFC" }}
     >
-      <Navbar onMenuPress={() => setIsSidebarOpen(true)} />
+      <Navbar />
 
       <ScrollView 
         showsVerticalScrollIndicator={false} 
@@ -867,12 +868,6 @@ const SellerProfileSettings = () => {
         </View>
 
       </ScrollView>
-
-      <Sidebar
-        visible={isSidebarOpen}
-        onClose={() => setIsSidebarOpen(false)}
-        currentRole="seller"
-      />
     </KeyboardAvoidingView>
   );
 };

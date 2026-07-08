@@ -1,7 +1,8 @@
+import { useRole } from "@/contexts/RoleContext";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
-import React from "react";
+import React, { useState } from "react";
 import { Image, Platform, Pressable, View } from "react-native";
 import Animated, {
     Extrapolation,
@@ -11,6 +12,7 @@ import Animated, {
     useSharedValue
 } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import Sidebar from "../../ui/Sidebar";
 
 import Logo from "../../../assets/images/logoo-Photoroom.png";
 import SearchBar from "../SearchBar";
@@ -22,10 +24,24 @@ interface NavbarProps {
 }
 
 const Navbar = ({ onMenuPress, scrollY: externalScrollY }: NavbarProps) => {
-  // Use provided scrollY or create default static one
-  const scrollY = externalScrollY || useSharedValue<number>(0);
+  const internalScrollY = useSharedValue<number>(0);
+  const scrollY = externalScrollY || internalScrollY;
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  const { userRole } = useRole();
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [shouldRenderSidebar, setShouldRenderSidebar] = useState(false);
+
+  React.useEffect(() => {
+    if (isSidebarOpen) {
+      setShouldRenderSidebar(true);
+    } else if (shouldRenderSidebar) {
+      const timer = setTimeout(() => {
+        setShouldRenderSidebar(false);
+      }, 300); // 300ms allows the Sidebar 250ms close animation to finish gracefully
+      return () => clearTimeout(timer);
+    }
+  }, [isSidebarOpen, shouldRenderSidebar]);
 
   // 1. Logo Style (UI Thread only - Never triggers a React re-render)
   const logoAnimatedStyle = useAnimatedStyle(() => {
@@ -74,7 +90,10 @@ const Navbar = ({ onMenuPress, scrollY: externalScrollY }: NavbarProps) => {
       <Pressable 
         className="h-12 w-12 items-center justify-center rounded-full active:bg-black/5 active:scale-[0.92] transition-all z-10"
         hitSlop={12}
-        onPress={onMenuPress}
+        onPress={() => {
+          if (onMenuPress) onMenuPress();
+          else setIsSidebarOpen(true);
+        }}
       >
         <Ionicons name="menu-outline" size={28} color="#0f172a" />
       </Pressable>
@@ -122,9 +141,16 @@ const Navbar = ({ onMenuPress, scrollY: externalScrollY }: NavbarProps) => {
         </View>
       </Pressable>
 
+      {shouldRenderSidebar && (
+        <Sidebar 
+          visible={isSidebarOpen} 
+          onClose={() => setIsSidebarOpen(false)} 
+          currentRole={userRole} 
+        />
+      )}
     </View>
   );
 };
 
-// Use React.memo so the Navbar NEVER re-renders if parent state changes (unless props change)
-export default React.memo(Navbar);
+// Note: NOT wrapped in React.memo — Navbar must re-render when userRole changes from context
+export default Navbar;

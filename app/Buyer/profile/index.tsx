@@ -1,5 +1,4 @@
 import Navbar from "@/components/Home/Navbar";
-import Sidebar from "@/components/ui/Sidebar";
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { router, Stack } from "expo-router";
@@ -163,7 +162,6 @@ const BuyerProfileSettings = () => {
   const insets = useSafeAreaInsets();
   const { width } = Dimensions.get("window");
   const [activeTab, setActiveTab] = useState("Business");
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [buyerId, setBuyerId] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
@@ -591,7 +589,7 @@ const BuyerProfileSettings = () => {
       style={{ flex: 1 }}
     >
       <Stack.Screen options={{ headerShown: false }} />
-      <Navbar onMenuPress={() => setIsSidebarOpen(true)} />
+      <Navbar />
 
       <ScrollView 
         showsVerticalScrollIndicator={false} 
@@ -817,12 +815,6 @@ const BuyerProfileSettings = () => {
         </View>
 
       </ScrollView>
-
-      <Sidebar
-        visible={isSidebarOpen}
-        onClose={() => setIsSidebarOpen(false)}
-        currentRole="buyer"
-      />
 
       {/* Logout Confirmation Modal Overlay */}
       <Modal

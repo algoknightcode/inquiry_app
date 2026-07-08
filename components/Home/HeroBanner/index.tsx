@@ -1,26 +1,23 @@
 import { useIsFocused } from "@react-navigation/native";
 import { Image } from "expo-image";
 import React, { useEffect } from "react";
-import { Dimensions, View } from "react-native";
-// 1. Import Reanimated
+import { useWindowDimensions, View } from "react-native";
 import Animated, {
-  interpolateColor,
-  useAnimatedStyle,
-  useSharedValue,
-  withTiming
+    interpolateColor,
+    SharedValue,
+    useAnimatedStyle,
+    useSharedValue,
+    withTiming,
 } from "react-native-reanimated";
 
 import HomeImage1 from "../../../assets/images/mob1.jpeg";
 import HomeImage2 from "../../../assets/images/mob2.jpeg";
 
-const { width } = Dimensions.get("window");
 const data = [HomeImage1, HomeImage2];
 
 // 2. Extract Image to a Memoized Component 
-// Listens to the shared value on the UI thread without re-rendering JS
-const HeroImage = React.memo(({ img, index, activeIndex }: { img: any, index: number, activeIndex: Animated.SharedValue<number> }) => {
+const HeroImage = React.memo(({ img, index, activeIndex, screenWidth }: { img: any, index: number, activeIndex: SharedValue<number>, screenWidth: number }) => {
   const animatedStyle = useAnimatedStyle(() => {
-    // Crossfade strictly on the UI thread
     const isActive = activeIndex.value === index;
     return {
       opacity: withTiming(isActive ? 1 : 0, { duration: 800 }),
@@ -28,20 +25,20 @@ const HeroImage = React.memo(({ img, index, activeIndex }: { img: any, index: nu
   });
 
   return (
-    <Animated.View style={[{ position: "absolute", width, height: 360 }, animatedStyle]}>
+    <Animated.View style={[{ position: "absolute", width: screenWidth, height: 360 }, animatedStyle]}>
       <Image
         source={img}
         style={{ width: "100%", height: "100%" }}
         contentFit="cover"
         cachePolicy="memory-disk"
-        transition={0} // Disable internal expo-image fade, Reanimated handles it better
+        transition={0}
       />
     </Animated.View>
   );
 });
 
 // 3. Extract Pagination Dot to a Memoized Component
-const PaginationDot = React.memo(({ index, activeIndex }: { index: number, activeIndex: Animated.SharedValue<number> }) => {
+const PaginationDot = React.memo(({ index, activeIndex }: { index: number, activeIndex: SharedValue<number> }) => {
   const animatedStyle = useAnimatedStyle(() => {
     const isActive = activeIndex.value === index;
     // Animate width and color on the Native UI thread
@@ -63,8 +60,8 @@ const PaginationDot = React.memo(({ index, activeIndex }: { index: number, activ
 
 const HeroBanner = () => {
   const isFocused = useIsFocused();
+  const { width: screenWidth } = useWindowDimensions();
   
-  // 4. Shared Value: Replaces useState. This lives on the UI thread.
   const activeIndex = useSharedValue(0);
 
   useEffect(() => {
@@ -82,7 +79,7 @@ const HeroBanner = () => {
     <View className="h-[360px] w-full relative bg-slate-900 overflow-hidden">
       {/* Images */}
       {data.map((img, index) => (
-        <HeroImage key={`img-${index}`} img={img} index={index} activeIndex={activeIndex} />
+        <HeroImage key={`img-${index}`} img={img} index={index} activeIndex={activeIndex} screenWidth={screenWidth} />
       ))}
 
       {/* Pagination Dots */}

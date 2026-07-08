@@ -1,3 +1,4 @@
+import { useIsFocused } from "@react-navigation/native";
 import { useRouter } from "expo-router";
 import React, { useCallback, useEffect, useMemo, useRef } from "react";
 import {
@@ -88,6 +89,7 @@ const BrandCard = React.memo(({ brand, dynamicStyles }: { brand: Brand; dynamicS
 });
 
 function TrendingBrandsCarousel({ isScrolling }: { isScrolling?: SharedValue<boolean> }) {
+  const isFocused = useIsFocused();
   const router = useRouter();
   const { width: screenWidth } = useWindowDimensions();
 
@@ -172,6 +174,7 @@ function TrendingBrandsCarousel({ isScrolling }: { isScrolling?: SharedValue<boo
   }, [replicatedData.length]);
 
   const startAutoPlay = useCallback(() => {
+    if (!isFocused) return;
     stopAutoPlay();
     timerRef.current = setInterval(() => {
       let nextIndex = activeIndexRef.current + 1;
@@ -193,7 +196,7 @@ function TrendingBrandsCarousel({ isScrolling }: { isScrolling?: SharedValue<boo
         });
       }
     }, 2500);
-  }, [baseMiddleIndex, replicatedData.length]);
+  }, [baseMiddleIndex, replicatedData.length, isFocused]);
 
   const stopAutoPlay = useCallback(() => {
     if (timerRef.current) clearInterval(timerRef.current);
@@ -201,6 +204,11 @@ function TrendingBrandsCarousel({ isScrolling }: { isScrolling?: SharedValue<boo
 
   // Initialize and jump to middle
   useEffect(() => {
+    if (!isFocused) {
+      stopAutoPlay();
+      return;
+    }
+
     if (replicatedData.length > 0) {
       activeIndexRef.current = baseMiddleIndex;
       const initTimer = setTimeout(() => {
@@ -216,12 +224,16 @@ function TrendingBrandsCarousel({ isScrolling }: { isScrolling?: SharedValue<boo
         stopAutoPlay();
       };
     }
-  }, [replicatedData, baseMiddleIndex, startAutoPlay, stopAutoPlay]);
+  }, [isFocused, replicatedData, baseMiddleIndex, startAutoPlay, stopAutoPlay]);
 
   // ── Pause carousel during main feed scroll ──
   useAnimatedReaction(
     () => isScrolling?.value ?? false,
     (scrolling) => {
+      if (!isFocused) {
+        runOnJS(stopAutoPlay)();
+        return;
+      }
       if (scrolling) {
         // User is scrolling main feed - pause carousel
         runOnJS(stopAutoPlay)();
@@ -230,7 +242,7 @@ function TrendingBrandsCarousel({ isScrolling }: { isScrolling?: SharedValue<boo
         runOnJS(startAutoPlay)();
       }
     },
-    [startAutoPlay, stopAutoPlay]
+    [isFocused, startAutoPlay, stopAutoPlay]
   );
 
   // Handle manual swipe ending to ensure perfect alignment
@@ -301,7 +313,7 @@ function TrendingBrandsCarousel({ isScrolling }: { isScrolling?: SharedValue<boo
           paddingBottom: dynamicStyles.cardPaddingBottom,
           paddingHorizontal: dynamicStyles.paddingHorizontal,
         }}
-        className="bg-white border border-slate-100 rounded-[28px] shadow-lg shadow-slate-100/50"
+        className="bg-white border border-slate-200 rounded-[28px]"
       >
         {/* ✅ 1. Outer view physically restricts the list's bounds */}
         <View style={{ height: dynamicStyles.marqueeHeight, width: "100%", justifyContent: 'center' }}>
