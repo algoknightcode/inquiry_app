@@ -44,9 +44,6 @@ export default function ProductDetailPage() {
     
     return () => {
       isMounted.current = false;
-      if (productId) {
-        consumeProductCache(productId as string);
-      }
     };
   }, [productId]);
 
