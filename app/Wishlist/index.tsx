@@ -1,4 +1,4 @@
-import { productCache } from "@/utils/productCache";
+import { setProductCache } from "@/utils/productCache";
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useFocusEffect, useRouter } from "expo-router";
@@ -69,7 +69,7 @@ export default function B2BWishlist() {
   };
 
   const handleCardPress = (item: any) => {
-    productCache[item._id] = item;
+    setProductCache(item._id, item);
     router.push({
       pathname: "/Products_Page/[slug]",
       params: {

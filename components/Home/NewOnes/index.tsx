@@ -1,5 +1,5 @@
 import { fetchWithCache, getCacheSync } from "@/utils/apiCache";
-import { productCache } from "@/utils/productCache";
+import { setProductCache } from "@/utils/productCache";
 import { Ionicons } from "@expo/vector-icons";
 import { useIsFocused } from "@react-navigation/native";
 import { Image } from "expo-image";
@@ -360,7 +360,7 @@ const NewOnes = ({ isScrolling }: { isScrolling?: SharedValue<boolean> }) => {
 
   // ── Actions ──
   const handleCardPress = useCallback((item: Product) => {
-    productCache[item._id] = item;
+    setProductCache(item._id, item);
     router.push({
       pathname: "/Products_Page/[slug]",
       params: { slug: item.slug, productId: item._id },

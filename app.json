@@ -55,8 +55,9 @@
     "extra": {
       "router": {},
       "eas": {
-        "projectId": "df0705fb-54f6-485d-9da3-1d8fe9db9fee"
+        "projectId": "82095b17-29e2-4fe0-b0cb-566722247e29"
       }
-    }
+    },
+    "owner": "algoknightcode"
   }
 }

@@ -1,18 +1,18 @@
 import EnquiryModal from "@/components/EnquiryModal";
-import { productCache } from "@/utils/productCache";
-import { Feather, Ionicons, MaterialCommunityIcons, FontAwesome } from "@expo/vector-icons";
+import { consumeProductCache, getProductCache } from "@/utils/productCache";
+import { Feather, FontAwesome, Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Image } from "expo-image";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
-import React, { useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
-    Linking,
-    ScrollView,
-    Share,
-    Text,
-    TouchableOpacity,
-    Vibration,
-    View,
+  Linking,
+  ScrollView,
+  Share,
+  Text,
+  TouchableOpacity,
+  Vibration,
+  View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -20,18 +20,36 @@ export default function ProductDetailPage() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { productId, slug } = useLocalSearchParams<{ productId?: string; slug?: string }>();
+  
+  // Ref to track if the component is still on screen (prevents async memory crashes)
+  const isMounted = useRef(true);
 
   // --- STATES ---
   const [isWishlisted, setIsWishlisted] = useState(false);
   const [product, setProduct] = useState<any>(() => {
-    return productId ? productCache[productId as string] : null;
+    // Uses safe getter to pull initial pass data safely
+    return productId ? getProductCache(productId as string) : null;
   });
 
   // --- INQUIRY MODAL STATES ---
   const [isModalVisible, setModalVisible] = useState(false);
 
+  // ── LIFECYCLE CLEANUP ──────────────────────────────────────────────
+  useEffect(() => {
+    isMounted.current = true;
+    
+    // This return function runs on Unmount (when the user leaves the page)
+    return () => {
+      isMounted.current = false;
+      if (productId) {
+        // Wipes the data right out of global memory to save RAM!
+        consumeProductCache(productId as string);
+      }
+    };
+  }, [productId]);
+
   // Load wishlist state on mount
-  React.useEffect(() => {
+  useEffect(() => {
     if (!product?._id) return;
     const checkWishlist = async () => {
       try {
@@ -39,7 +57,9 @@ export default function ProductDetailPage() {
         if (storedStr) {
           const list: any[] = JSON.parse(storedStr);
           const exists = list.some((item) => item._id === product._id);
-          setIsWishlisted(exists);
+          if (isMounted.current) {
+            setIsWishlisted(exists);
+          }
         }
       } catch (err) {
         console.error("Error checking wishlist:", err);
@@ -62,10 +82,10 @@ export default function ProductDetailPage() {
       const exists = list.some((item) => item._id === product._id);
       if (exists) {
         list = list.filter((item) => item._id !== product._id);
-        setIsWishlisted(false);
+        if (isMounted.current) setIsWishlisted(false);
       } else {
         list.push(product);
-        setIsWishlisted(true);
+        if (isMounted.current) setIsWishlisted(true);
       }
       await AsyncStorage.setItem("wishlist", JSON.stringify(list));
     } catch (err) {
@@ -91,55 +111,59 @@ export default function ProductDetailPage() {
     }
   };
 
-  // Fetch full details from backend using Promise.race for speed
-  React.useEffect(() => {
+  // Fetch full details from backend safely
+  useEffect(() => {
     if (!productId && !slug) return;
 
     const fetchFullDetails = async () => {
-      // Prioritize cached data
-      if (productId && productCache[productId]) {
-        setProduct(productCache[productId]);
+      if (productId) {
+        const cached = getProductCache(productId);
+        if (cached && isMounted.current) {
+          setProduct(cached);
+        }
       }
 
-      // Try multiple endpoints in parallel and use first successful response
       const urls = [
         `https://backend.inquirybazaar.com/api/products/${productId}`,
         `https://backend.inquirybazaar.com/api/products/single/${productId}`,
         `https://backend.inquirybazaar.com/api/product/${productId}`,
         `https://backend.inquirybazaar.com/api/products/slug/${slug}`,
-      ];
+      ].filter(url => !url.includes("undefined"));
+
+      const fetchWrapper = (url: string) =>
+        fetch(url)
+          .then((res) => {
+            if (!res.ok) throw new Error(`${res.status}`);
+            return res.json();
+          })
+          .then((json) => {
+            if (json.success && json.data) return json.data;
+            throw new Error("No data matches");
+          });
 
       try {
-        // Race: first successful fetch wins
-        const result = await Promise.race(
-          urls.map((url) =>
-            fetch(url)
-              .then((res) => {
-                if (!res.ok) throw new Error(`${res.status}`);
-                return res.json();
-              })
-              .then((json) => {
-                if (json.success && json.data) return json.data;
-                throw new Error("No data");
-              })
-          )
-        );
-
-        if (result) {
-          setProduct(result);
-          if (productId) {
-            productCache[productId] = result;
+        let result: any = null;
+        
+        if (typeof Promise.any === "function") {
+          result = await Promise.any(urls.map(fetchWrapper));
+        } else {
+          const settledResults = await Promise.allSettled(urls.map(fetchWrapper));
+          const firstSuccess = settledResults.find(r => r.status === "fulfilled");
+          if (firstSuccess) {
+            result = (firstSuccess as any).value;
           }
         }
+
+        if (result && isMounted.current) {
+          setProduct(result);
+        }
       } catch (e) {
-        console.log("Could not fetch product details from any endpoint", e);
+        console.log("Could not fetch product details from available endpoints", e);
       }
     };
 
     fetchFullDetails();
   }, [productId, slug]);
-
-
 
   // ── Helpers ──────────────────────────────────────────────────────────────
   const getPrimaryImage = (media: any[]) => {
@@ -191,7 +215,6 @@ export default function ProductDetailPage() {
   const businessType = product.supplier?.business?.businessType || "";
   const phone = product.supplier?.phone;
   const isOnRequest = product.priceType === "on_request";
-
   const specs: any[] = product.specifications || [];
 
   const plainTextDescription = product.description
@@ -415,13 +438,11 @@ export default function ProductDetailPage() {
         </View>
       </View>
 
-      {/* INQUIRY MODAL */}
       <EnquiryModal
         visible={isModalVisible}
         onClose={() => setModalVisible(false)}
         product={product}
       />
-
     </View>
   );
 }

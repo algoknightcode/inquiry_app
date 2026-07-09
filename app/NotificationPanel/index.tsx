@@ -1,5 +1,5 @@
 import { fetchWithCache } from "@/utils/apiCache";
-import { productCache } from "@/utils/productCache";
+import { setProductCache } from "@/utils/productCache";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import React, { useCallback, useEffect, useState } from "react";
@@ -167,7 +167,7 @@ export default function NotificationScreen() {
     });
 
     // Populate cache and navigate to details
-    productCache[item._id] = item;
+    setProductCache(item._id, item);
     router.push({
       pathname: "/Products_Page/[slug]",
       params: {

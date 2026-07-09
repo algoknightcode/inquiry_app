@@ -1,6 +1,6 @@
 import EnquiryModal from "@/components/EnquiryModal";
 import { fetchWithCache, getCacheSync } from "@/utils/apiCache";
-import { productCache } from "@/utils/productCache";
+import { setProductCache } from "@/utils/productCache";
 import { useIsFocused } from "@react-navigation/native";
 import { Image } from "expo-image";
 import { useRouter } from "expo-router";
@@ -95,7 +95,7 @@ const ProductCard = React.memo(({
   const isPriceOnRequest = item.priceType === "on_request" || !item.price;
 
   const handlePress = useCallback(() => {
-    productCache[item._id] = item;
+    setProductCache(item._id, item);
     router.push({
       pathname: "/Products_Page/[slug]",
       params: { slug: item.slug, productId: item._id },

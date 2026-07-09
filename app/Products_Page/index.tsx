@@ -1,5 +1,5 @@
 import { Spinner } from "@/components/ui/spinner";
-import { productCache } from "@/utils/productCache";
+import { setProductCache } from "@/utils/productCache";
 import { globalSellerId } from "@/utils/roleCache";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -265,7 +265,7 @@ export default function ProductListingPage() {
       <View className="bg-white rounded-[24px] p-4 mb-5 border border-slate-100 shadow-sm shadow-slate-200/60">
       <Pressable
         onPress={() => {
-            productCache[item._id] = item;
+            setProductCache(item._id, item);
             router.push({
               pathname: "/Products_Page/[slug]",
               params: {
