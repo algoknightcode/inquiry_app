@@ -18,6 +18,8 @@ import Animated, {
     SharedValue,
     useAnimatedStyle,
     useSharedValue,
+    useAnimatedReaction,
+    runOnJS,
 } from "react-native-reanimated";
 
 const { width: screenWidth } = Dimensions.get("window");
@@ -198,6 +200,18 @@ export default function IndustryTreeCarousel({ isScrolling }: { isScrolling?: Sh
     }
     return stopAutoPlay;
   }, [isFocused, data.length, startAutoPlay, stopAutoPlay]);
+
+  useAnimatedReaction(
+    () => isScrolling?.value ?? false,
+    (scrolling) => {
+      if (scrolling) {
+        runOnJS(stopAutoPlay)();
+      } else {
+        runOnJS(startAutoPlay)();
+      }
+    },
+    [startAutoPlay, stopAutoPlay, isScrolling]
+  );
 
   const scrollHandler = (event: any) => {
     scrollX.value = event.nativeEvent.contentOffset.x;

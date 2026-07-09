@@ -109,18 +109,32 @@ export const RoleProvider = ({ children }: { children: ReactNode }) => {
     }
   }, []);
 
-  const value: RoleContextType = {
-    userRole,
-    isSellerSignedIn,
-    globalSellerId,
-    globalBuyerId,
-    setGlobalRole,
-    setSellerSignedIn,
-    setGlobalSellerId,
-    setGlobalBuyerId,
-    clearRoleState,
-    initializeFromStorage,
-  };
+  const value = React.useMemo(
+    () => ({
+      userRole,
+      isSellerSignedIn,
+      globalSellerId,
+      globalBuyerId,
+      setGlobalRole,
+      setSellerSignedIn,
+      setGlobalSellerId,
+      setGlobalBuyerId,
+      clearRoleState,
+      initializeFromStorage,
+    }),
+    [
+      userRole,
+      isSellerSignedIn,
+      globalSellerId,
+      globalBuyerId,
+      setGlobalRole,
+      setSellerSignedIn,
+      setGlobalSellerId,
+      setGlobalBuyerId,
+      clearRoleState,
+      initializeFromStorage,
+    ]
+  );
 
   return (
     <RoleContext.Provider value={value}>

@@ -1,6 +1,7 @@
 import { globalSellerId } from "@/utils/roleCache";
 import { FontAwesome, Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useIsFocused } from "@react-navigation/native";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
     ActivityIndicator,
@@ -68,9 +69,13 @@ const LeadsScreen = () => {
     }
   }, [activeFilter]);
 
+  const isFocused = useIsFocused();
+
   useEffect(() => {
-    fetchLeads(true);
-  }, [fetchLeads]);
+    if (isFocused) {
+      fetchLeads(true);
+    }
+  }, [fetchLeads, isFocused]);
 
   const onRefresh = useCallback(() => {
     setRefreshing(true);

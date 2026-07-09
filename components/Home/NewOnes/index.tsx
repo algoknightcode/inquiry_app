@@ -5,31 +5,26 @@ import { useIsFocused } from "@react-navigation/native";
 import { Image } from "expo-image";
 import { useRouter } from "expo-router";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import EnquiryModal from "../../EnquiryModal";
 import {
-    KeyboardAvoidingView,
-    Modal,
-    NativeScrollEvent,
-    NativeSyntheticEvent,
-    Platform,
-    Pressable,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View
+  KeyboardAvoidingView,
+  Modal,
+  NativeScrollEvent,
+  NativeSyntheticEvent,
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View
 } from "react-native";
 // 1. Import Reanimated for UI-Thread animations
 import Animated, {
-    cancelAnimation,
-    runOnUI,
-    scrollTo,
-    SharedValue,
-    useAnimatedReaction,
-    useAnimatedRef,
-    useSharedValue,
-    withRepeat,
-    withTiming,
+  SharedValue,
+  runOnJS,
+  useAnimatedReaction
 } from "react-native-reanimated";
 
 // ── Types ──────────────────────────────────────────────────────────────────
@@ -208,7 +203,7 @@ const NewOnes = ({ isScrolling }: { isScrolling?: SharedValue<boolean> }) => {
   const initialData = getInitialCachedProducts();
   const [productsList, setProductsList] = useState<Product[]>(initialData.products);
   const [categoryObjId, setCategoryObjId] = useState<string | null>(initialData.categoryId);
-  const [isLoading, setIsLoading] = useState(initialData.products.length === 0);
+  const [isLoading, setIsLoading] = useState(true);
 
   // Modal State
   const [isModalVisible, setIsModalVisible] = useState(false);
@@ -221,6 +216,11 @@ const NewOnes = ({ isScrolling }: { isScrolling?: SharedValue<boolean> }) => {
 
   // Fetch Data
   useEffect(() => {
+    // 🚀 JS Thread protection: Let the main page render first before mounting the heavy list
+    const mountTimer = setTimeout(() => {
+      setIsLoading(false);
+    }, 250);
+
     const fetchCategoryProducts = async () => {
       try {
         const json = await fetchWithCache("https://backend.inquirybazaar.com/api/industries/tree");
@@ -263,6 +263,10 @@ const NewOnes = ({ isScrolling }: { isScrolling?: SharedValue<boolean> }) => {
       }
     };
     fetchCategoryProducts();
+
+    return () => {
+      clearTimeout(mountTimer);
+    };
   }, []);
 
   // 4. Reduced Infinite Scroll Array Size (30 instead of 100)
@@ -279,7 +283,7 @@ const NewOnes = ({ isScrolling }: { isScrolling?: SharedValue<boolean> }) => {
 
   // 5. Auto-Play using JS setInterval
   const startAutoPlay = useCallback(() => {
-    if (!isFocused || replicatedData.length <= 1) return;
+    if (!isFocused || replicatedData.length <= 1 || isModalVisible) return;
     stopAutoPlay();
     
     timerRef.current = setInterval(() => {
@@ -298,22 +302,34 @@ const NewOnes = ({ isScrolling }: { isScrolling?: SharedValue<boolean> }) => {
           flatListRef.current.scrollToIndex({ index: nextIndex, animated: true });
         }
       }
-    }, 3000);
-  }, [isFocused, replicatedData.length, productsList.length, baseMiddleIndex]);
+    }, 5000);
+  }, [isFocused, replicatedData.length, productsList.length, baseMiddleIndex, isModalVisible]);
 
   const stopAutoPlay = useCallback(() => {
     if (timerRef.current) clearInterval(timerRef.current);
   }, []);
 
   useEffect(() => {
-    if (isFocused && replicatedData.length > 0) {
+    if (isFocused && replicatedData.length > 0 && !isModalVisible) {
       activeIndexRef.current = baseMiddleIndex;
       startAutoPlay();
       return stopAutoPlay;
     } else {
       stopAutoPlay();
     }
-  }, [isFocused, replicatedData, baseMiddleIndex, startAutoPlay, stopAutoPlay]);
+  }, [isFocused, replicatedData, baseMiddleIndex, startAutoPlay, stopAutoPlay, isModalVisible]);
+
+  useAnimatedReaction(
+    () => isScrolling?.value ?? false,
+    (scrolling) => {
+      if (scrolling) {
+        runOnJS(stopAutoPlay)();
+      } else {
+        runOnJS(startAutoPlay)();
+      }
+    },
+    [isScrolling, startAutoPlay, stopAutoPlay]
+  );
 
   // ── Manual Scroll Handling ──
   const handleScrollBegin = useCallback(() => {
@@ -432,54 +448,7 @@ const NewOnes = ({ isScrolling }: { isScrolling?: SharedValue<boolean> }) => {
         />
       )}
 
-      {/* Inline Enquiry Modal */}
-      <Modal
-        visible={isModalVisible}
-        animationType="slide"
-        transparent={true}
-        onRequestClose={() => setIsModalVisible(false)}
-      >
-        <View style={flatStyles.modalOverlay}>
-          <KeyboardAvoidingView 
-            behavior={Platform.OS === 'ios' ? 'padding' : 'height'} 
-            style={flatStyles.modalContainer}
-          >
-            <View style={flatStyles.modalHeader}>
-              <Text style={flatStyles.modalTitle}>Request a Quote</Text>
-              <TouchableOpacity onPress={() => setIsModalVisible(false)} hitSlop={10}>
-                <Ionicons name="close" size={24} color="#64748b" />
-              </TouchableOpacity>
-            </View>
-
-            {selectedProduct && (
-              <View style={flatStyles.modalProductInfo}>
-                <Text style={flatStyles.modalProductText} numberOfLines={1}>
-                  Product: <Text style={{ color: '#0f172a' }}>{selectedProduct.name}</Text>
-                </Text>
-              </View>
-            )}
-
-            {/* Form Fields */}
-            <TextInput style={flatStyles.input} placeholder="Your Name" placeholderTextColor="#94a3b8" />
-            <TextInput style={flatStyles.input} placeholder="Phone Number" keyboardType="phone-pad" placeholderTextColor="#94a3b8" />
-            <TextInput 
-              style={[flatStyles.input, { height: 80, textAlignVertical: 'top' }]} 
-              placeholder="Describe your requirement (Quantity, Location, etc.)" 
-              multiline 
-              placeholderTextColor="#94a3b8"
-            />
-
-            <TouchableOpacity 
-              style={flatStyles.submitBtn} 
-              onPress={() => {
-                setIsModalVisible(false);
-              }}
-            >
-              <Text style={flatStyles.submitBtnText}>Send Requirement</Text>
-            </TouchableOpacity>
-          </KeyboardAvoidingView>
-        </View>
-      </Modal>
+      <EnquiryModal visible={isModalVisible} onClose={() => setIsModalVisible(false)} product={selectedProduct} />
     </View>
   );
 };

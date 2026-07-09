@@ -6,17 +6,26 @@ import { Image } from "expo-image";
 import { useRouter } from "expo-router";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
-    Linking,
-    NativeScrollEvent,
-    NativeSyntheticEvent,
-    ScrollView,
-    Text,
-    TouchableOpacity,
-    useWindowDimensions,
-    View,
+  Linking,
+  NativeScrollEvent,
+  NativeSyntheticEvent,
+  ScrollView,
+  Text,
+  TouchableOpacity,
+  useWindowDimensions,
+  View,
 } from "react-native";
-// 1. Import Reanimated for UI Thread scrolling
-import Animated, { runOnUI, scrollTo, SharedValue, useAnimatedRef } from "react-native-reanimated";
+import Animated, {
+  cancelAnimation,
+  runOnUI,
+  scrollTo,
+  SharedValue,
+  useAnimatedReaction,
+  useAnimatedRef,
+  useSharedValue,
+  withRepeat,
+  withTiming
+} from "react-native-reanimated";
 
 type Media = {
   _id: string;
@@ -56,6 +65,18 @@ type Product = {
 const CARD_MARGIN = 16;
 const API_URL = "https://backend.inquirybazaar.com/api/categories/sub/led-display-board/Delhi";
 
+function getInitialCachedProducts(): Product[] {
+  try {
+    const json = getCacheSync(API_URL);
+    if (json?.success && Array.isArray(json.data?.products)) {
+      return json.data.products.slice(0, 10);
+    }
+  } catch (err) {
+    console.warn("Error reading cache:", err);
+  }
+  return [];
+}
+
 const ProductCard = React.memo(({ 
   item, 
   cardWidth,
@@ -77,10 +98,7 @@ const ProductCard = React.memo(({
     productCache[item._id] = item;
     router.push({
       pathname: "/Products_Page/[slug]",
-      params: {
-        slug: item.slug,
-        productId: item._id,
-      },
+      params: { slug: item.slug, productId: item._id },
     });
   }, [item, router]);
 
@@ -88,10 +106,6 @@ const ProductCard = React.memo(({
     const phone = item.supplier?.phone || "+910000000000";
     Linking.openURL(`tel:${phone}`);
   }, [item.supplier?.phone]);
-
-  const handleQuotePress = useCallback(() => {
-    onReqQuote(item);
-  }, [item, onReqQuote]);
 
   return (
     <TouchableOpacity
@@ -106,7 +120,8 @@ const ProductCard = React.memo(({
           style={{ width: "100%", height: "100%" }}
           contentFit="cover"
           cachePolicy="memory-disk"
-          transition={0} // 2. Zero transition for instant render and less GPU load
+          transition={0} 
+          recyclingKey={primaryImage} 
         />
       </View>
 
@@ -148,7 +163,7 @@ const ProductCard = React.memo(({
             
             <TouchableOpacity
               activeOpacity={0.7}
-              onPress={handleQuotePress}
+              onPress={() => onReqQuote(item)}
               className="flex-1 bg-[#1e3a8a] py-1.5 rounded-full items-center justify-center border-[1.5px] border-[#1e3a8a]"
             >
               <Text className="text-white font-jakarta-bold text-[12px]" numberOfLines={1}>Req Quote</Text>
@@ -190,28 +205,39 @@ export default function HorizontalProductList({ isScrolling }: { isScrolling?: S
   const cardWidth = (screenWidth * 0.43); 
   const ITEM_SIZE = cardWidth + CARD_MARGIN;
 
-  // 3. Reanimated useAnimatedRef for Native UI access
-  const flatListRef = useAnimatedRef<Animated.FlatList<Product>>();
-  const activeIndexRef = useRef(0);
-  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
-
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [isModalVisible, setModalVisible] = useState(false);
 
-  const cached = getCacheSync(API_URL);
-  const [products, setProducts] = useState<Product[]>(
-    cached?.success && Array.isArray(cached.data?.products)
-      ? cached.data.products.slice(0, 10)
-      : []
-  );
-  const [isLoading, setIsLoading] = useState(!cached);
+  const initialProducts = getInitialCachedProducts();
+  const [products, setProducts] = useState<Product[]>(initialProducts);
+  const [isLoading, setIsLoading] = useState(true);
+
+  // 🚀 FIXED: Added ref to track if HUMAN is touching the screen vs ROBOT scrolling
+  const isUserDragging = useRef(false);
+
+  const flatListRef = useAnimatedRef<Animated.FlatList<Product>>();
+  const scrollIndex = useSharedValue(0);
+  const isAutoPlaying = useSharedValue(false);
+  const autoplayPulse = useSharedValue(0);
 
   useEffect(() => {
+    // 🚀 JS Thread protection: Let the main page render first before mounting the heavy list
+    const mountTimer = setTimeout(() => {
+      setIsLoading(false);
+    }, 250);
+
     const fetchTrendingProducts = async () => {
       try {
         const json = await fetchWithCache(API_URL);
-        if (json.success && json.data && json.data.products) {
-          const newProducts = json.data.products.slice(0, 10);
+        if (json.success && json.data?.products) {
+          const newProducts: Product[] = json.data.products.slice(0, 10);
+          
+          const urlsToPrefetch = newProducts
+            .map((item: Product) => (item.media && item.media.length > 0 ? (item.media.find((m) => m.isPrimary) || item.media[0]).url : null))
+            .filter(Boolean) as string[]; 
+
+          if (urlsToPrefetch.length > 0) Image.prefetch(urlsToPrefetch).catch(() => {});
+
           setProducts(prev => {
             if (prev.length > 0 && prev[0]._id === newProducts[0]._id) return prev;
             return newProducts;
@@ -223,13 +249,17 @@ export default function HorizontalProductList({ isScrolling }: { isScrolling?: S
         setIsLoading(false);
       }
     };
+
     fetchTrendingProducts();
+
+    return () => {
+      clearTimeout(mountTimer);
+    };
   }, []);
 
-  // 4. Reduced array copies from 100 to 30
   const replicatedData = useMemo(() => {
     if (!products || products.length === 0) return [];
-    return Array(10).fill(products).flat();
+    return Array(5).fill(products).flat();
   }, [products]);
 
   const baseMiddleIndex = useMemo(() => {
@@ -238,71 +268,95 @@ export default function HorizontalProductList({ isScrolling }: { isScrolling?: S
     return middle - (middle % products.length);
   }, [replicatedData.length, products.length]);
 
-  const startAutoPlay = useCallback(() => {
-    if (!isFocused) return;
-    stopAutoPlay();
-    if (replicatedData.length <= 1) return;
+  const startAutoPlayUI = () => {
+    'worklet';
+    if (products.length <= 0) return;
+    autoplayPulse.value = 0; // Safe reset
+    autoplayPulse.value = withRepeat(withTiming(1, { duration: 3500 }), -1);
+  };
 
-    timerRef.current = setInterval(() => {
-      let nextIndex = activeIndexRef.current + 1;
+  const stopAutoPlayUI = () => {
+    'worklet';
+    cancelAnimation(autoplayPulse);
+  };
 
-      if (nextIndex >= replicatedData.length - 5) {
-        const remainder = nextIndex % products.length;
-        const safeMiddleIndex = baseMiddleIndex + remainder;
-
-        // Instant reset without animation
-        if (flatListRef.current) {
-          flatListRef.current.scrollToIndex({ index: safeMiddleIndex, animated: false });
-        }
-        activeIndexRef.current = safeMiddleIndex;
-      } else {
-        activeIndexRef.current = nextIndex;
-        if (flatListRef.current) {
-          flatListRef.current.scrollToIndex({ index: nextIndex, animated: true });
+  useAnimatedReaction(
+    () => autoplayPulse.value,
+    (currentPulse, prevPulse) => {
+      if (!isFocused || !isAutoPlaying.value) return;
+      
+      // 🚀 FIXED: Only trigger on a natural loop (1 -> 0), never on a manual start/reset
+      if (prevPulse !== null && currentPulse < prevPulse && prevPulse > 0.5) {
+        scrollIndex.value = scrollIndex.value + 1;
+        scrollTo(flatListRef, scrollIndex.value * ITEM_SIZE, 0, true);
+        
+        if (scrollIndex.value >= replicatedData.length - 2) {
+          const safeIndex = baseMiddleIndex + (scrollIndex.value % products.length);
+          scrollIndex.value = safeIndex;
+          scrollTo(flatListRef, safeIndex * ITEM_SIZE, 0, false);
         }
       }
-    }, 3000); 
-  }, [baseMiddleIndex, replicatedData.length, products.length, isFocused]);
-
-  const stopAutoPlay = useCallback(() => {
-    if (timerRef.current) clearInterval(timerRef.current);
-  }, []);
-
-
+    },
+    [isFocused]
+  );
 
   useEffect(() => {
-    if (isFocused && replicatedData.length > 0) {
-      activeIndexRef.current = baseMiddleIndex;
-      startAutoPlay();
-      return () => stopAutoPlay();
+    if (replicatedData.length > 0 && isFocused) {
+      scrollIndex.value = baseMiddleIndex;
+      const initTimer = setTimeout(() => {
+        flatListRef.current?.scrollToIndex({ index: baseMiddleIndex, animated: false });
+        runOnUI(() => {
+          'worklet';
+          isAutoPlaying.value = true;
+          startAutoPlayUI();
+        })();
+      }, 500);
+
+      return () => {
+        clearTimeout(initTimer);
+        runOnUI(stopAutoPlayUI)();
+        isAutoPlaying.value = false;
+      };
     } else {
-      stopAutoPlay();
+      runOnUI(stopAutoPlayUI)();
+      isAutoPlaying.value = false;
     }
-  }, [isFocused, replicatedData, baseMiddleIndex, startAutoPlay, stopAutoPlay]);
+  }, [isFocused, replicatedData, baseMiddleIndex]);
+
+  const handleScrollBegin = useCallback(() => {
+    isUserDragging.current = true; // Flag that human fingers are touching the list
+    runOnUI(() => {
+      'worklet';
+      isAutoPlaying.value = false;
+      stopAutoPlayUI();
+    })();
+  }, []);
 
   const handleMomentumScrollEnd = useCallback((event: NativeSyntheticEvent<NativeScrollEvent>) => {
-    const scrollOffset = event.nativeEvent.contentOffset.x;
-    let currentIndex = Math.round(scrollOffset / ITEM_SIZE);
+    // 🚀 FIXED: If a programmatic animation caused this scroll end, IGNORE IT immediately.
+    if (!isUserDragging.current) return;
+    
+    // Reset flag since human let go
+    isUserDragging.current = false;
 
-    if (currentIndex < 5 || currentIndex > replicatedData.length - 5) {
-      const remainder = currentIndex % products.length;
-      currentIndex = baseMiddleIndex + remainder;
+    let currentIndex = Math.round(event.nativeEvent.contentOffset.x / ITEM_SIZE);
 
-      if (flatListRef.current) {
-        flatListRef.current.scrollToIndex({ index: currentIndex, animated: false });
-      }
+    if (currentIndex < 2 || currentIndex > replicatedData.length - 3) {
+      currentIndex = baseMiddleIndex + (currentIndex % products.length);
+      flatListRef.current?.scrollToIndex({ index: currentIndex, animated: false });
     }
 
-    activeIndexRef.current = currentIndex;
-    startAutoPlay(); 
-  }, [ITEM_SIZE, replicatedData.length, products.length, baseMiddleIndex, startAutoPlay]);
+    scrollIndex.value = currentIndex;
+    
+    runOnUI(() => {
+      'worklet';
+      isAutoPlaying.value = true;
+      startAutoPlayUI();
+    })();
+  }, [ITEM_SIZE, replicatedData.length, products.length, baseMiddleIndex]);
 
   const handleScrollToIndexFailed = useCallback((info: { index: number }) => {
-    setTimeout(() => {
-      if (flatListRef.current) {
-        flatListRef.current.scrollToIndex({ index: info.index, animated: true });
-      }
-    }, 500);
+    setTimeout(() => flatListRef.current?.scrollToIndex({ index: info.index, animated: true }), 500);
   }, []);
 
   const handleReqQuote = useCallback((prod: Product) => {
@@ -311,30 +365,12 @@ export default function HorizontalProductList({ isScrolling }: { isScrolling?: S
   }, []);
 
   const renderItem = useCallback(({ item }: { item: Product }) => (
-    <ProductCard
-      item={item}
-      cardWidth={cardWidth}
-      onReqQuote={handleReqQuote}
-    />
+    <ProductCard item={item} cardWidth={cardWidth} onReqQuote={handleReqQuote} />
   ), [cardWidth, handleReqQuote]);
 
-  const keyExtractor = useCallback((_: any, index: number) => index.toString(), []);
-  
   const getItemLayout = useCallback((_: any, index: number) => ({
-    length: ITEM_SIZE,
-    offset: ITEM_SIZE * index,
-    index,
+    length: ITEM_SIZE, offset: ITEM_SIZE * index, index,
   }), [ITEM_SIZE]);
-
-  const handleExplorePress = useCallback(() => {
-    router.push({
-      pathname: "/Products_Page",
-      params: {
-        subCategorySlug: "led-display-board",
-        subCategoryName: "LED Display Board",
-      },
-    })
-  }, [router]);
 
   return (
     <View className="mt-2">
@@ -351,7 +387,7 @@ export default function HorizontalProductList({ isScrolling }: { isScrolling?: S
         <TouchableOpacity
           activeOpacity={0.6}
           style={{ borderBottomWidth: 1, borderBottomColor: "#0f172a", paddingBottom: 2 }}
-          onPress={handleExplorePress}
+          onPress={() => router.push({ pathname: "/Products_Page", params: { subCategorySlug: "led-display-board", subCategoryName: "LED Display Board" }})}
         >
           <Text className="text-slate-900 font-jakarta-bold text-[16px] tracking-tight">
             Explore
@@ -364,43 +400,37 @@ export default function HorizontalProductList({ isScrolling }: { isScrolling?: S
           horizontal
           showsHorizontalScrollIndicator={false}
           scrollEnabled={false}
-          className="pl-5 py-2"
-          contentContainerStyle={{ paddingRight: 40 }}
+          contentContainerStyle={{ paddingLeft: 20 }}
         >
-          {[...Array(6)].map((_, i) => (
-            <SkeletonProductCard key={`skeleton-${i}`} cardWidth={cardWidth} />
-          ))}
+          {Array(3)
+            .fill(0)
+            .map((_, i) => (
+              <SkeletonProductCard key={i} cardWidth={cardWidth} />
+            ))}
         </ScrollView>
       ) : (
         <Animated.FlatList
           ref={flatListRef}
           data={replicatedData}
+          renderItem={renderItem}
+          keyExtractor={(_, index) => index.toString()}
+          getItemLayout={getItemLayout}
           horizontal
           showsHorizontalScrollIndicator={false}
-          keyExtractor={keyExtractor}
-          renderItem={renderItem}
-          getItemLayout={getItemLayout}
-          initialScrollIndex={baseMiddleIndex}
-          className="pl-5 py-2" 
-          contentContainerStyle={{ paddingRight: 40 }} 
           snapToInterval={ITEM_SIZE}
           snapToAlignment="start"
+          decelerationRate="fast"
+          onScrollBeginDrag={handleScrollBegin}
+          onMomentumScrollEnd={handleMomentumScrollEnd}
+          onScrollToIndexFailed={handleScrollToIndexFailed}
+          contentContainerStyle={{ paddingLeft: 20 }}
           removeClippedSubviews={false}
           initialNumToRender={4}
           maxToRenderPerBatch={4}
-          windowSize={5}
-          updateCellsBatchingPeriod={40} // 6. Optimized batching speed
-          onScrollBeginDrag={stopAutoPlay}
-          onMomentumScrollEnd={handleMomentumScrollEnd}
-          onScrollToIndexFailed={handleScrollToIndexFailed}
+          windowSize={3}
         />
       )}
-
-      <EnquiryModal
-        visible={isModalVisible}
-        onClose={() => setModalVisible(false)}
-        product={selectedProduct}
-      />
+      <EnquiryModal visible={isModalVisible} onClose={() => setModalVisible(false)} product={selectedProduct} />
     </View>
   );
 }

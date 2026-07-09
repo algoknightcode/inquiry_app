@@ -2,7 +2,7 @@ import { fetchWithCache } from "@/utils/apiCache";
 import { productCache } from "@/utils/productCache";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import {
     ActivityIndicator,
     Dimensions,

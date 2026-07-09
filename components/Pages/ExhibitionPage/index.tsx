@@ -12,6 +12,8 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { MaterialCommunityIcons, Ionicons, Feather } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
+import { useRole } from '@/contexts/RoleContext';
+
 
 const COLORS = {
   background: '#0B1121', // Deep Navy Blue
@@ -28,6 +30,15 @@ const COLORS = {
 export default function InquiryBazaarLanding() {
   const router = useRouter();
   const { width: screenWidth } = useWindowDimensions();
+  const { isSellerSignedIn, globalSellerId } = useRole();
+
+  const handleListBusinessPress = () => {
+    if (isSellerSignedIn || globalSellerId) {
+      router.push('/Seller/Profile');
+    } else {
+      router.push('/Seller/auth/Signup');
+    }
+  };
 
   // 1. Detect Device Characteristics
   const isTablet = screenWidth >= 768;
@@ -75,7 +86,7 @@ export default function InquiryBazaarLanding() {
           <View style={[styles.actionBtnContainer, isTablet && styles.actionBtnContainerTablet]}>
             <TouchableOpacity 
               style={[styles.primaryBtn, { paddingVertical: 14 * scale }]}
-              onPress={() => router.push('/HelpSupport')}
+              onPress={handleListBusinessPress}
             >
               <Text style={[styles.primaryBtnText, { fontSize: 15 * scale }]}>Start Your Visibility</Text>
               <Feather name="arrow-right" size={18 * scale} color="#FFF" />
@@ -224,7 +235,7 @@ export default function InquiryBazaarLanding() {
           <View style={[styles.actionBtnContainer, isTablet && styles.actionBtnContainerTablet]}>
             <TouchableOpacity 
               style={[styles.primaryBtn, { paddingVertical: 14 * scale }]}
-              onPress={() => router.push('/HelpSupport')}
+              onPress={handleListBusinessPress}
             >
               <Text style={[styles.primaryBtnText, { fontSize: 15 * scale }]}>List My Business Now</Text>
               <Feather name="arrow-right" size={18 * scale} color="#FFF" />

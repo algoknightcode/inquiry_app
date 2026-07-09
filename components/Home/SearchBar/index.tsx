@@ -325,9 +325,11 @@ const styles = StyleSheet.create({
   },
   defaultTextInput: {
     height: '100%', // Fills locked wrapper
+    paddingVertical: 0,
   },
   compactTextInput: {
     height: '100%', // Fills locked wrapper
+    paddingVertical: 0,
   },
   defaultSearchButton: {
     height: 48, // Rigid button height

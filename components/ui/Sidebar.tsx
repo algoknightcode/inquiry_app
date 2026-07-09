@@ -3,24 +3,21 @@ import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import React, { memo, useCallback, useEffect, useMemo, useState } from "react";
 import {
-    LayoutAnimation,
-    Modal,
-    Pressable,
-    ScrollView,
-    Text,
-    TouchableOpacity,
-    TouchableWithoutFeedback,
-    View,
-    useWindowDimensions
+  Modal,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  TouchableWithoutFeedback,
+  View,
+  useWindowDimensions
 } from "react-native";
 import Animated, {
-    Easing,
-    interpolate,
-    runOnJS,
-    useAnimatedStyle,
-    useSharedValue,
-    withSpring,
-    withTiming
+  Easing,
+  useAnimatedStyle,
+  useSharedValue,
+  withTiming
 } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -53,10 +50,29 @@ const sellerSubMenuItems: MenuItem[] = [
   { icon: "headset-outline", title: "Leads", route: "/Seller/Lead" },
 ];
 
-// ── Memoized Child Components ──
+const getIconColorSettings = (title: string, highlight?: boolean) => {
+  if (highlight) return { bg: 'bg-emerald-600', iconColor: '#ffffff' };
+  switch (title) {
+    case "Home":
+      return { bg: "bg-blue-50", iconColor: "#2563eb" };
+    case "Profile":
+      return { bg: "bg-indigo-50", iconColor: "#4f46e5" };
+    case "Account":
+      return { bg: "bg-violet-50", iconColor: "#7c3aed" };
+    case "Explore Industries":
+      return { bg: "bg-emerald-50", iconColor: "#059669" };
+    case "Notifications":
+      return { bg: "bg-amber-50", iconColor: "#d97706" };
+    case "Help & Support":
+      return { bg: "bg-rose-50", iconColor: "#e11d48" };
+    default:
+      return { bg: "bg-slate-100", iconColor: "#475569" };
+  }
+};
 
 const RenderMenuItem = memo(({ item, metrics, onPress }: { item: MenuItem, metrics: any, onPress: (route: string) => void }) => {
   const handlePress = useCallback(() => onPress(item.route), [item.route, onPress]);
+  const colors = getIconColorSettings(item.title, item.highlight);
   
   return (
     <Pressable
@@ -67,19 +83,17 @@ const RenderMenuItem = memo(({ item, metrics, onPress }: { item: MenuItem, metri
       style={({ pressed }) => ({
         paddingHorizontal: metrics.itemPaddingHorizontal,
         paddingVertical: metrics.itemPaddingVertical,
-        marginBottom: metrics.itemMarginBottom,
         backgroundColor: pressed 
             ? (item.highlight ? 'rgba(239, 246, 255, 0.8)' : '#f1f5f9')
             : (item.highlight ? 'rgba(239, 246, 255, 0.5)' : 'transparent'),
-        transform: [{ scale: pressed ? 0.97 : 1 }]
       })}
       android_ripple={{ color: item.highlight ? "#dbeafe" : "#f1f5f9" }}
     >
       <View 
         style={[{ width: metrics.itemIconBoxSize, height: metrics.itemIconBoxSize }]}
-        className={`rounded-xl items-center justify-center mr-4 ${item.highlight ? 'bg-blue-900' : 'bg-slate-100'}`}
+        className={`rounded-xl items-center justify-center mr-4 ${colors.bg}`}
       >
-        <Ionicons name={item.icon} size={metrics.itemIconSize} color={item.highlight ? "#ffffff" : "#475569"} />
+        <Ionicons name={item.icon} size={metrics.itemIconSize} color={colors.iconColor} />
       </View>
       <Text 
         style={{ fontSize: metrics.itemTextSize }}
@@ -101,9 +115,8 @@ const RenderSubItem = memo(({ subItem, metrics, onPress }: { subItem: MenuItem, 
       style={({ pressed }) => ({ 
         paddingVertical: metrics.subItemPaddingVertical, 
         paddingHorizontal: metrics.subItemPaddingHorizontal, 
-        marginBottom: 4,
+        marginBottom: 8,
         backgroundColor: pressed ? '#ffffff' : 'transparent',
-        transform: [{ scale: pressed ? 0.99 : 1 }]
       })}
       className="flex-row items-center rounded-xl"
     >
@@ -122,7 +135,6 @@ const SellerHeader = memo(({ metrics, onNavigate }: { metrics: any; onNavigate: 
   const [expanded, setExpanded] = useState(true);
 
   const toggleMenu = useCallback(() => {
-    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
     setExpanded(prev => !prev);
   }, []);
 
@@ -216,9 +228,9 @@ const Sidebar = ({ visible, onClose, currentRole }: SidebarProps) => {
     const hScale = screenHeight < 680 ? 0.78 : 1.0;
     const sidebarWidth = isTablet ? 320 : Math.min(screenWidth * 0.68, 250 * baseScale);
     const subItemIconBoxSize = 28 * baseScale;
-    const totalSubmenuHeight = (sellerSubMenuItems.length * (subItemIconBoxSize + (9 * hScale * 2) + 4)) + 8;
+    const totalSubmenuHeight = (sellerSubMenuItems.length * (subItemIconBoxSize + (9 * hScale * 2) + 8)) + 8;
 
-    return { sidebarWidth, scale: baseScale, headerPaddingHorizontal: 20 * baseScale, headerPaddingTop: 14 * hScale, headerPaddingBottom: 16 * hScale, logoSize: 40 * baseScale, logoTextSize: 17 * baseScale, logoSubTextSize: 13 * baseScale, closeBtnSize: 32 * baseScale, closeIconSize: 18 * baseScale, scrollPaddingHorizontal: 16 * baseScale, scrollPaddingTop: 16 * hScale, itemMarginBottom: 12 * hScale, itemPaddingVertical: 14 * hScale, itemPaddingHorizontal: 16 * baseScale, itemIconBoxSize: 36 * baseScale, itemIconSize: 18 * baseScale, itemTextSize: 16.5 * baseScale, chevronSize: 15 * baseScale, subItemPaddingVertical: 11 * hScale, subItemPaddingHorizontal: 12 * baseScale, subItemIconBoxSize, subItemIconSize: 14 * baseScale, subItemTextSize: 15 * baseScale, totalSubmenuHeight, planCardPadding: 12 * baseScale, planCardMarginBottom: 16 * hScale, logoutPaddingHorizontal: 16 * baseScale, logoutPaddingVertical: 10 * hScale, logoutButtonPaddingVertical: 12 * hScale, logoutTextSize: 15.5 * baseScale, logoutIconSize: 17 * baseScale, footerPaddingHorizontal: 24 * baseScale, footerPaddingTop: 10 * hScale, footerPaddingBottom: 8 * hScale, footerTextSize: 12 * baseScale };
+    return { sidebarWidth, scale: baseScale, headerPaddingHorizontal: 20 * baseScale, headerPaddingTop: 14 * baseScale, headerPaddingBottom: 16 * baseScale, logoSize: 40 * baseScale, logoTextSize: 17 * baseScale, logoSubTextSize: 13 * baseScale, closeBtnSize: 32 * baseScale, closeIconSize: 18 * baseScale, scrollPaddingHorizontal: 16 * baseScale, scrollPaddingTop: 20 * baseScale, itemMarginBottom: 18 * baseScale, itemPaddingVertical: 12 * baseScale, itemPaddingHorizontal: 16 * baseScale, itemIconBoxSize: 36 * baseScale, itemIconSize: 18 * baseScale, itemTextSize: 16.5 * baseScale, chevronSize: 15 * baseScale, subItemPaddingVertical: 11 * baseScale, subItemPaddingHorizontal: 12 * baseScale, subItemIconBoxSize, subItemIconSize: 14 * baseScale, subItemTextSize: 15 * baseScale, totalSubmenuHeight, planCardPadding: 12 * baseScale, planCardMarginBottom: 16 * baseScale, logoutPaddingHorizontal: 16 * baseScale, logoutPaddingVertical: 10 * baseScale, logoutButtonPaddingVertical: 12 * baseScale, logoutTextSize: 15.5 * baseScale, logoutIconSize: 17 * baseScale, footerPaddingHorizontal: 24 * baseScale, footerPaddingTop: 10 * baseScale, footerPaddingBottom: 8 * baseScale, footerTextSize: 12 * baseScale };
   }, [screenWidth, screenHeight]);
 
   useEffect(() => { 
@@ -229,11 +241,11 @@ const Sidebar = ({ visible, onClose, currentRole }: SidebarProps) => {
 
   useEffect(() => {
     if (visible) {
-      slideAnim.value = withSpring(0, { damping: 15, stiffness: 90, mass: 0.8 });
-      fadeAnim.value = withTiming(1, { duration: 250 });
+      slideAnim.value = withTiming(0, { duration: 200, easing: Easing.out(Easing.cubic) });
+      fadeAnim.value = withTiming(1, { duration: 200 });
     } else {
-      slideAnim.value = withTiming(-metrics.sidebarWidth, { duration: 250, easing: Easing.out(Easing.cubic) });
-      fadeAnim.value = withTiming(0, { duration: 250 });
+      slideAnim.value = withTiming(-metrics.sidebarWidth, { duration: 200, easing: Easing.out(Easing.cubic) });
+      fadeAnim.value = withTiming(0, { duration: 200 });
     }
   }, [visible]);
 
@@ -277,8 +289,8 @@ const Sidebar = ({ visible, onClose, currentRole }: SidebarProps) => {
         <TouchableWithoutFeedback onPress={handleClose}>
           <Animated.View style={[{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, backgroundColor: "rgba(15, 23, 42, 0.45)" }, backdropStyle]} />
         </TouchableWithoutFeedback>
-        <Animated.View style={[{ position: "absolute", top: 0, left: 0, bottom: 0, width: metrics.sidebarWidth, backgroundColor: "#ffffff", borderRightWidth: 1, borderRightColor: "#E2E8F0", paddingTop: insets.top + (metrics.scale * 12), paddingBottom: Math.max(insets.bottom, 12 * metrics.scale) }, drawerStyle]}>
-          <View style={{ paddingHorizontal: metrics.headerPaddingHorizontal, paddingBottom: metrics.headerPaddingBottom, paddingTop: metrics.headerPaddingTop }} className="border-b border-slate-100 flex-row items-center justify-between">
+        <Animated.View style={[{ position: "absolute", top: 0, left: 0, bottom: 0, width: metrics.sidebarWidth, backgroundColor: "#ffffff", borderRightWidth: 1, borderRightColor: "#E2E8F0", paddingTop: Math.max(insets.top, 10), paddingBottom: Math.max(insets.bottom, 12 * metrics.scale) }, drawerStyle]}>
+          <View style={{ paddingHorizontal: metrics.headerPaddingHorizontal, paddingBottom: 10, paddingTop: 6 }} className="border-b border-slate-100 flex-row items-center justify-between">
             <View className="flex-row items-center">
               <View style={{ width: metrics.logoSize, height: metrics.logoSize }} className="rounded-xl bg-slate-900 items-center justify-center mr-3">
                 <Text className="text-white font-jakarta-bold text-lg">IB</Text>
@@ -300,9 +312,11 @@ const Sidebar = ({ visible, onClose, currentRole }: SidebarProps) => {
             nestedScrollEnabled={true}
           >
             {isActuallySeller && <SellerHeader metrics={metrics} onNavigate={handleNavigation} />}
-            {roleMenuItems.map((item) => (
-              <RenderMenuItem key={item.route} item={item} metrics={metrics} onPress={handleNavigation} />
-            ))}
+            <View style={{ gap: 6 }}>
+              {roleMenuItems.map((item) => (
+                <RenderMenuItem key={item.route} item={item} metrics={metrics} onPress={handleNavigation} />
+              ))}
+            </View>
           </ScrollView>
           <View style={{ padding: 20 }} className="border-t border-slate-100">
              {(!globalBuyerId && !globalSellerId) ? (

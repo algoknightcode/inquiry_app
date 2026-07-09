@@ -142,7 +142,7 @@ const SubCateGory = () => {
             data={mainCategories}
             keyExtractor={(item) => item._id}
             showsVerticalScrollIndicator={false}
-            contentContainerStyle={{ paddingVertical: 12 }}
+            contentContainerStyle={{ paddingVertical: 12, paddingBottom: 120 }}
             renderItem={({ item }) => {
               const isActive = item._id === selectedMainId;
               return (
@@ -169,7 +169,7 @@ const SubCateGory = () => {
             }}
           />
         </View>
-
+ 
         {/* RIGHT CONTENT: Subcategories Grid */}
         <View className={styles.rightContent}>
           <FlatList
@@ -177,7 +177,7 @@ const SubCateGory = () => {
             keyExtractor={(item) => item._id}
             numColumns={2}
             showsVerticalScrollIndicator={false}
-            contentContainerStyle={{ padding: 16, paddingBottom: 40 }}
+            contentContainerStyle={{ padding: 16, paddingBottom: 120 }}
             columnWrapperStyle={{ justifyContent: "space-between", gap: 12 }}
             ListEmptyComponent={
               <Text className="text-center text-slate-400 mt-10 font-jakarta-medium">

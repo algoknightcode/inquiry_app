@@ -192,7 +192,7 @@ export default function MoreForYou({ isScrolling }: { isScrolling?: SharedValue<
     if (!isFocused) return;
     autoplayPulse.value = 0;
     autoplayPulse.value = withRepeat(
-      withTiming(1, { duration: 2500 }),
+      withTiming(1, { duration: 5000 }),
       -1
     );
   };
@@ -228,7 +228,7 @@ export default function MoreForYou({ isScrolling }: { isScrolling?: SharedValue<
       if (!isFocused) {
         return;
       }
-      if (prevPulse !== null && currentPulse < prevPulse && !isDragging.value) {
+      if (prevPulse !== null && currentPulse < prevPulse && prevPulse > 0.9 && currentPulse < 0.1 && !isDragging.value) {
         let nextIndex = currentIndex.value + 1;
         
         // Edge handling directly on the UI thread

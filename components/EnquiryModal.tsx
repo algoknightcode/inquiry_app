@@ -29,6 +29,7 @@ export default function EnquiryModal({ visible, onClose, product }: EnquiryModal
   const [inqMessage, setInqMessage] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [errors, setErrors] = useState<{ name?: string; email?: string; phone?: string; message?: string }>({});
 
   // Pre-fill fields if buyer/user info is stored
   useEffect(() => {
@@ -37,8 +38,12 @@ export default function EnquiryModal({ visible, onClose, product }: EnquiryModal
         const storedName = await AsyncStorage.getItem("userName") || await AsyncStorage.getItem("supplierName");
         const storedPhone = await AsyncStorage.getItem("userPhone") || await AsyncStorage.getItem("supplierPhone");
         const storedEmail = await AsyncStorage.getItem("userEmail") || await AsyncStorage.getItem("supplierEmail");
+        
         if (storedName) setInqName(storedName);
-        if (storedPhone) setInqPhone(storedPhone);
+        if (storedPhone) {
+          const digits = storedPhone.replace(/[^\d]/g, '');
+          setInqPhone(digits);
+        }
         if (storedEmail) setInqEmail(storedEmail);
       } catch (e) {
         console.log("Error reading prefill info", e);
@@ -46,6 +51,7 @@ export default function EnquiryModal({ visible, onClose, product }: EnquiryModal
     };
     if (visible) {
       prefillData();
+      setErrors({}); // Clear any prior errors on open
     }
   }, [visible]);
 
@@ -57,9 +63,44 @@ export default function EnquiryModal({ visible, onClose, product }: EnquiryModal
 
   const companyName = product.supplier?.business?.companyName || product.supplier?.name || "Verified Supplier";
 
+  const validateForm = () => {
+    const newErrors: typeof errors = {};
+    if (!inqName.trim()) {
+      newErrors.name = "Name is required";
+    } else if (inqName.trim().length < 2) {
+      newErrors.name = "Name must be at least 2 characters";
+    }
+
+    if (!inqPhone.trim()) {
+      newErrors.phone = "Phone number is required";
+    } else {
+      const cleanPhone = inqPhone.trim().replace(/[^\d]/g, '');
+      if (cleanPhone.length !== 10) {
+        newErrors.phone = "Phone number must be exactly 10 digits";
+      } else if (!/^[6-9]\d{9}$/.test(cleanPhone)) {
+        newErrors.phone = "Please enter a valid mobile number";
+      }
+    }
+
+    if (inqEmail.trim()) {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(inqEmail.trim())) {
+        newErrors.email = "Please enter a valid email address";
+      }
+    }
+
+    if (!inqMessage.trim()) {
+      newErrors.message = "Message is required";
+    } else if (inqMessage.trim().length < 5) {
+      newErrors.message = "Message must be at least 5 characters";
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
   const handleSendInquiry = async () => {
-    if (!inqName.trim() || !inqPhone.trim() || !inqMessage.trim()) {
-      Alert.alert("Required Fields", "Please provide your Name, Phone Number, and Message.");
+    if (!validateForm()) {
       return;
     }
 
@@ -153,25 +194,29 @@ export default function EnquiryModal({ visible, onClose, product }: EnquiryModal
                 </View>
               </View>
 
-              <View style={styles.inputWrapper}>
-                <Ionicons name="person-outline" size={18} color="#64748b" style={styles.icon} />
-                <TextInput style={styles.input} placeholder="Your Name *" placeholderTextColor="#94a3b8" value={inqName} onChangeText={setInqName} />
+              <View style={[styles.inputWrapper, errors.name ? styles.inputWrapperError : null]}>
+                <Ionicons name="person-outline" size={18} color={errors.name ? "#ef4444" : "#64748b"} style={styles.icon} />
+                <TextInput style={styles.input} placeholder="Your Name *" placeholderTextColor="#94a3b8" value={inqName} onChangeText={(t) => { setInqName(t); if (errors.name) setErrors(prev => ({ ...prev, name: undefined })); }} />
               </View>
+              {errors.name ? <Text style={styles.errorText}>{errors.name}</Text> : null}
 
-              <View style={styles.inputWrapper}>
-                <Ionicons name="mail-outline" size={18} color="#64748b" style={styles.icon} />
-                <TextInput style={styles.input} placeholder="Your Email" placeholderTextColor="#94a3b8" keyboardType="email-address" autoCapitalize="none" value={inqEmail} onChangeText={setInqEmail} />
+              <View style={[styles.inputWrapper, errors.email ? styles.inputWrapperError : null]}>
+                <Ionicons name="mail-outline" size={18} color={errors.email ? "#ef4444" : "#64748b"} style={styles.icon} />
+                <TextInput style={styles.input} placeholder="Your Email" placeholderTextColor="#94a3b8" keyboardType="email-address" autoCapitalize="none" value={inqEmail} onChangeText={(t) => { setInqEmail(t); if (errors.email) setErrors(prev => ({ ...prev, email: undefined })); }} />
               </View>
+              {errors.email ? <Text style={styles.errorText}>{errors.email}</Text> : null}
 
-              <View style={styles.inputWrapper}>
-                <Ionicons name="call-outline" size={18} color="#64748b" style={styles.icon} />
-                <TextInput style={styles.input} placeholder="Phone Number *" placeholderTextColor="#94a3b8" keyboardType="phone-pad" value={inqPhone} onChangeText={setInqPhone} />
+              <View style={[styles.inputWrapper, errors.phone ? styles.inputWrapperError : null]}>
+                <Ionicons name="call-outline" size={18} color={errors.phone ? "#ef4444" : "#64748b"} style={styles.icon} />
+                <TextInput style={styles.input} placeholder="Phone Number *" placeholderTextColor="#94a3b8" keyboardType="phone-pad" value={inqPhone} onChangeText={(t) => { setInqPhone(t); if (errors.phone) setErrors(prev => ({ ...prev, phone: undefined })); }} maxLength={10} />
               </View>
+              {errors.phone ? <Text style={styles.errorText}>{errors.phone}</Text> : null}
 
-              <View style={[styles.inputWrapper, styles.multilineWrapper]}>
-                <Ionicons name="chatbubble-outline" size={18} color="#64748b" style={[styles.icon, { marginTop: 2 }]} />
-                <TextInput style={[styles.input, styles.multilineInput]} placeholder="Your Message *" placeholderTextColor="#94a3b8" multiline value={inqMessage} onChangeText={setInqMessage} />
+              <View style={[styles.inputWrapper, styles.multilineWrapper, errors.message ? styles.inputWrapperError : null]}>
+                <Ionicons name="chatbubble-outline" size={18} color={errors.message ? "#ef4444" : "#64748b"} style={[styles.icon, { marginTop: 2 }]} />
+                <TextInput style={[styles.input, styles.multilineInput]} placeholder="Your Message *" placeholderTextColor="#94a3b8" multiline value={inqMessage} onChangeText={(t) => { setInqMessage(t); if (errors.message) setErrors(prev => ({ ...prev, message: undefined })); }} />
               </View>
+              {errors.message ? <Text style={[styles.errorText, { marginTop: -8, marginBottom: 16 }]}>{errors.message}</Text> : null}
 
               <TouchableOpacity onPress={handleSendInquiry} disabled={isSubmitting} style={styles.submitBtn}>
                 {isSubmitting ? <ActivityIndicator color="#fff" /> : <Text style={styles.submitBtnText}>Submit Inquiry</Text>}
@@ -393,5 +438,17 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     fontSize: 15,
     letterSpacing: 0.2
+  },
+  inputWrapperError: {
+    borderColor: "#ef4444",
+    backgroundColor: "#fff5f5"
+  },
+  errorText: {
+    color: "#ef4444",
+    fontSize: 12,
+    fontWeight: "600",
+    marginTop: -12,
+    marginBottom: 16,
+    marginLeft: 16
   }
 });

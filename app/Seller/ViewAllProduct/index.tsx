@@ -1,6 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useRouter } from "expo-router";
+import { useIsFocused } from "@react-navigation/native";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
     ActivityIndicator,
@@ -45,9 +46,13 @@ const ManageProducts = () => {
     }
   }, []);
 
+  const isFocused = useIsFocused();
+
   useEffect(() => {
-    fetchProducts(true);
-  }, [fetchProducts]);
+    if (isFocused) {
+      fetchProducts(true);
+    }
+  }, [fetchProducts, isFocused]);
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);

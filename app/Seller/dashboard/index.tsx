@@ -2,6 +2,7 @@ import Navbar from "@/components/Home/Navbar";
 import { globalSellerId } from "@/utils/roleCache";
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useIsFocused } from "@react-navigation/native";
 import React, { useCallback, useEffect, useState } from "react";
 import {
     ActivityIndicator,
@@ -81,13 +82,16 @@ const Dashboard = () => {
     }
   }, []);
 
+  const isFocused = useIsFocused();
+
   useEffect(() => {
+    if (!isFocused) return;
     // Wait for the navigation transition to complete before doing heavy data processing
     const task = InteractionManager.runAfterInteractions(() => {
       fetchDashboardData(true);
     });
     return () => task.cancel();
-  }, [fetchDashboardData]);
+  }, [fetchDashboardData, isFocused]);
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);

@@ -1,20 +1,19 @@
 import { fetchWithCache, getCacheSync } from "@/utils/apiCache";
 import { productCache } from "@/utils/productCache";
-import { Ionicons } from "@expo/vector-icons";
 import { useIsFocused } from "@react-navigation/native";
 import { Image } from "expo-image";
 import { useRouter } from "expo-router";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
-  Linking,
   NativeScrollEvent,
   NativeSyntheticEvent,
   Pressable,
   ScrollView,
   StyleSheet,
   Text,
+  TouchableOpacity,
   useWindowDimensions,
-  View,
+  View
 } from "react-native";
 // 1. Reanimated hooks for UI-thread animation
 import Animated, {
@@ -73,10 +72,29 @@ const TRUSTED_URL = "https://backend.inquirybazaar.com/api/categories/sub/titani
 function getInitialCachedTrustedProducts(): Product[] {
   try {
     const json = getCacheSync(TRUSTED_URL);
-    if (json?.success && Array.isArray(json.data?.products)) {
-      return json.data.products.slice(0, 10);
+    if (json.success && json.data?.products) {
+      const sliced = json.data.products.slice(0, 10);
+      
+      const urlsToPrefetch = sliced
+        .map((item: Product) => {
+          if (item.media && item.media.length > 0) {
+            return (item.media.find((m) => m.isPrimary) || item.media[0]).url;
+          }
+          return null;
+        })
+        .filter(Boolean) as string[]; 
+
+      if (urlsToPrefetch.length > 0) {
+        Image.prefetch(urlsToPrefetch).catch(err => 
+          console.warn("Prefetch failed", err)
+        );
+      }
+
+      return sliced;
     }
-  } catch (_) {}
+  } catch (err) {
+    console.warn("Error getting initial cached products:", err);
+  }
   return [];
 }
 
@@ -172,12 +190,11 @@ const staticStyles = StyleSheet.create({
     gap: 6,
   },
   quoteButton: {
-    flex: 1,
     backgroundColor: "#0E2347",
-    paddingVertical: 8,
     borderRadius: 8,
     alignItems: "center",
     justifyContent: "center",
+    width: "100%",
   },
   quoteButtonText: {
     color: "white",
@@ -218,88 +235,91 @@ const ProductCard = React.memo(
     const isPriceOnRequest = item.priceType === "on_request" || !item.price;
 
     return (
-      <Pressable
-        style={{ marginRight: layout.cardSpacing, width: layout.cardWidth }}
-        onPress={() => onPress(item)}
-      >
-        {({ pressed }) => (
-          <View style={{ opacity: pressed ? 0.9 : 1, transform: [{ scale: pressed ? 0.98 : 1 }] }}>
-            {/* Image Container */}
-            <View style={[staticStyles.imageContainer, { width: layout.cardWidth, height: layout.cardHeight }]}>
-              <Image
-                source={{ uri: primaryImage }}
-                style={staticStyles.image}
-                contentFit="cover"
-                transition={0} 
-                cachePolicy="memory-disk"
-                recyclingKey={primaryImage} 
-              />
-              <View style={staticStyles.trustBadge}>
-                <Text style={[staticStyles.trustBadgeText, { fontSize: 10 * fontScale, letterSpacing: 1.5 * fontScale }]}>
-                  ✓ VERIFIED
-                </Text>
-              </View>
-            </View>
-
-            {/* Typography & Buttons */}
-            <View style={staticStyles.cardContent}>
-              <View style={{ alignItems: "center", width: "100%" }}>
-                <Text style={[staticStyles.brandText, { fontSize: 12 * fontScale, letterSpacing: 0.5 * fontScale }]} numberOfLines={1}>
-                  {companyName}
-                </Text>
-                <Text style={[staticStyles.cardTitle, { fontSize: 16 * fontScale }]} numberOfLines={1}>
-                  {item.name}
-                </Text>
-                <Text style={[staticStyles.cardPrice, { fontSize: 17 * fontScale }]}>
-                  {isPriceOnRequest ? "Price on Request" : `₹${item.price}/${item.unit}`}
-                </Text>
-              </View>
-
-              <View style={staticStyles.buttonContainer}>
-                <Pressable onPress={() => onQuotePress(item)} style={({ pressed }) => [staticStyles.quoteButton, { opacity: pressed ? 0.8 : 1 }]}>
-                  <Text style={[staticStyles.quoteButtonText, { fontSize: 13 * fontScale }]} numberOfLines={1}>
-                    Request Quote
+      <View style={{ marginRight: layout.cardSpacing, width: layout.cardWidth }}>
+        {/* Tappable image + info area */}
+        <Pressable onPress={() => onPress(item)}>
+          {({ pressed }) => (
+            <View style={{ opacity: pressed ? 0.9 : 1, transform: [{ scale: pressed ? 0.98 : 1 }] }}>
+              {/* Image Container */}
+              <View style={[staticStyles.imageContainer, { width: layout.cardWidth, height: layout.cardHeight }]}>
+                <Image
+                  source={{ uri: primaryImage }}
+                  style={staticStyles.image}
+                  contentFit="cover"
+                  transition={0}
+                  cachePolicy="memory-disk"
+                  recyclingKey={primaryImage}
+                />
+                <View style={staticStyles.trustBadge}>
+                  <Text style={[staticStyles.trustBadgeText, { fontSize: 10 * fontScale, letterSpacing: 1.5 * fontScale }]}>
+                    ✓ VERIFIED
                   </Text>
-                </Pressable>
+                </View>
+              </View>
 
-                {item.supplier?.phone && (
-                  <Pressable onPress={() => Linking.openURL(`tel:${item.supplier?.phone}`)} style={({ pressed }) => [staticStyles.callButton, { opacity: pressed ? 0.8 : 1 }]}>
-                    <Ionicons name="call" size={16} color="white" />
-                  </Pressable>
-                )}
+              {/* Typography */}
+              <View style={[staticStyles.cardContent, { paddingBottom: 0 }]}>
+                <View style={{ alignItems: "center", width: "100%" }}>
+                  <Text style={[staticStyles.brandText, { fontSize: 12 * fontScale, letterSpacing: 0.5 * fontScale }]} numberOfLines={1}>
+                    {companyName}
+                  </Text>
+                  <Text style={[staticStyles.cardTitle, { fontSize: 16 * fontScale }]} numberOfLines={1}>
+                    {item.name}
+                  </Text>
+                  <Text style={[staticStyles.cardPrice, { fontSize: 17 * fontScale }]}>
+                    {isPriceOnRequest ? "Price on Request" : `₹${item.price}${item.unit ? `/${item.unit}` : ""}`}
+                  </Text>
+                </View>
               </View>
             </View>
-          </View>
-        )}
-      </Pressable>
+          )}
+        </Pressable>
+
+        {/* Quote Button — TouchableOpacity for reliable background rendering */}
+        <View style={{ paddingHorizontal: 4, marginTop: 8, width: layout.cardWidth }}>
+          <TouchableOpacity
+            activeOpacity={0.75}
+            onPress={() => onQuotePress(item)}
+            style={[staticStyles.quoteButton, { height: 38 * fontScale }]}
+          >
+            <Text style={[staticStyles.quoteButtonText, { fontSize: 13 * fontScale }]} numberOfLines={1}>
+              Request Quote
+            </Text>
+          </TouchableOpacity>
+        </View>
+      </View>
     );
   }
 );
 
 // ── Skeleton Loader Component ──
-const SkeletonProductCard = ({ layout }: { layout: DynamicLayout }) => (
-  <View style={{ marginRight: layout.cardSpacing, width: layout.cardWidth }}>
-    <View style={[{ width: layout.cardWidth, height: layout.cardHeight }, { backgroundColor: '#e2e8f0', borderRadius: 16 }]} />
-    <View style={staticStyles.cardContent}>
-      <View style={{ alignItems: "center", width: "100%" }}>
-        <View style={{ height: 12, backgroundColor: '#e2e8f0', borderRadius: 4, width: '66%', marginBottom: 8 }} />
-        <View style={{ height: 16, backgroundColor: '#e2e8f0', borderRadius: 4, width: '100%', marginBottom: 8 }} />
-        <View style={{ height: 20, backgroundColor: '#e2e8f0', borderRadius: 4, width: '50%', marginBottom: 12 }} />
-      </View>
-      <View style={staticStyles.buttonContainer}>
-        <View style={{ flex: 1, height: 36, backgroundColor: '#e2e8f0', borderRadius: 8 }} />
-        <View style={{ width: 36, height: 36, backgroundColor: '#e2e8f0', borderRadius: 8 }} />
+const SkeletonProductCard = ({ layout }: { layout?: DynamicLayout }) => {
+  const cardSpacing = layout?.cardSpacing ?? 16;
+  const cardWidth = layout?.cardWidth ?? 150;
+  const cardHeight = layout?.cardHeight ?? 180;
+  return (
+    <View style={{ marginRight: cardSpacing, width: cardWidth }}>
+      <View style={[{ width: cardWidth, height: cardHeight }, { backgroundColor: '#e2e8f0', borderRadius: 16 }]} />
+      <View style={staticStyles.cardContent}>
+        <View style={{ alignItems: "center", width: "100%" }}>
+          <View style={{ height: 12, backgroundColor: '#e2e8f0', borderRadius: 4, width: '66%', marginBottom: 8 }} />
+          <View style={{ height: 16, backgroundColor: '#e2e8f0', borderRadius: 4, width: '100%', marginBottom: 8 }} />
+          <View style={{ height: 20, backgroundColor: '#e2e8f0', borderRadius: 4, width: '50%', marginBottom: 12 }} />
+        </View>
+        <View style={staticStyles.buttonContainer}>
+          <View style={{ flex: 1, height: 36, backgroundColor: '#e2e8f0', borderRadius: 8 }} />
+        </View>
       </View>
     </View>
-  </View>
-);
+  );
+};
 
 const IBTrusted = ({ isScrolling }: { isScrolling?: SharedValue<boolean> }) => {
   const isFocused = useIsFocused();
   const router = useRouter();
   const initialProducts = getInitialCachedTrustedProducts();
   const [products, setProducts] = useState<Product[]>(initialProducts);
-  const [isLoading, setIsLoading] = useState(initialProducts.length === 0);
+  const [isLoading, setIsLoading] = useState(true);
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   
@@ -330,6 +350,11 @@ const IBTrusted = ({ isScrolling }: { isScrolling?: SharedValue<boolean> }) => {
   }, [scale, screenWidth]);
 
   useEffect(() => {
+    // 🚀 JS Thread protection: Let the main page render first before mounting the heavy list
+    const mountTimer = setTimeout(() => {
+      setIsLoading(false);
+    }, 250);
+
     const fetchTrustedProducts = async () => {
       try {
         const json = await fetchWithCache(TRUSTED_URL);
@@ -347,6 +372,10 @@ const IBTrusted = ({ isScrolling }: { isScrolling?: SharedValue<boolean> }) => {
       }
     };
     fetchTrustedProducts();
+
+    return () => {
+      clearTimeout(mountTimer);
+    };
   }, []);
 
   const replicatedData = useMemo(() => {
@@ -368,7 +397,7 @@ const IBTrusted = ({ isScrolling }: { isScrolling?: SharedValue<boolean> }) => {
     if (products.length <= 0) return;
     autoplayPulse.value = 0;
     autoplayPulse.value = withRepeat(
-      withTiming(1, { duration: 3000 }),
+      withTiming(1, { duration: 5000 }),
       -1
     );
   };
@@ -382,10 +411,10 @@ const IBTrusted = ({ isScrolling }: { isScrolling?: SharedValue<boolean> }) => {
   useAnimatedReaction(
     () => autoplayPulse.value,
     (currentPulse, prevPulse) => {
-      if (!isFocused) {
+      if (!isFocused || (isScrolling && isScrolling.value)) {
         return;
       }
-      if (prevPulse !== null && currentPulse < prevPulse) {
+      if (prevPulse !== null && currentPulse < prevPulse && prevPulse > 0.9 && currentPulse < 0.1) {
         if (!isAutoPlaying.value) {
           return; // Don't scroll if user is dragging
         }
@@ -402,12 +431,12 @@ const IBTrusted = ({ isScrolling }: { isScrolling?: SharedValue<boolean> }) => {
         }
       }
     },
-    [isFocused]
+    [isFocused, isScrolling]
   );
 
   useEffect(() => {
     if (replicatedData.length > 0 && products.length > 0) {
-      if (isFocused) {
+      if (isFocused && !isModalVisible) {
         // Initialize position
         scrollIndex.value = baseMiddleIndex;
         const initTimer = setTimeout(() => {
@@ -431,7 +460,7 @@ const IBTrusted = ({ isScrolling }: { isScrolling?: SharedValue<boolean> }) => {
         isAutoPlaying.value = false;
       }
     }
-  }, [isFocused, replicatedData, baseMiddleIndex, products.length]);
+  }, [isFocused, replicatedData, baseMiddleIndex, products.length, isModalVisible]);
 
   // ── Manual Scroll Handling ──
   const handleScrollBegin = useCallback(() => {
@@ -498,15 +527,15 @@ const IBTrusted = ({ isScrolling }: { isScrolling?: SharedValue<boolean> }) => {
   }), [layout.ITEM_SIZE]);
 
   return (
-    <View style={[staticStyles.container, { paddingTop: 24 * scale }]}>
+    <View style={[staticStyles.container, { paddingTop: 24 * scale, paddingBottom: 24 * scale }]}>
       {/* Header */}
       <View style={[staticStyles.headerContainer, { paddingHorizontal: layout.containerPadding }]}>
         <View style={{ flexDirection: "column" }}>
           <Text style={[staticStyles.kickerText, { fontSize: 12 * scale, letterSpacing: 1.5 * scale }]}>
             CERTIFIED
           </Text>
-          <Text style={[staticStyles.headingText, { fontSize: 26 * scale }]}>
-            IB Trusted
+          <Text style={[staticStyles.headingText, { fontSize: 23 * scale }]}>
+            Inquiry Bazzar Trusted
           </Text>
         </View>
 
@@ -525,8 +554,8 @@ const IBTrusted = ({ isScrolling }: { isScrolling?: SharedValue<boolean> }) => {
           horizontal
           showsHorizontalScrollIndicator={false}
           scrollEnabled={false}
-          style={{ marginTop: 24 }}
-          contentContainerStyle={{ paddingLeft: layout.containerPadding, paddingBottom: 10 }}
+          style={{ marginTop: 24, height: layout.cardHeight + 180 * scale }}
+          contentContainerStyle={{ paddingLeft: layout.containerPadding, paddingBottom: 28 }}
         >
           {[...Array(4)].map((_, i) => (
             <SkeletonProductCard key={`skeleton-${i}`} layout={layout} />
@@ -540,11 +569,11 @@ const IBTrusted = ({ isScrolling }: { isScrolling?: SharedValue<boolean> }) => {
           data={replicatedData}
           keyExtractor={keyExtractor}
           renderItem={renderItem}
-          style={{ marginTop: 24 }}
+          style={{ marginTop: 24, height: layout.cardHeight + 180 * scale }}
           contentContainerStyle={{
             paddingLeft: layout.containerPadding,
             paddingRight: layout.containerPadding + layout.cardWidth, 
-            paddingBottom: 10,
+            paddingBottom: 28,
           }}
           snapToInterval={layout.ITEM_SIZE}
           snapToAlignment="start"
@@ -559,9 +588,8 @@ const IBTrusted = ({ isScrolling }: { isScrolling?: SharedValue<boolean> }) => {
           getItemLayout={getItemLayout}
           initialNumToRender={4}
           maxToRenderPerBatch={3}
-          windowSize={3}
+          windowSize={5}
           updateCellsBatchingPeriod={40}
-          removeClippedSubviews={true} 
         />
       )}
 

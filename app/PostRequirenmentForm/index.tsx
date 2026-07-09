@@ -55,6 +55,8 @@ const InputField = React.memo(({ label, required, scale, ...props }: InputFieldP
 
       <TextInput
         {...props}
+        multiline={props.multiline ?? false}
+        numberOfLines={props.multiline ? 4 : 1}
         style={[
           styles.input,
           { 
@@ -285,7 +287,7 @@ export default function RequestQuoteForm() {
                 <InputField
                   label="Email"
                   scale={scale}
-                  placeholder="name@company.com"
+                  placeholder="Your email"
                   keyboardType="email-address"
                   autoCapitalize="none"
                   value={formData.email}
@@ -433,7 +435,7 @@ export default function RequestQuoteForm() {
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: "#F5F7FA" },
   container: { flex: 1 },
-  scrollContent: { paddingTop: 12, paddingBottom: 30 },
+  scrollContent: { paddingTop: 12, paddingBottom: 80 },
   title: { fontWeight: "800", color: "#0F172A", marginBottom: 8, fontFamily: "PlusJakartaSans-ExtraBold" },
   subtitle: { lineHeight: 22, color: "#64748B", fontFamily: "PlusJakartaSans-Medium" },
   card: {

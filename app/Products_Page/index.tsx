@@ -277,7 +277,7 @@ export default function ProductListingPage() {
         android_ripple={{ color: "#e2e8f0" }}
       >
         {/* Image */}
-        <View className="w-full h-48 rounded-2xl bg-slate-100 overflow-hidden mb-4">
+        <View className="w-full rounded-2xl bg-slate-100 overflow-hidden mb-4" style={{ height: 212 }}>
           {imageUri ? (
             <Image
               source={{ uri: imageUri }}
@@ -378,8 +378,25 @@ export default function ProductListingPage() {
             onPress={() => phone && Linking.openURL(`tel:${phone}`)}
             className="flex-1 flex-row justify-center items-center py-3 rounded-xl border border-slate-200 active:bg-slate-50 mr-2"
           >
-            <Ionicons name="call-outline" size={16} color="#475569" />
-            <Text className="text-slate-700 font-jakarta-bold text-[12px] ml-1.5">Call</Text>
+            <Ionicons name="call-outline" size={15} color="#475569" />
+            <Text className="text-slate-700 font-jakarta-bold text-[12px] ml-1">Call</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            onPress={() => {
+              if (!phone) return;
+              const cleanPhone = phone.replace(/[^\d]/g, '');
+              const formattedPhone = cleanPhone.length === 10 ? `91${cleanPhone}` : cleanPhone;
+              const message = `Hello, I am interested in your product: ${item.name} listed on Inquiry Bazaar.\n\nLink: https://dir.inquirybazaar.com/products/${item.slug}`;
+              const url = `whatsapp://send?phone=${formattedPhone}&text=${encodeURIComponent(message)}`;
+              Linking.openURL(url).catch(() => {
+                Linking.openURL(`https://wa.me/${formattedPhone}?text=${encodeURIComponent(message)}`);
+              });
+            }}
+            className="flex-1 flex-row justify-center items-center py-3 rounded-xl border border-emerald-200 bg-emerald-50 active:bg-emerald-100 mr-2"
+          >
+            <Ionicons name="logo-whatsapp" size={15} color="#16a34a" />
+            <Text className="text-emerald-700 font-jakarta-bold text-[12px] ml-1">WhatsApp</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -388,10 +405,10 @@ export default function ProductListingPage() {
               setInqMessage(`Hi, I am interested in your product: ${item.name}. Please share pricing and details.`);
               setInquiryModalVisible(true);
             }}
-            className="flex-[2] flex-row justify-center items-center py-3 rounded-xl bg-indigo-600 active:opacity-90 shadow-sm shadow-indigo-600/30"
+            className="flex-[1.5] flex-row justify-center items-center py-3 rounded-xl bg-indigo-600 active:opacity-90 shadow-sm shadow-indigo-600/30"
           >
-            <Ionicons name="mail-outline" size={16} color="white" />
-            <Text className="text-white font-jakarta-bold text-[12px] ml-1.5">Inquiry</Text>
+            <Ionicons name="mail-outline" size={15} color="white" />
+            <Text className="text-white font-jakarta-bold text-[12px] ml-1">Inquiry</Text>
           </TouchableOpacity>
         </View>
       </View>

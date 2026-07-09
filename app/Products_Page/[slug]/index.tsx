@@ -1,6 +1,6 @@
 import EnquiryModal from "@/components/EnquiryModal";
 import { productCache } from "@/utils/productCache";
-import { Feather, Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
+import { Feather, Ionicons, MaterialCommunityIcons, FontAwesome } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Image } from "expo-image";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
@@ -145,6 +145,24 @@ export default function ProductDetailPage() {
   const getPrimaryImage = (media: any[]) => {
     if (!media || media.length === 0) return null;
     return (media.find((m: any) => m.isPrimary) || media[0])?.url || null;
+  };
+
+  const openWhatsApp = () => {
+    if (!phone) return;
+    const cleanPhone = phone.replace(/[^\d]/g, '');
+    const formattedPhone = cleanPhone.length === 10 ? `91${cleanPhone}` : cleanPhone;
+    const message = `Hello, I am interested in your product: ${product.name} listed on Inquiry Bazaar.\n\nLink: https://dir.inquirybazaar.com/products/${product.slug}`;
+    const url = `whatsapp://send?phone=${formattedPhone}&text=${encodeURIComponent(message)}`;
+    
+    Linking.canOpenURL(url).then(supported => {
+      if (supported) {
+        Linking.openURL(url);
+      } else {
+        Linking.openURL(`https://wa.me/${formattedPhone}?text=${encodeURIComponent(message)}`);
+      }
+    }).catch(() => {
+      Linking.openURL(`https://wa.me/${formattedPhone}?text=${encodeURIComponent(message)}`);
+    });
   };
 
   if (!product) {
@@ -344,12 +362,21 @@ export default function ProductDetailPage() {
             ) : null}
 
             {phone ? (
-              <TouchableOpacity onPress={() => Linking.openURL(`tel:${phone}`)} style={{ flexDirection: "row", alignItems: "center", marginBottom: 20 }}>
-                <View style={{ width: 28, height: 28, borderRadius: 14, backgroundColor: "#dcfce7", alignItems: "center", justifyContent: "center", marginRight: 12 }}>
-                  <Feather name="phone" size={13} color="#15803d" />
-                </View>
-                <Text style={{ color: "#2563eb", fontWeight: "700", fontSize: 16 }}>{phone}</Text>
-              </TouchableOpacity>
+              <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
+                <TouchableOpacity onPress={() => Linking.openURL(`tel:${phone}`)} style={{ flexDirection: "row", alignItems: "center", flex: 1 }}>
+                  <View style={{ width: 28, height: 28, borderRadius: 14, backgroundColor: "#dcfce7", alignItems: "center", justifyContent: "center", marginRight: 12 }}>
+                    <Feather name="phone" size={13} color="#15803d" />
+                  </View>
+                  <Text style={{ color: "#2563eb", fontWeight: "700", fontSize: 16 }}>{phone}</Text>
+                </TouchableOpacity>
+                <TouchableOpacity 
+                  onPress={openWhatsApp}
+                  style={{ flexDirection: "row", alignItems: "center", backgroundColor: "#e8f5e9", borderWidth: 1, borderColor: "#a5d6a7", paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20, gap: 6 }}
+                >
+                  <FontAwesome name="whatsapp" size={16} color="#25D366" />
+                  <Text style={{ color: "#1b5e20", fontWeight: "700", fontSize: 12 }}>WhatsApp</Text>
+                </TouchableOpacity>
+              </View>
             ) : null}
 
             <View style={{ flexDirection: "row", gap: 12 }}>
