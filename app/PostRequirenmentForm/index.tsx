@@ -2,20 +2,20 @@ import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import React, { useCallback, useMemo, useRef, useState } from "react";
 import {
-  ActivityIndicator,
-  KeyboardAvoidingView,
-  Linking,
-  Modal,
-  Platform,
-  ScrollView,
-  StatusBar,
-  StyleSheet,
-  Text,
-  TextInput,
-  TextInputProps,
-  TouchableOpacity,
-  useWindowDimensions,
-  View
+    ActivityIndicator,
+    KeyboardAvoidingView,
+    Linking,
+    Modal,
+    Platform,
+    ScrollView,
+    StatusBar,
+    StyleSheet,
+    Text,
+    TextInput,
+    TextInputProps,
+    TouchableOpacity,
+    useWindowDimensions,
+    View
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -278,7 +278,6 @@ export default function RequestQuoteForm() {
               placeholder="Your name"
               value={formData.fullName}
               onChangeText={(text) => handleChange("fullName", text)}
-              editable={!loading && !showOtpBox}
             />
 
             <View style={styles.row}>
@@ -291,7 +290,6 @@ export default function RequestQuoteForm() {
                   autoCapitalize="none"
                   value={formData.email}
                   onChangeText={(text) => handleChange("email", text)}
-                  editable={!loading && !showOtpBox}
                 />
               </View>
               <View style={styles.halfInput}>
@@ -301,7 +299,6 @@ export default function RequestQuoteForm() {
                   placeholder="Company name"
                   value={formData.companyName}
                   onChangeText={(text) => handleChange("companyName", text)}
-                  editable={!loading && !showOtpBox}
                 />
               </View>
             </View>
@@ -315,7 +312,6 @@ export default function RequestQuoteForm() {
                   autoCapitalize="characters"
                   value={formData.gstNumber}
                   onChangeText={(text) => handleChange("gstNumber", text)}
-                  editable={!loading && !showOtpBox}
                 />
               </View>
               <View style={styles.halfInput}>
@@ -328,7 +324,6 @@ export default function RequestQuoteForm() {
                   maxLength={10}
                   value={formData.phoneNumber}
                   onChangeText={(text) => handleChange("phoneNumber", text.replace(/[^0-9]/g, ""))}
-                  editable={!loading && !showOtpBox}
                 />
               </View>
             </View>
@@ -343,7 +338,6 @@ export default function RequestQuoteForm() {
               textAlignVertical="top"
               value={formData.requirement}
               onChangeText={(text) => handleChange("requirement", text)}
-              editable={!loading && !showOtpBox}
             />
 
             {/* OTP BOX */}
@@ -363,7 +357,6 @@ export default function RequestQuoteForm() {
                     setOtp(text.replace(/[^0-9]/g, ""));
                     setErrorMessage("");
                   }}
-                  editable={!loading}
                   maxFontSizeMultiplier={1} // Prevent massive OTP text
                 />
               </View>

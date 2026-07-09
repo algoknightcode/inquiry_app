@@ -16,7 +16,7 @@ import {
     View,
 } from "react-native";
 // 1. Import Reanimated for UI Thread scrolling
-import Animated, { runOnJS, runOnUI, scrollTo, SharedValue, useAnimatedReaction, useAnimatedRef } from "react-native-reanimated";
+import Animated, { runOnUI, scrollTo, SharedValue, useAnimatedRef } from "react-native-reanimated";
 
 type Media = {
   _id: string;
@@ -229,7 +229,7 @@ export default function HorizontalProductList({ isScrolling }: { isScrolling?: S
   // 4. Reduced array copies from 100 to 30
   const replicatedData = useMemo(() => {
     if (!products || products.length === 0) return [];
-    return Array(30).fill(products).flat();
+    return Array(10).fill(products).flat();
   }, [products]);
 
   const baseMiddleIndex = useMemo(() => {
@@ -257,15 +257,12 @@ export default function HorizontalProductList({ isScrolling }: { isScrolling?: S
         activeIndexRef.current = safeMiddleIndex;
       } else {
         activeIndexRef.current = nextIndex;
-        // 5. Reanimated runOnUI for smooth auto-scrolling
-        const targetOffset = nextIndex * ITEM_SIZE;
-        runOnUI((offset: number) => {
-          'worklet';
-          scrollTo(flatListRef, offset, 0, true);
-        })(targetOffset);
+        if (flatListRef.current) {
+          flatListRef.current.scrollToIndex({ index: nextIndex, animated: true });
+        }
       }
     }, 3000); 
-  }, [baseMiddleIndex, replicatedData.length, products.length, ITEM_SIZE, isFocused]);
+  }, [baseMiddleIndex, replicatedData.length, products.length, isFocused]);
 
   const stopAutoPlay = useCallback(() => {
     if (timerRef.current) clearInterval(timerRef.current);
@@ -274,19 +271,14 @@ export default function HorizontalProductList({ isScrolling }: { isScrolling?: S
 
 
   useEffect(() => {
-    if (!isFocused) {
-      stopAutoPlay();
-    }
-    return () => stopAutoPlay();
-  }, [isFocused, stopAutoPlay]);
-
-  useEffect(() => {
-    if (replicatedData.length > 0) {
+    if (isFocused && replicatedData.length > 0) {
       activeIndexRef.current = baseMiddleIndex;
       startAutoPlay();
       return () => stopAutoPlay();
+    } else {
+      stopAutoPlay();
     }
-  }, [replicatedData, baseMiddleIndex, startAutoPlay, stopAutoPlay]);
+  }, [isFocused, replicatedData, baseMiddleIndex, startAutoPlay, stopAutoPlay]);
 
   const handleMomentumScrollEnd = useCallback((event: NativeSyntheticEvent<NativeScrollEvent>) => {
     const scrollOffset = event.nativeEvent.contentOffset.x;
@@ -392,9 +384,8 @@ export default function HorizontalProductList({ isScrolling }: { isScrolling?: S
           className="pl-5 py-2" 
           contentContainerStyle={{ paddingRight: 40 }} 
           snapToInterval={ITEM_SIZE}
-          decelerationRate="fast"
           snapToAlignment="start"
-          removeClippedSubviews={true}
+          removeClippedSubviews={false}
           initialNumToRender={4}
           maxToRenderPerBatch={4}
           windowSize={5}

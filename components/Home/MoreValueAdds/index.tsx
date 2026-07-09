@@ -176,7 +176,6 @@ export default function MoreValueAdds({ isScrolling }: { isScrolling?: SharedVal
         horizontal
         showsHorizontalScrollIndicator={false}
         snapToInterval={cardWidth + cardGap}
-        decelerationRate="fast"
         contentContainerStyle={{ paddingHorizontal: containerPadding, paddingBottom: 10 }}
         onScroll={handleScroll}
         scrollEventThrottle={16}

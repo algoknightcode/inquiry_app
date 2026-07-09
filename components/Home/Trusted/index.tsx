@@ -6,28 +6,27 @@ import { Image } from "expo-image";
 import { useRouter } from "expo-router";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
-    Linking,
-    NativeScrollEvent,
-    NativeSyntheticEvent,
-    Pressable,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    useWindowDimensions,
-    View,
+  Linking,
+  NativeScrollEvent,
+  NativeSyntheticEvent,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  useWindowDimensions,
+  View,
 } from "react-native";
 // 1. Reanimated hooks for UI-thread animation
 import Animated, {
-    cancelAnimation,
-    runOnUI,
-    scrollTo,
-    SharedValue,
-    useAnimatedReaction,
-    useAnimatedRef,
-    useSharedValue,
-    withRepeat,
-    withTiming,
+  cancelAnimation,
+  runOnUI,
+  scrollTo,
+  SharedValue,
+  useAnimatedReaction,
+  useAnimatedRef,
+  useSharedValue,
+  withRepeat,
+  withTiming,
 } from "react-native-reanimated";
 import EnquiryModal from "../../EnquiryModal";
 
@@ -68,6 +67,7 @@ type DynamicLayout = {
   containerPadding: number;
   ITEM_SIZE: number;
 };
+
 // ── Cache Loader ───────────────────────────────────────────────────────────
 const TRUSTED_URL = "https://backend.inquirybazaar.com/api/categories/sub/titanium-dioxide/Delhi";
 function getInitialCachedTrustedProducts(): Product[] {
@@ -134,10 +134,6 @@ const staticStyles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 9999,
-    shadowColor: "#0f172a",
-    shadowOpacity: 0.2,
-    shadowRadius: 2,
-    shadowOffset: { width: 0, height: 1 },
   },
   trustBadgeText: {
     color: "white",
@@ -182,10 +178,6 @@ const staticStyles = StyleSheet.create({
     borderRadius: 8,
     alignItems: "center",
     justifyContent: "center",
-    shadowColor: "#0E2347",
-    shadowOpacity: 0.2,
-    shadowRadius: 2,
-    shadowOffset: { width: 0, height: 1 },
   },
   quoteButtonText: {
     color: "white",
@@ -198,10 +190,6 @@ const staticStyles = StyleSheet.create({
     borderRadius: 8,
     alignItems: "center",
     justifyContent: "center",
-    shadowColor: "#059669",
-    shadowOpacity: 0.2,
-    shadowRadius: 2,
-    shadowOffset: { width: 0, height: 1 },
   },
 });
 
@@ -244,6 +232,7 @@ const ProductCard = React.memo(
                 contentFit="cover"
                 transition={0} 
                 cachePolicy="memory-disk"
+                recyclingKey={primaryImage} 
               />
               <View style={staticStyles.trustBadge}>
                 <Text style={[staticStyles.trustBadgeText, { fontSize: 10 * fontScale, letterSpacing: 1.5 * fontScale }]}>
@@ -267,16 +256,16 @@ const ProductCard = React.memo(
               </View>
 
               <View style={staticStyles.buttonContainer}>
-                <TouchableOpacity activeOpacity={0.8} onPress={() => onQuotePress(item)} style={staticStyles.quoteButton}>
+                <Pressable onPress={() => onQuotePress(item)} style={({ pressed }) => [staticStyles.quoteButton, { opacity: pressed ? 0.8 : 1 }]}>
                   <Text style={[staticStyles.quoteButtonText, { fontSize: 13 * fontScale }]} numberOfLines={1}>
                     Request Quote
                   </Text>
-                </TouchableOpacity>
+                </Pressable>
 
                 {item.supplier?.phone && (
-                  <TouchableOpacity activeOpacity={0.8} onPress={() => Linking.openURL(`tel:${item.supplier?.phone}`)} style={staticStyles.callButton}>
+                  <Pressable onPress={() => Linking.openURL(`tel:${item.supplier?.phone}`)} style={({ pressed }) => [staticStyles.callButton, { opacity: pressed ? 0.8 : 1 }]}>
                     <Ionicons name="call" size={16} color="white" />
-                  </TouchableOpacity>
+                  </Pressable>
                 )}
               </View>
             </View>
@@ -362,7 +351,7 @@ const IBTrusted = ({ isScrolling }: { isScrolling?: SharedValue<boolean> }) => {
 
   const replicatedData = useMemo(() => {
     if (!products || products.length === 0) return [];
-    return Array(30).fill(products).flat();
+    return Array(5).fill(products).flat();
   }, [products]);
 
   const baseMiddleIndex = useMemo(() => {
@@ -377,8 +366,9 @@ const IBTrusted = ({ isScrolling }: { isScrolling?: SharedValue<boolean> }) => {
   const startAutoPlayUI = () => {
     'worklet';
     if (products.length <= 0) return;
+    autoplayPulse.value = 0;
     autoplayPulse.value = withRepeat(
-      withTiming(autoplayPulse.value + 1, { duration: 3000 }),
+      withTiming(1, { duration: 3000 }),
       -1
     );
   };
@@ -388,20 +378,18 @@ const IBTrusted = ({ isScrolling }: { isScrolling?: SharedValue<boolean> }) => {
     cancelAnimation(autoplayPulse);
   };
 
-
-
   // Listen to autoplay pulse and scroll
   useAnimatedReaction(
-    () => Math.floor(autoplayPulse.value),
+    () => autoplayPulse.value,
     (currentPulse, prevPulse) => {
       if (!isFocused) {
         return;
       }
-      if (currentPulse !== prevPulse && prevPulse !== null && !isAutoPlaying.value) {
-        return; // Don't scroll if user is dragging
-      }
-      
-      if (currentPulse !== prevPulse && prevPulse !== null && isAutoPlaying.value) {
+      if (prevPulse !== null && currentPulse < prevPulse) {
+        if (!isAutoPlaying.value) {
+          return; // Don't scroll if user is dragging
+        }
+        
         scrollIndex.value = scrollIndex.value + 1;
         scrollTo(flatListRef, scrollIndex.value * layout.ITEM_SIZE, 0, true);
         
@@ -419,25 +407,31 @@ const IBTrusted = ({ isScrolling }: { isScrolling?: SharedValue<boolean> }) => {
 
   useEffect(() => {
     if (replicatedData.length > 0 && products.length > 0) {
-      // Initialize position
-      scrollIndex.value = baseMiddleIndex;
-      setTimeout(() => {
-        flatListRef.current?.scrollToIndex({ index: baseMiddleIndex, animated: false });
-        
-        // Start UI Thread Loop
-        runOnUI(() => {
-          'worklet';
-          isAutoPlaying.value = true;
-          startAutoPlayUI();
-        })();
-      }, 500);
+      if (isFocused) {
+        // Initialize position
+        scrollIndex.value = baseMiddleIndex;
+        const initTimer = setTimeout(() => {
+          flatListRef.current?.scrollToIndex({ index: baseMiddleIndex, animated: false });
+          
+          // Start UI Thread Loop
+          runOnUI(() => {
+            'worklet';
+            isAutoPlaying.value = true;
+            startAutoPlayUI();
+          })();
+        }, 500);
 
-      return () => {
+        return () => {
+          clearTimeout(initTimer);
+          runOnUI(stopAutoPlayUI)();
+          isAutoPlaying.value = false;
+        };
+      } else {
         runOnUI(stopAutoPlayUI)();
         isAutoPlaying.value = false;
-      };
+      }
     }
-  }, [replicatedData, baseMiddleIndex, products.length]);
+  }, [isFocused, replicatedData, baseMiddleIndex, products.length]);
 
   // ── Manual Scroll Handling ──
   const handleScrollBegin = useCallback(() => {
@@ -452,8 +446,8 @@ const IBTrusted = ({ isScrolling }: { isScrolling?: SharedValue<boolean> }) => {
     const scrollOffset = event.nativeEvent.contentOffset.x;
     let currentIndex = Math.round(scrollOffset / layout.ITEM_SIZE);
 
-    // Infinite Loop Snap-back
-    if (currentIndex < 5 || currentIndex > replicatedData.length - 5) {
+    // Infinite Loop Snap-back adjusted for shorter array
+    if (currentIndex < 2 || currentIndex > replicatedData.length - 3) {
       const remainder = currentIndex % products.length;
       currentIndex = baseMiddleIndex + remainder;
       flatListRef.current?.scrollToIndex({ index: currentIndex, animated: false });
@@ -564,8 +558,8 @@ const IBTrusted = ({ isScrolling }: { isScrolling?: SharedValue<boolean> }) => {
           // FlatList Optimizations
           getItemLayout={getItemLayout}
           initialNumToRender={4}
-          maxToRenderPerBatch={4}
-          windowSize={5}
+          maxToRenderPerBatch={3}
+          windowSize={3}
           updateCellsBatchingPeriod={40}
           removeClippedSubviews={true} 
         />

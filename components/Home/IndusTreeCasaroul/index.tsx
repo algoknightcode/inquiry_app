@@ -1,7 +1,8 @@
 import { fetchWithCache, getCacheSync } from "@/utils/apiCache";
 import { Image } from "expo-image";
 import { useRouter } from "expo-router";
-import React, { useCallback, useEffect, useState } from "react";
+import { useIsFocused } from "@react-navigation/native";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
     ActivityIndicator,
     Dimensions,
@@ -12,19 +13,11 @@ import {
     View,
 } from "react-native";
 import Animated, {
-    cancelAnimation,
     Extrapolation,
     interpolate,
-    runOnUI,
-    scrollTo, // ⚡ ADDED: Proper way to stop native animations
     SharedValue,
-    useAnimatedReaction,
-    useAnimatedRef,
-    useAnimatedScrollHandler,
     useAnimatedStyle,
     useSharedValue,
-    withRepeat,
-    withTiming,
 } from "react-native-reanimated";
 
 const { width: screenWidth } = Dimensions.get("window");
@@ -155,29 +148,22 @@ export default function IndustryTreeCarousel({ isScrolling }: { isScrolling?: Sh
   const [loading, setLoading] = useState(initialData.length === 0); // skip loader if cache hit
   const [error, setError] = useState<string | null>(null);
   
-  const flatRef = useAnimatedRef<Animated.FlatList<Industry>>();
+  const isFocused = useIsFocused();
+  const flatRef = useRef<Animated.FlatList<Industry>>(null);
   const scrollX = useSharedValue(0);
-  const currentIndex = useSharedValue(0);
-  const autoplayPulse = useSharedValue(0);
-  const isDragging = useSharedValue(false);
-  const dataLength = useSharedValue(initialData.length);
+  const activeIndexRef = useRef(0);
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
-    // Already have data from cache — still fetch silently in background to keep fresh,
-    // but don't show loader or reset state if we already have content.
     (async () => {
       try {
         const json: ApiResponse = await fetchWithCache(TREE_URL);
         if (json.success && json.data) {
           const filtered = json.data.filter((i) => (i.categories?.length ?? 0) >= 4);
-          // Only update state if we got new data (avoids unnecessary re-renders on cache hits)
           setData((prev) => {
             if (prev.length === filtered.length && prev[0]?._id === filtered[0]?._id) return prev;
             return filtered;
           });
-          dataLength.value = filtered.length;
-        } else {
-          throw new Error("Invalid response");
         }
       } catch (e: any) {
         if (data.length === 0) setError(e.message);
@@ -187,75 +173,45 @@ export default function IndustryTreeCarousel({ isScrolling }: { isScrolling?: Sh
     })();
   }, []);
 
-  // ⚡ FIX 1: Defined Worklet safely
-  const startAutoPlayUI = () => {
-    'worklet';
-    if (dataLength.value <= 1) return;
-    autoplayPulse.value = withRepeat(
-      withTiming(autoplayPulse.value + 1, { duration: 4000 }),
-      -1,
-      false
-    );
-  };
-
-  // ⚡ Stop autoplay on scroll
-  const stopAutoPlayUI = () => {
-    'worklet';
-    cancelAnimation(autoplayPulse);
-  };
-
-  // ⚡ FIX 2: Check current vs previous to prevent reaction spam/crashes
-  useAnimatedReaction(
-    () => Math.floor(autoplayPulse.value),
-    (current, previous) => {
-      if (current !== previous && previous !== null) {
-        if (!isDragging.value && dataLength.value > 0) {
-          currentIndex.value = (currentIndex.value + 1) % dataLength.value;
-          scrollTo(flatRef, currentIndex.value * screenWidth, 0, true);
-        }
+  const startAutoPlay = useCallback(() => {
+    if (!isFocused || data.length <= 1) return;
+    stopAutoPlay();
+    
+    timerRef.current = setInterval(() => {
+      const nextIndex = (activeIndexRef.current + 1) % data.length;
+      activeIndexRef.current = nextIndex;
+      if (flatRef.current) {
+        flatRef.current.scrollToIndex({ index: nextIndex, animated: true });
       }
-    }
-  );
+    }, 4000);
+  }, [isFocused, data.length]);
 
-  // ⚡ FIX 3: Removed startAutoPlayUI from dependency array to stop the infinite loop memory leak
+  const stopAutoPlay = useCallback(() => {
+    if (timerRef.current) clearInterval(timerRef.current);
+  }, []);
+
   useEffect(() => {
-    if (data.length > 1) {
-      runOnUI(startAutoPlayUI)();
+    if (isFocused && data.length > 1) {
+      startAutoPlay();
+    } else {
+      stopAutoPlay();
     }
-  }, [data]);
+    return stopAutoPlay;
+  }, [isFocused, data.length, startAutoPlay, stopAutoPlay]);
 
-  // ⚡ Pause carousel during main feed scroll
-  useAnimatedReaction(
-    () => isScrolling?.value ?? false,
-    (scrolling) => {
-      if (scrolling) {
-        // User is scrolling main feed - pause carousel
-        stopAutoPlayUI();
-      } else {
-        // Scroll ended - resume carousel
-        startAutoPlayUI();
-      }
-    }
-  ); 
+  const scrollHandler = (event: any) => {
+    scrollX.value = event.nativeEvent.contentOffset.x;
+  };
 
-  // --- Fully Bridgeless Scroll Handler ---
-  const scrollHandler = useAnimatedScrollHandler({
-    onScroll: (event) => {
-      scrollX.value = event.contentOffset.x;
-    },
-    onBeginDrag: () => {
-      isDragging.value = true;
-      // ⚡ FIX 4: Safely cancel native animation
-      cancelAnimation(autoplayPulse);
-    },
-    onMomentumEnd: (event) => {
-      isDragging.value = false;
-      currentIndex.value = Math.round(event.contentOffset.x / screenWidth);
-      
-      // ⚡ FIX 5: Directly call the worklet. DO NOT use runOnUI here because we are ALREADY on the UI thread!
-      startAutoPlayUI(); 
-    }
-  });
+  const onMomentumEnd = (event: any) => {
+    const newIndex = Math.round(event.nativeEvent.contentOffset.x / screenWidth);
+    activeIndexRef.current = newIndex;
+    startAutoPlay();
+  };
+
+  const onScrollBeginDrag = () => {
+    stopAutoPlay();
+  };
 
   const handleIndustryPress = useCallback((item: Industry) => {
     router.push({ pathname: "/GrId_MainCategory", params: { id: item._id, name: item.name }});
@@ -315,9 +271,11 @@ export default function IndustryTreeCarousel({ isScrolling }: { isScrolling?: Sh
             scrollsToTop={false}
             showsHorizontalScrollIndicator={false}
             
-            // ⚡ Zero-Bridge Native Event Handler
+            // Native Event Handlers
             onScroll={scrollHandler}
-            scrollEventThrottle={32}
+            onMomentumScrollEnd={onMomentumEnd}
+            onScrollBeginDrag={onScrollBeginDrag}
+            scrollEventThrottle={16}
             
             // Aggressive Optimizations for Horizontal Carousel
             getItemLayout={getItemLayout}
@@ -325,7 +283,7 @@ export default function IndustryTreeCarousel({ isScrolling }: { isScrolling?: Sh
             maxToRenderPerBatch={1}
             windowSize={2}
             updateCellsBatchingPeriod={50}
-            removeClippedSubviews={Platform.OS === 'android'}
+            removeClippedSubviews={false}
           />
           
           <View style={s.dotsRow}>

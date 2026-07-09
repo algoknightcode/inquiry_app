@@ -60,7 +60,7 @@ export default function HomeScreen() {
   React.useEffect(() => {
     const timer = setTimeout(() => {
       setRenderBelowFold(true);
-    }, 700); // Wait 700ms to let first frame paint smoothly
+    }, 300); // 300ms — enough for first frame to paint without blocking below-fold content
     return () => clearTimeout(timer);
   }, []);
 
@@ -197,7 +197,7 @@ export default function HomeScreen() {
         scrollEventThrottle={32} // Reduce JS thread spam - fires at ~30fps while UI thread maintains 60fps via Reanimated
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="always"
-        removeClippedSubviews={Platform.OS === 'android'}
+        removeClippedSubviews={false}
         windowSize={15}
         maxToRenderPerBatch={5}
         initialNumToRender={8}

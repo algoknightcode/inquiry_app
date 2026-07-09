@@ -114,7 +114,6 @@ export default function LeadGenCard() {
             onChangeText={setProductName}
             placeholder="e.g. Diesel Generator"
             placeholderTextColor="#94a3b8"
-            editable={!isLoading}
             style={styles.textInput}
             selectionColor="#2563eb"
           />
@@ -139,7 +138,6 @@ export default function LeadGenCard() {
             placeholderTextColor="#94a3b8"
             keyboardType="phone-pad"
             maxLength={10}
-            editable={!isLoading}
             style={styles.textInput}
             selectionColor="#2563eb"
           />

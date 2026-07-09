@@ -190,8 +190,9 @@ export default function MoreForYou({ isScrolling }: { isScrolling?: SharedValue<
   const startAutoPlayUI = () => {
     'worklet';
     if (!isFocused) return;
+    autoplayPulse.value = 0;
     autoplayPulse.value = withRepeat(
-      withTiming(autoplayPulse.value + 1, { duration: 2500 }),
+      withTiming(1, { duration: 2500 }),
       -1
     );
   };
@@ -222,12 +223,12 @@ export default function MoreForYou({ isScrolling }: { isScrolling?: SharedValue<
 
   // 6. Native Reaction: Listens to the UI ticker and performs smooth or silent snaps
   useAnimatedReaction(
-    () => Math.floor(autoplayPulse.value),
+    () => autoplayPulse.value,
     (currentPulse, prevPulse) => {
       if (!isFocused) {
         return;
       }
-      if (currentPulse !== prevPulse && prevPulse !== null && !isDragging.value) {
+      if (prevPulse !== null && currentPulse < prevPulse && !isDragging.value) {
         let nextIndex = currentIndex.value + 1;
         
         // Edge handling directly on the UI thread

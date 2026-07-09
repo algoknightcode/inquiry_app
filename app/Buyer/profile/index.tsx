@@ -48,8 +48,8 @@ const InputField = ({ label, icon, placeholder, value, onChangeText, keyboardTyp
     >
       <Ionicons name={icon} size={moderateScale(18)} color="#64748B" style={{ marginRight: scale(10) }} />
       <TextInput
-        style={{ fontSize: moderateScale(14) }}
-        className="flex-1 h-full text-slate-900 font-jakarta-semibold"
+        style={{ fontSize: moderateScale(14), flex: 1, height: '100%', color: '#0f172a' }}
+        className="font-jakarta-semibold"
         placeholder={placeholder}
         placeholderTextColor="#94A3B8"
         value={value}
@@ -583,7 +583,7 @@ const BuyerProfileSettings = () => {
 
   return (
     <KeyboardAvoidingView
-      behavior={Platform.OS === "ios" ? "padding" : "padding"}
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
       keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 20}
       className="flex-1 bg-slate-50"
       style={{ flex: 1 }}

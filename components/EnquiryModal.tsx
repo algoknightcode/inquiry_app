@@ -1,20 +1,20 @@
-import React, { useState, useEffect } from "react";
-import {
-  Modal,
-  View,
-  Text,
-  TouchableOpacity,
-  ScrollView,
-  TextInput,
-  ActivityIndicator,
-  KeyboardAvoidingView,
-  Platform,
-  Alert,
-  StyleSheet
-} from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { Image } from "expo-image";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { Image } from "expo-image";
+import React, { useEffect, useState } from "react";
+import {
+    ActivityIndicator,
+    Alert,
+    KeyboardAvoidingView,
+    Modal,
+    Platform,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View
+} from "react-native";
 
 interface EnquiryModalProps {
   visible: boolean;
@@ -129,7 +129,7 @@ export default function EnquiryModal({ visible, onClose, product }: EnquiryModal
   return (
     <>
       <Modal visible={visible} animationType="slide" transparent={true} onRequestClose={onClose}>
-        <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={styles.modalBg}>
+        <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={styles.modalBg}>
           <View style={styles.sheetContainer}>
             <View style={styles.header}>
               <Text style={styles.headerTitle}>Contact Supplier</Text>
@@ -155,22 +155,22 @@ export default function EnquiryModal({ visible, onClose, product }: EnquiryModal
 
               <View style={styles.inputWrapper}>
                 <Ionicons name="person-outline" size={18} color="#64748b" style={styles.icon} />
-                <TextInput style={styles.input} placeholder="Your Name *" placeholderTextColor="#94a3b8" value={inqName} onChangeText={setInqName} editable={!isSubmitting} />
+                <TextInput style={styles.input} placeholder="Your Name *" placeholderTextColor="#94a3b8" value={inqName} onChangeText={setInqName} />
               </View>
 
               <View style={styles.inputWrapper}>
                 <Ionicons name="mail-outline" size={18} color="#64748b" style={styles.icon} />
-                <TextInput style={styles.input} placeholder="Your Email" placeholderTextColor="#94a3b8" keyboardType="email-address" autoCapitalize="none" value={inqEmail} onChangeText={setInqEmail} editable={!isSubmitting} />
+                <TextInput style={styles.input} placeholder="Your Email" placeholderTextColor="#94a3b8" keyboardType="email-address" autoCapitalize="none" value={inqEmail} onChangeText={setInqEmail} />
               </View>
 
               <View style={styles.inputWrapper}>
                 <Ionicons name="call-outline" size={18} color="#64748b" style={styles.icon} />
-                <TextInput style={styles.input} placeholder="Phone Number *" placeholderTextColor="#94a3b8" keyboardType="phone-pad" value={inqPhone} onChangeText={setInqPhone} editable={!isSubmitting} />
+                <TextInput style={styles.input} placeholder="Phone Number *" placeholderTextColor="#94a3b8" keyboardType="phone-pad" value={inqPhone} onChangeText={setInqPhone} />
               </View>
 
               <View style={[styles.inputWrapper, styles.multilineWrapper]}>
                 <Ionicons name="chatbubble-outline" size={18} color="#64748b" style={[styles.icon, { marginTop: 2 }]} />
-                <TextInput style={[styles.input, styles.multilineInput]} placeholder="Your Message *" placeholderTextColor="#94a3b8" multiline value={inqMessage} onChangeText={setInqMessage} editable={!isSubmitting} />
+                <TextInput style={[styles.input, styles.multilineInput]} placeholder="Your Message *" placeholderTextColor="#94a3b8" multiline value={inqMessage} onChangeText={setInqMessage} />
               </View>
 
               <TouchableOpacity onPress={handleSendInquiry} disabled={isSubmitting} style={styles.submitBtn}>

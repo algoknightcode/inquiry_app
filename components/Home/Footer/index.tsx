@@ -87,7 +87,9 @@ export default function CustomTabBar() {
     return () => backHandler.remove();
   }, [activeTab, pathname]);
 
-  const segments = useSegments();
+  // Cast to string[] — expo-router types useSegments() as a strict route tuple,
+  // but we need plain string comparisons for dynamic/auth segment checks.
+  const segments = useSegments() as string[];
 
   // Hide the tab bar ONLY on onboarding/splash (index, welcome) and choose-role pages
   // We use useSegments() because usePathname() returns "/" for both the splash screen and the homepage `/(tabs)`.
@@ -98,41 +100,46 @@ export default function CustomTabBar() {
   
   const shouldHide = isSplash || isWelcome || isChooseRole || isAuth;
 
-  if (shouldHide) {
-    return null;
-  }
-
+  // ⚠️ useCallback MUST be defined before any conditional return (Rules of Hooks)
   const handlePress = useCallback((tabId: string) => {
-    // 1. Fire-and-forget haptics (do not await, it blocks navigation)
     try {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     } catch (e) {
       // Fail silently if not supported
     }
 
-    // 2. Use `router.navigate` instead of `router.replace` to keep screens alive and switch instantly
+    // Don't navigate if we're already on this tab — prevents unnecessary screen remounts
+    if (activeTab === tabId) return;
+
+    // Use router.replace so tabs SWAP the current screen instead of stacking.
+    // Exception: home uses navigate() so if home is earlier in the stack it gets
+    // brought back without remounting all its heavy carousels.
     if (tabId === "home") {
       router.navigate("/(tabs)");
     } else if (tabId === "request-quote") {
-      router.navigate("/PostRequirenmentForm");
+      router.replace("/PostRequirenmentForm");
     } else if (tabId === "account") {
-      // 3. Use reactive roleContext instead of stale module variables
       if (userRole === "seller" && globalSellerId) {
-        router.navigate("/Seller/Profile");
+        router.replace("/Seller/Profile");
       } else if (userRole === "buyer" && globalBuyerId) {
-        router.navigate("/Buyer/profile");
+        router.replace("/Buyer/profile");
       } else {
-        router.navigate("/(auth)/choose-role");
+        router.replace("/(auth)/choose-role");
       }
     } else if (tabId === "wishlist") {
-      router.navigate("/Wishlist");
+      router.replace("/Wishlist");
     } else if (tabId === "categories") {
-      router.navigate("/Industries");
+      router.replace("/Industries");
     }
-  }, [userRole, globalSellerId, globalBuyerId]);
+  }, [userRole, globalSellerId, globalBuyerId, activeTab]);
+
+  if (shouldHide) {
+    return null;
+  }
 
   return (
     <View 
+      pointerEvents="box-none"
       style={{
         position: "absolute",
         bottom: 0,

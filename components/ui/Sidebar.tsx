@@ -3,6 +3,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import React, { memo, useCallback, useEffect, useMemo, useState } from "react";
 import {
+    LayoutAnimation,
     Modal,
     Pressable,
     ScrollView,
@@ -60,15 +61,18 @@ const RenderMenuItem = memo(({ item, metrics, onPress }: { item: MenuItem, metri
   return (
     <Pressable
       onPress={handlePress}
-      className={`flex-row items-center rounded-[16px] active:scale-[0.97] transition-all ${
-        item.highlight ? 'border border-blue-100' : 'active:bg-slate-50'
+      className={`flex-row items-center rounded-[16px] ${
+        item.highlight ? 'border border-blue-100' : ''
       }`}
-      style={{
+      style={({ pressed }) => ({
         paddingHorizontal: metrics.itemPaddingHorizontal,
         paddingVertical: metrics.itemPaddingVertical,
         marginBottom: metrics.itemMarginBottom,
-        backgroundColor: item.highlight ? 'rgba(239, 246, 255, 0.5)' : 'transparent',
-      }}
+        backgroundColor: pressed 
+            ? (item.highlight ? 'rgba(239, 246, 255, 0.8)' : '#f1f5f9')
+            : (item.highlight ? 'rgba(239, 246, 255, 0.5)' : 'transparent'),
+        transform: [{ scale: pressed ? 0.97 : 1 }]
+      })}
       android_ripple={{ color: item.highlight ? "#dbeafe" : "#f1f5f9" }}
     >
       <View 
@@ -94,8 +98,14 @@ const RenderSubItem = memo(({ subItem, metrics, onPress }: { subItem: MenuItem, 
   return (
     <Pressable
       onPress={handlePress}
-      style={{ paddingVertical: metrics.subItemPaddingVertical, paddingHorizontal: metrics.subItemPaddingHorizontal, marginBottom: 4 }}
-      className="flex-row items-center rounded-xl active:bg-white active:scale-[0.99] transition-all"
+      style={({ pressed }) => ({ 
+        paddingVertical: metrics.subItemPaddingVertical, 
+        paddingHorizontal: metrics.subItemPaddingHorizontal, 
+        marginBottom: 4,
+        backgroundColor: pressed ? '#ffffff' : 'transparent',
+        transform: [{ scale: pressed ? 0.99 : 1 }]
+      })}
+      className="flex-row items-center rounded-xl"
     >
       <View 
         style={{ width: metrics.subItemIconBoxSize, height: metrics.subItemIconBoxSize }}
@@ -110,56 +120,69 @@ const RenderSubItem = memo(({ subItem, metrics, onPress }: { subItem: MenuItem, 
 
 const SellerHeader = memo(({ metrics, onNavigate }: { metrics: any; onNavigate: (route: string) => void }) => {
   const [expanded, setExpanded] = useState(true);
-  const progress = useSharedValue(1);
 
   const toggleMenu = useCallback(() => {
-    const nextState = !expanded;
-    setExpanded(nextState);
-    progress.value = withTiming(nextState ? 1 : 0, { duration: 250, easing: Easing.out(Easing.cubic) });
-  }, [expanded, progress]);
-
-  const accordionStyle = useAnimatedStyle(() => ({ height: progress.value * metrics.totalSubmenuHeight, opacity: progress.value }));
-  const arrowStyle = useAnimatedStyle(() => ({ transform: [{ rotate: `${interpolate(progress.value, [0, 1], [0, 180])}deg` }] }));
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    setExpanded(prev => !prev);
+  }, []);
 
   return (
     <View className="mb-4">
-      <View style={{ marginHorizontal: 4, marginBottom: metrics.planCardMarginBottom, padding: metrics.planCardPadding }} className="rounded-2xl bg-emerald-50 border border-emerald-100 flex-row items-center">
+      {/* Premium Plan Card */}
+      <View 
+        style={{ 
+          marginHorizontal: 4, 
+          marginBottom: metrics.planCardMarginBottom, 
+          padding: metrics.planCardPadding,
+          borderColor: "#d1fae5",
+          borderWidth: 1,
+        }} 
+        className="rounded-2xl bg-emerald-50/50 flex-row items-center"
+      >
         <View className="h-9 w-9 rounded-xl bg-emerald-500 items-center justify-center mr-3">
           <Ionicons name="shield-checkmark" size={18} color="#ffffff" />
         </View>
         <View className="flex-1">
-          <Text className="text-[14px] font-jakarta-bold text-slate-800">Standard Plan</Text>
+          <Text className="text-[14px] font-jakarta-bold text-emerald-800">Standard Plan</Text>
         </View>
       </View>
 
-      <View className="rounded-2xl overflow-hidden border border-slate-100 bg-slate-50">
-        <Pressable onPress={toggleMenu} className="flex-row items-center justify-between" style={{ paddingHorizontal: metrics.itemPaddingHorizontal, paddingVertical: metrics.itemPaddingVertical }}>
+      {/* Accordion Box */}
+      <View className="rounded-2xl overflow-hidden border border-slate-100 bg-slate-50/70">
+        <Pressable 
+          onPress={toggleMenu} 
+          className="flex-row items-center justify-between" 
+          style={{ paddingHorizontal: metrics.itemPaddingHorizontal, paddingVertical: metrics.itemPaddingVertical }}
+        >
           <View className="flex-row items-center">
             <View style={{ width: metrics.itemIconBoxSize - 2, height: metrics.itemIconBoxSize - 2 }} className="rounded-lg bg-blue-900 items-center justify-center mr-3" >
               <Ionicons name="ribbon" size={metrics.itemIconSize - 2} color="#ffffff" />
             </View>
             <Text style={{ fontSize: metrics.itemTextSize - 0.5 }} className="font-jakarta-bold text-slate-800">Seller Central</Text>
           </View>
-          <Animated.View style={arrowStyle}>
+          <View style={{ transform: [{ rotate: expanded ? "180deg" : "0deg" }] }}>
             <Ionicons name="chevron-down" size={metrics.chevronSize} color="#475569" />
-          </Animated.View>
+          </View>
         </Pressable>
 
-        <Animated.View style={[accordionStyle, { overflow: 'hidden' }]}>
+        {expanded && (
           <View style={{ paddingVertical: 4, paddingHorizontal: 8 }}>
-            {sellerSubMenuItems.map((subItem, idx) => <RenderSubItem key={idx} subItem={subItem} metrics={metrics} onPress={onNavigate} />)}
+            {sellerSubMenuItems.map((subItem, idx) => (
+              <RenderSubItem key={idx} subItem={subItem} metrics={metrics} onPress={onNavigate} />
+            ))}
           </View>
-        </Animated.View>
+        )}
       </View>
     </View>
   );
 });
 
+
+
 const Sidebar = ({ visible, onClose, currentRole }: SidebarProps) => {
   const insets = useSafeAreaInsets();
   const { width: screenWidth, height: screenHeight } = useWindowDimensions();
   const [logoutConfirmVisible, setLogoutConfirmVisible] = useState(false);
-  const [isMounted, setIsMounted] = useState(false);
   
   // 👉 USE REACTIVE ROLE STATE FROM CONTEXT
   const { globalBuyerId, globalSellerId, setGlobalSellerId, setSellerSignedIn, setGlobalBuyerId, setGlobalRole, clearRoleState } = useRole();
@@ -195,25 +218,24 @@ const Sidebar = ({ visible, onClose, currentRole }: SidebarProps) => {
     const subItemIconBoxSize = 28 * baseScale;
     const totalSubmenuHeight = (sellerSubMenuItems.length * (subItemIconBoxSize + (9 * hScale * 2) + 4)) + 8;
 
-    return { sidebarWidth, scale: baseScale, headerPaddingHorizontal: 20 * baseScale, headerPaddingTop: 12 * hScale, headerPaddingBottom: 16 * hScale, logoSize: 40 * baseScale, logoTextSize: 17 * baseScale, logoSubTextSize: 13 * baseScale, closeBtnSize: 32 * baseScale, closeIconSize: 18 * baseScale, scrollPaddingHorizontal: 12 * baseScale, scrollPaddingTop: 12 * hScale, itemMarginBottom: 8 * hScale, itemPaddingVertical: 12 * hScale, itemPaddingHorizontal: 14 * baseScale, itemIconBoxSize: 36 * baseScale, itemIconSize: 18 * baseScale, itemTextSize: 16.5 * baseScale, chevronSize: 15 * baseScale, subItemPaddingVertical: 9 * hScale, subItemPaddingHorizontal: 10 * baseScale, subItemIconBoxSize, subItemIconSize: 14 * baseScale, subItemTextSize: 15 * baseScale, totalSubmenuHeight, planCardPadding: 12 * baseScale, planCardMarginBottom: 16 * hScale, logoutPaddingHorizontal: 16 * baseScale, logoutPaddingVertical: 10 * hScale, logoutButtonPaddingVertical: 12 * hScale, logoutTextSize: 15.5 * baseScale, logoutIconSize: 17 * baseScale, footerPaddingHorizontal: 24 * baseScale, footerPaddingTop: 10 * hScale, footerPaddingBottom: 8 * hScale, footerTextSize: 12 * baseScale };
+    return { sidebarWidth, scale: baseScale, headerPaddingHorizontal: 20 * baseScale, headerPaddingTop: 14 * hScale, headerPaddingBottom: 16 * hScale, logoSize: 40 * baseScale, logoTextSize: 17 * baseScale, logoSubTextSize: 13 * baseScale, closeBtnSize: 32 * baseScale, closeIconSize: 18 * baseScale, scrollPaddingHorizontal: 16 * baseScale, scrollPaddingTop: 16 * hScale, itemMarginBottom: 12 * hScale, itemPaddingVertical: 14 * hScale, itemPaddingHorizontal: 16 * baseScale, itemIconBoxSize: 36 * baseScale, itemIconSize: 18 * baseScale, itemTextSize: 16.5 * baseScale, chevronSize: 15 * baseScale, subItemPaddingVertical: 11 * hScale, subItemPaddingHorizontal: 12 * baseScale, subItemIconBoxSize, subItemIconSize: 14 * baseScale, subItemTextSize: 15 * baseScale, totalSubmenuHeight, planCardPadding: 12 * baseScale, planCardMarginBottom: 16 * hScale, logoutPaddingHorizontal: 16 * baseScale, logoutPaddingVertical: 10 * hScale, logoutButtonPaddingVertical: 12 * hScale, logoutTextSize: 15.5 * baseScale, logoutIconSize: 17 * baseScale, footerPaddingHorizontal: 24 * baseScale, footerPaddingTop: 10 * hScale, footerPaddingBottom: 8 * hScale, footerTextSize: 12 * baseScale };
   }, [screenWidth, screenHeight]);
 
   useEffect(() => { 
-    slideAnim.value = -metrics.sidebarWidth; 
-  }, [metrics.sidebarWidth]);
+    if (!visible) {
+      slideAnim.value = -metrics.sidebarWidth; 
+    }
+  }, [metrics.sidebarWidth, visible]);
 
   useEffect(() => {
     if (visible) {
-      setIsMounted(true);
       slideAnim.value = withSpring(0, { damping: 15, stiffness: 90, mass: 0.8 });
       fadeAnim.value = withTiming(1, { duration: 250 });
-    } else if (isMounted) {
+    } else {
       slideAnim.value = withTiming(-metrics.sidebarWidth, { duration: 250, easing: Easing.out(Easing.cubic) });
-      fadeAnim.value = withTiming(0, { duration: 250 }, (finished) => {
-        if (finished) { runOnJS(setIsMounted)(false); }
-      });
+      fadeAnim.value = withTiming(0, { duration: 250 });
     }
-  }, [visible, isMounted, metrics.sidebarWidth]);
+  }, [visible]);
 
   const handleClose = useCallback(() => {
     onClose();
@@ -249,10 +271,8 @@ const Sidebar = ({ visible, onClose, currentRole }: SidebarProps) => {
   const backdropStyle = useAnimatedStyle(() => ({ opacity: fadeAnim.value }));
   const drawerStyle = useAnimatedStyle(() => ({ transform: [{ translateX: slideAnim.value }] }));
 
-  if (!isMounted && !visible) return null;
-
   return (
-    <Modal visible={visible || isMounted} transparent animationType="none" onRequestClose={handleClose}>
+    <Modal visible={visible} transparent animationType="none" onRequestClose={handleClose}>
       <View style={{ flex: 1 }}>
         <TouchableWithoutFeedback onPress={handleClose}>
           <Animated.View style={[{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, backgroundColor: "rgba(15, 23, 42, 0.45)" }, backdropStyle]} />
@@ -272,11 +292,12 @@ const Sidebar = ({ visible, onClose, currentRole }: SidebarProps) => {
             </Pressable>
           </View>
           <ScrollView
+            style={{ flex: 1 }}
             contentContainerStyle={{ paddingHorizontal: metrics.scrollPaddingHorizontal, paddingTop: metrics.scrollPaddingTop }}
             showsVerticalScrollIndicator={false}
             bounces={false}
-            scrollEnabled={false}
-            nestedScrollEnabled={false}
+            scrollEnabled={true}
+            nestedScrollEnabled={true}
           >
             {isActuallySeller && <SellerHeader metrics={metrics} onNavigate={handleNavigation} />}
             {roleMenuItems.map((item) => (

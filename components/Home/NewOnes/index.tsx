@@ -4,11 +4,13 @@ import { Ionicons } from "@expo/vector-icons";
 import { useIsFocused } from "@react-navigation/native";
 import { Image } from "expo-image";
 import { useRouter } from "expo-router";
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
+    KeyboardAvoidingView,
     Modal,
     NativeScrollEvent,
     NativeSyntheticEvent,
+    Platform,
     Pressable,
     ScrollView,
     StyleSheet,
@@ -212,10 +214,10 @@ const NewOnes = ({ isScrolling }: { isScrolling?: SharedValue<boolean> }) => {
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
 
-  // 3. Reanimated Auto-scroll Refs
-  const flatListRef = useAnimatedRef<Animated.FlatList<Product>>();
-  const scrollIndex = useSharedValue(0);
-  const isAutoPlaying = useSharedValue(false);
+  // 3. Auto-scroll Refs
+  const flatListRef = useRef<Animated.FlatList<Product>>(null);
+  const activeIndexRef = useRef(0);
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // Fetch Data
   useEffect(() => {
@@ -266,7 +268,7 @@ const NewOnes = ({ isScrolling }: { isScrolling?: SharedValue<boolean> }) => {
   // 4. Reduced Infinite Scroll Array Size (30 instead of 100)
   const replicatedData = useMemo(() => {
     if (!productsList || productsList.length === 0) return [];
-    return Array(30).fill(productsList).flat();
+    return Array(10).fill(productsList).flat();
   }, [productsList]);
 
   const baseMiddleIndex = useMemo(() => {
@@ -275,82 +277,48 @@ const NewOnes = ({ isScrolling }: { isScrolling?: SharedValue<boolean> }) => {
     return middle - (middle % productsList.length);
   }, [replicatedData.length, productsList.length]);
 
-  // 5. UI-Thread Autoplay Loop using withRepeat + useAnimatedReaction
-  const autoplayPulse = useSharedValue(0);
-
-  const startAutoPlayUI = () => {
-    'worklet';
-    if (productsList.length <= 0) return;
-    autoplayPulse.value = withRepeat(
-      withTiming(autoplayPulse.value + 1, { duration: 3000 }),
-      -1
-    );
-  };
-
-  const stopAutoPlayUI = () => {
-    'worklet';
-    cancelAnimation(autoplayPulse);
-  };
-
-  // Listen to autoplay pulse and scroll
-  useAnimatedReaction(
-    () => Math.floor(autoplayPulse.value),
-    (currentPulse, prevPulse) => {
-      if (!isFocused) {
-        return;
-      }
-      if (currentPulse !== prevPulse && prevPulse !== null && !isAutoPlaying.value) {
-        return; // Don't scroll if user is dragging
-      }
+  // 5. Auto-Play using JS setInterval
+  const startAutoPlay = useCallback(() => {
+    if (!isFocused || replicatedData.length <= 1) return;
+    stopAutoPlay();
+    
+    timerRef.current = setInterval(() => {
+      let nextIndex = activeIndexRef.current + 1;
       
-      if (currentPulse !== prevPulse && prevPulse !== null && isAutoPlaying.value) {
-        scrollIndex.value = scrollIndex.value + 1;
-        scrollTo(flatListRef, scrollIndex.value * ITEM_SIZE, 0, true);
-        
-        // Infinite loop: reset when reaching end
-        if (scrollIndex.value >= replicatedData.length - 2) {
-          const remainder = scrollIndex.value % productsList.length;
-          const safeIndex = baseMiddleIndex + remainder;
-          scrollIndex.value = safeIndex;
-          scrollTo(flatListRef, safeIndex * ITEM_SIZE, 0, false);
+      if (nextIndex >= replicatedData.length - 2) {
+        const remainder = nextIndex % productsList.length;
+        const safeMiddleIndex = baseMiddleIndex + remainder;
+        if (flatListRef.current) {
+          flatListRef.current.scrollToIndex({ index: safeMiddleIndex, animated: false });
+        }
+        activeIndexRef.current = safeMiddleIndex;
+      } else {
+        activeIndexRef.current = nextIndex;
+        if (flatListRef.current) {
+          flatListRef.current.scrollToIndex({ index: nextIndex, animated: true });
         }
       }
-    },
-    [isFocused]
-  );
+    }, 3000);
+  }, [isFocused, replicatedData.length, productsList.length, baseMiddleIndex]);
+
+  const stopAutoPlay = useCallback(() => {
+    if (timerRef.current) clearInterval(timerRef.current);
+  }, []);
 
   useEffect(() => {
-    if (!isFocused) {
-      runOnUI(stopAutoPlayUI)();
-      isAutoPlaying.value = false;
-      return;
+    if (isFocused && replicatedData.length > 0) {
+      activeIndexRef.current = baseMiddleIndex;
+      startAutoPlay();
+      return stopAutoPlay;
+    } else {
+      stopAutoPlay();
     }
-
-    if (replicatedData.length > 0 && productsList.length > 0) {
-      scrollIndex.value = baseMiddleIndex;
-      runOnUI(() => {
-        'worklet';
-        isAutoPlaying.value = true;
-        startAutoPlayUI();
-      })();
-
-      return () => {
-        runOnUI(stopAutoPlayUI)();
-        isAutoPlaying.value = false;
-      };
-    }
-  }, [isFocused, replicatedData, baseMiddleIndex, productsList.length]);
-
-
+  }, [isFocused, replicatedData, baseMiddleIndex, startAutoPlay, stopAutoPlay]);
 
   // ── Manual Scroll Handling ──
   const handleScrollBegin = useCallback(() => {
-    runOnUI(() => {
-      'worklet';
-      isAutoPlaying.value = false;
-      cancelAnimation(autoplayPulse);
-    })();
-  }, []);
+    stopAutoPlay();
+  }, [stopAutoPlay]);
 
   const handleMomentumScrollEnd = useCallback((event: NativeSyntheticEvent<NativeScrollEvent>) => {
     const scrollOffset = event.nativeEvent.contentOffset.x;
@@ -359,11 +327,14 @@ const NewOnes = ({ isScrolling }: { isScrolling?: SharedValue<boolean> }) => {
     if (currentIndex < 5 || currentIndex > replicatedData.length - 5) {
       const remainder = currentIndex % productsList.length;
       currentIndex = baseMiddleIndex + remainder;
-      flatListRef.current?.scrollToIndex({ index: currentIndex, animated: false });
+      if (flatListRef.current) {
+        flatListRef.current.scrollToIndex({ index: currentIndex, animated: false });
+      }
     }
 
-    scrollIndex.value = currentIndex;
-  }, [ITEM_SIZE, replicatedData.length, productsList.length, baseMiddleIndex]);
+    activeIndexRef.current = currentIndex;
+    startAutoPlay();
+  }, [ITEM_SIZE, replicatedData.length, productsList.length, baseMiddleIndex, startAutoPlay]);
 
   const handleScrollToIndexFailed = useCallback((info: { index: number }) => {
     setTimeout(() => {
@@ -447,7 +418,6 @@ const NewOnes = ({ isScrolling }: { isScrolling?: SharedValue<boolean> }) => {
           
           snapToInterval={ITEM_SIZE}
           snapToAlignment="start"
-          decelerationRate="fast"
           
           onScrollBeginDrag={handleScrollBegin}
           onMomentumScrollEnd={handleMomentumScrollEnd}
@@ -458,7 +428,7 @@ const NewOnes = ({ isScrolling }: { isScrolling?: SharedValue<boolean> }) => {
           initialScrollIndex={baseMiddleIndex}
           windowSize={11}
           updateCellsBatchingPeriod={40} // 6. Optimized React Native Batching
-          removeClippedSubviews={true}
+          removeClippedSubviews={false}
         />
       )}
 
@@ -470,7 +440,10 @@ const NewOnes = ({ isScrolling }: { isScrolling?: SharedValue<boolean> }) => {
         onRequestClose={() => setIsModalVisible(false)}
       >
         <View style={flatStyles.modalOverlay}>
-          <View style={flatStyles.modalContainer}>
+          <KeyboardAvoidingView 
+            behavior={Platform.OS === 'ios' ? 'padding' : 'height'} 
+            style={flatStyles.modalContainer}
+          >
             <View style={flatStyles.modalHeader}>
               <Text style={flatStyles.modalTitle}>Request a Quote</Text>
               <TouchableOpacity onPress={() => setIsModalVisible(false)} hitSlop={10}>
@@ -504,7 +477,7 @@ const NewOnes = ({ isScrolling }: { isScrolling?: SharedValue<boolean> }) => {
             >
               <Text style={flatStyles.submitBtnText}>Send Requirement</Text>
             </TouchableOpacity>
-          </View>
+          </KeyboardAvoidingView>
         </View>
       </Modal>
     </View>

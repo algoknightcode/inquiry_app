@@ -153,12 +153,12 @@ export default function TestimonialCarousel({ isScrolling }: { isScrolling?: Sha
 
   // 4. Auto-play using useAnimatedReaction + withRepeat pattern (proven pattern)
   useAnimatedReaction(
-    () => Math.floor(autoplayPulse.value),
+    () => autoplayPulse.value,
     (currentPulse, prevPulse) => {
       if (!isFocused) {
         return;
       }
-      if (currentPulse !== prevPulse && isAutoPlaying.value) {
+      if (prevPulse !== null && currentPulse < prevPulse && isAutoPlaying.value) {
         scrollIndex.value = scrollIndex.value + 1;
         scrollTo(flatListRef, scrollIndex.value * ITEM_SIZE, 0, true);
         runOnJS(setActiveDotIndex)(scrollIndex.value % testimonials.length);
@@ -184,7 +184,7 @@ export default function TestimonialCarousel({ isScrolling }: { isScrolling?: Sha
           autoplayPulse.value = withRepeat(
             withTiming(1, { duration: 4000 }),
             -1,
-            true
+            false
           );
         })();
       }, 300);
@@ -232,7 +232,7 @@ export default function TestimonialCarousel({ isScrolling }: { isScrolling?: Sha
       autoplayPulse.value = withRepeat(
         withTiming(1, { duration: 4000 }),
         -1,
-        true
+        false
       );
     },
   });
@@ -258,7 +258,7 @@ export default function TestimonialCarousel({ isScrolling }: { isScrolling?: Sha
           autoplayPulse.value = withRepeat(
             withTiming(1, { duration: 4000 }),
             -1,
-            true
+            false
           );
         }
       }

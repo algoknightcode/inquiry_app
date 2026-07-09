@@ -165,7 +165,7 @@ function TrendingBrandsCarousel({ isScrolling }: { isScrolling?: SharedValue<boo
 
   // ── INFINITE SCROLL LOGIC ──
   const replicatedData = useMemo(() => {
-    return Array(150).fill(mockBrands).flat();
+    return Array(20).fill(mockBrands).flat();
   }, []);
 
   const baseMiddleIndex = useMemo(() => {

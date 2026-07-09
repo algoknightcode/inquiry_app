@@ -2,21 +2,21 @@ import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import React, { useState } from "react";
 import {
-  ActivityIndicator,
-  Alert,
-  Image,
-  KeyboardAvoidingView,
-  Platform,
-  Pressable,
-  ScrollView,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
-  StyleSheet,
+    ActivityIndicator,
+    Alert,
+    Image,
+    KeyboardAvoidingView,
+    Platform,
+    Pressable,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { scale, verticalScale, moderateScale } from "react-native-size-matters";
+import { moderateScale, scale, verticalScale } from "react-native-size-matters";
 import Logo from "../../../assets/images/logoo-Photoroom.png";
 
 const API_BASE_URL = "https://buyer.inquirybazaar.com"; 
@@ -97,7 +97,7 @@ const BuyerSignUp = () => {
 
   return (
     <KeyboardAvoidingView
-      behavior={Platform.OS === "ios" ? "padding" : "padding"}
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
       keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 20}
       style={s.flexContainer}
     >
@@ -155,7 +155,6 @@ const BuyerSignUp = () => {
                   value={formdata.name}
                   onChangeText={(val) => handleChange("name", val)}
                   autoCapitalize="words"
-                  editable={!loading}
                 />
               </View>
 
@@ -170,7 +169,6 @@ const BuyerSignUp = () => {
                   onChangeText={(val) => handleChange("email", val)}
                   keyboardType="email-address"
                   autoCapitalize="none"
-                  editable={!loading}
                 />
               </View>
 
@@ -184,7 +182,6 @@ const BuyerSignUp = () => {
                   value={formdata.phone}
                   onChangeText={(val) => handleChange("phone", val)}
                   keyboardType="phone-pad"
-                  editable={!loading}
                 />
               </View>
 
@@ -199,7 +196,6 @@ const BuyerSignUp = () => {
                   onChangeText={(val) => handleChange("password", val)}
                   secureTextEntry={!showPassword}
                   autoCapitalize="none"
-                  editable={!loading}
                 />
                 <Pressable onPress={() => setShowPassword(!showPassword)} style={s.eyeButton}>
                   <Ionicons

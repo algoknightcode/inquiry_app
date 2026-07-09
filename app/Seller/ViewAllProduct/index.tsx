@@ -163,7 +163,7 @@ const ManageProducts = () => {
 
   return (
     <SafeAreaView style={s.safeArea} edges={["top", "bottom"]}>
-      <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={s.flexContainer}>
+      <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={s.flexContainer}>
         
         {/* --- PREMIUM HEADER --- */}
         <View style={s.headerContainer}>

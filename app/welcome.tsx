@@ -168,7 +168,7 @@ export default function Welcome() {
                 right: 0,
               },
             ]}
-            pointerEvents={loadingDone ? "auto" : "none"}
+            pointerEvents="auto"
           >
             <TouchableOpacity activeOpacity={0.8} onPress={handleGetStarted} style={s.button}>
               <Text style={s.buttonText}>Get Started</Text>

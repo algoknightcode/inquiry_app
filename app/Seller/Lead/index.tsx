@@ -214,7 +214,7 @@ const LeadsScreen = () => {
 
   return (
     <View style={s.flexContainer}>
-      <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={s.flexContainer}>
+      <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={s.flexContainer}>
         
         {/* TOP HEADER */}
         <View style={[s.topHeader, { paddingTop: insets.top + verticalScale(8) }]}>

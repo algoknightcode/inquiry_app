@@ -7,19 +7,19 @@ import { Image } from "expo-image";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
 import {
-  ActivityIndicator,
-  Alert,
-  FlatList,
-  KeyboardAvoidingView,
-  Linking,
-  Modal,
-  Platform,
-  Pressable,
-  ScrollView,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View
+    ActivityIndicator,
+    Alert,
+    FlatList,
+    KeyboardAvoidingView,
+    Linking,
+    Modal,
+    Platform,
+    Pressable,
+    ScrollView,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
@@ -434,7 +434,7 @@ export default function ProductListingPage() {
           <TextInput
             placeholder="Search shops, products, or makers"
             placeholderTextColor="#6B7280"
-            className="flex-1 h-full text-[#111827] font-jakarta-medium text-[15px]"
+            style={{ flex: 1, height: '100%', color: '#111827', fontSize: 15 }}
             value={searchQuery}
             onChangeText={setSearchQuery}
             onFocus={() => setIsFocused(true)}
@@ -550,7 +550,7 @@ export default function ProductListingPage() {
               <TextInput
                 placeholder="Search city..."
                 placeholderTextColor="#94a3b8"
-                className="flex-1 h-full text-slate-800 font-jakarta-semibold text-[14px]"
+                style={{ flex: 1, height: '100%', color: '#1e293b', fontSize: 14 }}
                 value={citySearchQuery}
                 onChangeText={setCitySearchQuery}
                 clearButtonMode="while-editing"
@@ -692,53 +692,49 @@ export default function ProductListingPage() {
               <View className="flex-row items-center border border-slate-200 rounded-2xl px-4 h-[52px] mb-4 bg-slate-50">
                 <Ionicons name="person-outline" size={18} color="#64748b" style={{ marginRight: 10 }} />
                 <TextInput
-                  className="flex-1 h-full text-slate-900 font-jakarta-semibold text-[14px]"
+                  style={{ flex: 1, height: '100%', color: '#0f172a', fontSize: 14 }}
                   placeholder="Your Name *"
                   placeholderTextColor="#94a3b8"
                   value={inqName}
                   onChangeText={setInqName}
-                  editable={!isSubmittingInquiry}
                 />
               </View>
 
               <View className="flex-row items-center border border-slate-200 rounded-2xl px-4 h-[52px] mb-4 bg-slate-50">
                 <Ionicons name="mail-outline" size={18} color="#64748b" style={{ marginRight: 10 }} />
                 <TextInput
-                  className="flex-1 h-full text-slate-900 font-jakarta-semibold text-[14px]"
+                  style={{ flex: 1, height: '100%', color: '#0f172a', fontSize: 14 }}
                   placeholder="Your Email"
                   placeholderTextColor="#94a3b8"
                   keyboardType="email-address"
                   autoCapitalize="none"
                   value={inqEmail}
                   onChangeText={setInqEmail}
-                  editable={!isSubmittingInquiry}
                 />
               </View>
 
               <View className="flex-row items-center border border-slate-200 rounded-2xl px-4 h-[52px] mb-4 bg-slate-50">
                 <Ionicons name="call-outline" size={18} color="#64748b" style={{ marginRight: 10 }} />
                 <TextInput
-                  className="flex-1 h-full text-slate-900 font-jakarta-semibold text-[14px]"
+                  style={{ flex: 1, height: '100%', color: '#0f172a', fontSize: 14 }}
                   placeholder="Phone Number *"
                   placeholderTextColor="#94a3b8"
                   keyboardType="phone-pad"
                   value={inqPhone}
                   onChangeText={setInqPhone}
-                  editable={!isSubmittingInquiry}
                 />
               </View>
 
               <View className="flex-row items-start border border-slate-200 rounded-2xl px-4 py-3 h-[120px] mb-6 bg-slate-50">
                 <Ionicons name="chatbubble-outline" size={18} color="#64748b" style={{ marginRight: 10, marginTop: 2 }} />
                 <TextInput
-                  className="flex-1 h-full text-slate-900 font-jakarta-semibold text-[14px]"
+                  style={{ flex: 1, height: '100%', color: '#0f172a', fontSize: 14 }}
                   placeholder="Your Message *"
                   placeholderTextColor="#94a3b8"
                   multiline
                   style={{ textAlignVertical: "top" }}
                   value={inqMessage}
                   onChangeText={setInqMessage}
-                  editable={!isSubmittingInquiry}
                 />
               </View>
 
