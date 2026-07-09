@@ -18,8 +18,11 @@ export default function CategoryMarquee({ isScrolling }: { isScrolling?: SharedV
 
   useAnimatedReaction(
     () => isScrolling?.value ?? false,
-    (scrolling) => {
-      runOnJS(setIsParentScrolling)(scrolling);
+    (scrolling, previousValue) => {
+      // 🔥 FIX: Only cross the JS bridge if the scrolling state changes!
+      if (scrolling !== previousValue) {
+        runOnJS(setIsParentScrolling)(scrolling);
+      }
     },
     [isScrolling]
   );
@@ -47,7 +50,7 @@ export default function CategoryMarquee({ isScrolling }: { isScrolling?: SharedV
 
   const chunkedIndustries = useMemo(() => {
     if (!industries || industries.length === 0) return [];
-    
+
     let safeIndustries = [...industries];
 
     // THE FIX: While the total number of items is NOT perfectly divisible by our columns,
@@ -56,7 +59,7 @@ export default function CategoryMarquee({ isScrolling }: { isScrolling?: SharedV
     while (safeIndustries.length % columns !== 0) {
       safeIndustries = [...safeIndustries, ...industries];
     }
-    
+
     const chunks = [];
     for (let i = 0; i < safeIndustries.length; i += columns) {
       chunks.push(safeIndustries.slice(i, i + columns));
@@ -85,21 +88,21 @@ export default function CategoryMarquee({ isScrolling }: { isScrolling?: SharedV
           autoPlayInterval={2500}
           scrollAnimationDuration={800}
           data={chunkedIndustries}
-          width={screenWidth} 
+          width={screenWidth}
           height={60}
-          windowSize={11} 
+          windowSize={11}
           onConfigurePanGesture={(gesture) => {
             "worklet";
             gesture.activeOffsetX([-10, 10]);
           }}
-          
+
           // Added chunkIndex to generate completely unique React keys
           renderItem={({ item: chunk, index: chunkIndex }) => (
             <View style={styles.slideRow}>
               {chunk.map((industry, itemIndex) => (
-                <View 
+                <View
                   // Unique key ensures no React warnings since we might have duplicated the data
-                  key={`chunk-${chunkIndex}-item-${itemIndex}`} 
+                  key={`chunk-${chunkIndex}-item-${itemIndex}`}
                   style={[styles.pillContainer, { width: exactItemWidth }]}
                 >
                   <Pressable
@@ -114,9 +117,9 @@ export default function CategoryMarquee({ isScrolling }: { isScrolling?: SharedV
                       })
                     }
                   >
-                    <Text 
-                      style={styles.pillText} 
-                      numberOfLines={1} 
+                    <Text
+                      style={styles.pillText}
+                      numberOfLines={1}
                     >
                       {industry.name}
                     </Text>
@@ -162,7 +165,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     borderRadius: 999,
-    paddingHorizontal: 12, 
+    paddingHorizontal: 12,
   },
   pillText: {
     color: "#fff",

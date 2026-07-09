@@ -1,4 +1,6 @@
+import { useRole } from "@/contexts/RoleContext";
 import { fetchWithCache, getCacheSync } from "@/utils/apiCache";
+import { logProductInteraction } from "@/utils/notificationService";
 import { setProductCache } from "@/utils/productCache";
 import { useIsFocused } from "@react-navigation/native";
 import { Image } from "expo-image";
@@ -193,11 +195,12 @@ const SkeletonProductCard = () => (
 const NewOnes = ({ isScrolling }: { isScrolling?: SharedValue<boolean> }) => {
   const isFocused = useIsFocused();
   const router = useRouter();
+  const { globalBuyerId, globalSellerId, userRole } = useRole();
 
   // Data State
-  const initialData = getInitialCachedProducts();
-  const [productsList, setProductsList] = useState<Product[]>(initialData.products);
-  const [categoryObjId, setCategoryObjId] = useState<string | null>(initialData.categoryId);
+  // 🔥 FIX: Zero UI layout footprint during mount phases
+  const [productsList, setProductsList] = useState<Product[]>([]);
+  const [categoryObjId, setCategoryObjId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   // Modal State
@@ -218,6 +221,13 @@ const NewOnes = ({ isScrolling }: { isScrolling?: SharedValue<boolean> }) => {
 
     const fetchCategoryProducts = async () => {
       try {
+        // Safe asynchronous cache recovery during initial mounting
+        const cacheData = getInitialCachedProducts();
+        if (cacheData.products && cacheData.products.length > 0) {
+          setProductsList(cacheData.products);
+          setCategoryObjId(cacheData.categoryId);
+        }
+
         const json = await fetchWithCache("https://backend.inquirybazaar.com/api/industries/tree");
         if (json.success && json.data) {
           const industry = json.data.find(
@@ -356,11 +366,19 @@ const NewOnes = ({ isScrolling }: { isScrolling?: SharedValue<boolean> }) => {
   // ── Actions ──
   const handleCardPress = useCallback((item: Product) => {
     setProductCache(item._id, item);
+    logProductInteraction(
+      item.name,
+      item._id,
+      globalBuyerId,
+      globalSellerId,
+      userRole as "buyer" | "seller",
+      item
+    );
     router.push({
       pathname: "/Products_Page/[slug]",
       params: { slug: item.slug, productId: item._id },
     });
-  }, [router]);
+  }, [router, globalBuyerId, globalSellerId, userRole]);
 
   const handleOpenQuote = useCallback((item: Product) => {
     setSelectedProduct(item);

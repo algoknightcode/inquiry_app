@@ -1,4 +1,6 @@
+import { useRole } from "@/contexts/RoleContext";
 import { fetchWithCache, getCacheSync } from "@/utils/apiCache";
+import { logProductInteraction } from "@/utils/notificationService";
 import { setProductCache } from "@/utils/productCache";
 import { useIsFocused } from "@react-navigation/native";
 import { Image } from "expo-image";
@@ -66,6 +68,7 @@ type DynamicLayout = {
   cardSpacing: number;
   containerPadding: number;
   ITEM_SIZE: number;
+  totalListHeight: number;
 };
 
 // ── Cache Loader ───────────────────────────────────────────────────────────
@@ -318,6 +321,7 @@ const SkeletonProductCard = ({ layout }: { layout?: DynamicLayout }) => {
 const IBTrusted = ({ isScrolling }: { isScrolling?: SharedValue<boolean> }) => {
   const isFocused = useIsFocused();
   const router = useRouter();
+  const { globalBuyerId, globalSellerId, userRole } = useRole();
   const initialProducts = getInitialCachedTrustedProducts();
   const [products, setProducts] = useState<Product[]>(initialProducts);
   const [isLoading, setIsLoading] = useState(true);
@@ -341,12 +345,15 @@ const IBTrusted = ({ isScrolling }: { isScrolling?: SharedValue<boolean> }) => {
     const containerPadding = 20 * scale;
     const cardWidth = (screenWidth - containerPadding * 2) / 2.3;
     const cardSpacing = 16 * scale;
+    const cardHeight = cardWidth * 1.25;
+    const totalListHeight = cardHeight + (180 * scale);
     return {
       cardWidth,
-      cardHeight: cardWidth * 1.25,
+      cardHeight,
       cardSpacing,
       containerPadding,
       ITEM_SIZE: cardWidth + cardSpacing,
+      totalListHeight,
     };
   }, [scale, screenWidth]);
 
@@ -502,8 +509,16 @@ const IBTrusted = ({ isScrolling }: { isScrolling?: SharedValue<boolean> }) => {
   // ── Actions ──
   const handleCardPress = useCallback((item: Product) => {
     setProductCache(item._id, item);
+    logProductInteraction(
+      item.name,
+      item._id,
+      globalBuyerId,
+      globalSellerId,
+      userRole as "buyer" | "seller",
+      item
+    );
     router.push({ pathname: "/Products_Page/[slug]", params: { slug: item.slug, productId: item._id } });
-  }, [router]);
+  }, [router, globalBuyerId, globalSellerId, userRole]);
 
   const handleOpenQuote = useCallback((item: Product) => {
     setSelectedProduct(item);
@@ -520,7 +535,7 @@ const IBTrusted = ({ isScrolling }: { isScrolling?: SharedValue<boolean> }) => {
     />
   ), [layout, scale, handleCardPress, handleOpenQuote]);
 
-  const keyExtractor = useCallback((_: any, index: number) => index.toString(), []);
+  const keyExtractor = useCallback((item: Product, index: number) => `${item._id || item.id || 'brand'}-${index}`, []);
   const getItemLayout = useCallback((_: any, index: number) => ({
     length: layout.ITEM_SIZE,
     offset: layout.ITEM_SIZE * index,
@@ -549,13 +564,12 @@ const IBTrusted = ({ isScrolling }: { isScrolling?: SharedValue<boolean> }) => {
         </Pressable>
       </View>
 
-      {/* Horizontal List */}
       {isLoading ? (
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
           scrollEnabled={false}
-          style={{ marginTop: 24, height: layout.cardHeight + 180 * scale }}
+          style={{ marginTop: 24, height: layout.totalListHeight }}
           contentContainerStyle={{ paddingLeft: layout.containerPadding, paddingBottom: 28 }}
         >
           {[...Array(4)].map((_, i) => (
@@ -570,7 +584,7 @@ const IBTrusted = ({ isScrolling }: { isScrolling?: SharedValue<boolean> }) => {
           data={replicatedData}
           keyExtractor={keyExtractor}
           renderItem={renderItem}
-          style={{ marginTop: 24, height: layout.cardHeight + 180 * scale }}
+          style={{ marginTop: 24, height: layout.totalListHeight }}
           contentContainerStyle={{
             paddingLeft: layout.containerPadding,
             paddingRight: layout.containerPadding + layout.cardWidth, 

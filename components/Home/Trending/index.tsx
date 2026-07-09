@@ -1,5 +1,7 @@
 import EnquiryModal from "@/components/EnquiryModal";
+import { useRole } from "@/contexts/RoleContext";
 import { fetchWithCache, getCacheSync } from "@/utils/apiCache";
+import { logProductInteraction } from "@/utils/notificationService";
 import { setProductCache } from "@/utils/productCache";
 import { useIsFocused } from "@react-navigation/native";
 import { Image } from "expo-image";
@@ -88,6 +90,7 @@ const ProductCard = React.memo(({
   onReqQuote: (item: Product) => void;
 }) => {
   const router = useRouter();
+  const { globalBuyerId, globalSellerId, userRole } = useRole();
 
   const primaryImage = item.media?.length > 0
       ? (item.media.find((m) => m.isPrimary) || item.media[0]).url
@@ -97,11 +100,19 @@ const ProductCard = React.memo(({
 
   const handlePress = useCallback(() => {
     setProductCache(item._id, item);
+    logProductInteraction(
+      item.name,
+      item._id,
+      globalBuyerId,
+      globalSellerId,
+      userRole as "buyer" | "seller",
+      item
+    );
     router.push({
       pathname: "/Products_Page/[slug]",
       params: { slug: item.slug, productId: item._id },
     });
-  }, [item, router]);
+  }, [item, router, globalBuyerId, globalSellerId, userRole]);
 
   const handleCall = useCallback(() => {
     const phone = item.supplier?.phone || "+910000000000";
@@ -415,7 +426,7 @@ const HorizontalProductList = ({ isScrolling }: { isScrolling?: SharedValue<bool
           ref={flatListRef}
           data={replicatedData}
           renderItem={renderItem}
-          keyExtractor={(_, index) => index.toString()}
+          keyExtractor={(item, index) => `${item._id || 'brand'}-${index}`}
           getItemLayout={getItemLayout}
           horizontal
           showsHorizontalScrollIndicator={false}

@@ -295,7 +295,7 @@ function TrendingBrandsCarousel({ isScrolling }: { isScrolling?: SharedValue<boo
             data={replicatedData}
             horizontal
             showsHorizontalScrollIndicator={false}
-            keyExtractor={(_, index) => index.toString()}
+            keyExtractor={(item, index) => `${item._id || item.id || 'brand'}-${index}`}
             renderItem={({ item }) => (
               <BrandCard brand={item} dynamicStyles={dynamicStyles} />
             )}

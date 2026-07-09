@@ -1,4 +1,6 @@
 import EnquiryModal from "@/components/EnquiryModal";
+import { useRole } from "@/contexts/RoleContext";
+import { logProductInteraction } from "@/utils/notificationService";
 import { consumeProductCache, getProductCache } from "@/utils/productCache";
 import { Feather, FontAwesome, Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -24,10 +26,12 @@ export default function ProductDetailPage() {
   // Ref to track if the component is still on screen (prevents async memory crashes)
   const isMounted = useRef(true);
 
+  // --- ROLE STATES ---
+  const { globalBuyerId, globalSellerId, userRole } = useRole();
+
   // --- STATES ---
   const [isWishlisted, setIsWishlisted] = useState(false);
   const [product, setProduct] = useState<any>(() => {
-    // Uses safe getter to pull initial pass data safely
     return productId ? getProductCache(productId as string) : null;
   });
 
@@ -38,15 +42,26 @@ export default function ProductDetailPage() {
   useEffect(() => {
     isMounted.current = true;
     
-    // This return function runs on Unmount (when the user leaves the page)
     return () => {
       isMounted.current = false;
       if (productId) {
-        // Wipes the data right out of global memory to save RAM!
         consumeProductCache(productId as string);
       }
     };
   }, [productId]);
+
+  // 🔥 STATE-AWARE LOGGER ACCESSED NATIVELY ON VEHICLE MOUNT/DATA RETRIEVAL
+  useEffect(() => {
+    if (product?.name && product?._id) {
+      logProductInteraction(
+        product.name,
+        product._id,
+        globalBuyerId,
+        globalSellerId,
+        userRole as "buyer" | "seller"
+      );
+    }
+  }, [product?.name, product?._id, globalBuyerId, globalSellerId, userRole]);
 
   // Load wishlist state on mount
   useEffect(() => {
@@ -165,7 +180,6 @@ export default function ProductDetailPage() {
     fetchFullDetails();
   }, [productId, slug]);
 
-  // ── Helpers ──────────────────────────────────────────────────────────────
   const getPrimaryImage = (media: any[]) => {
     if (!media || media.length === 0) return null;
     return (media.find((m: any) => m.isPrimary) || media[0])?.url || null;
@@ -233,7 +247,7 @@ export default function ProductDetailPage() {
     <View style={{ flex: 1, backgroundColor: "#fff" }}>
       <Stack.Screen options={{ headerShown: false }} />
 
-      {/* ── HEADER ── */}
+      {/* Header Bar */}
       <View style={{ backgroundColor: "#fff", paddingHorizontal: 20, paddingTop: insets.top + 8, paddingBottom: 12, flexDirection: "row", alignItems: "center", justifyContent: "space-between", borderBottomWidth: 1, borderBottomColor: "#f1f5f9" }}>
         <TouchableOpacity onPress={() => router.back()} style={{ padding: 4, marginLeft: -4 }}>
           <Ionicons name="arrow-back" size={24} color="#0f172a" />
@@ -254,7 +268,7 @@ export default function ProductDetailPage() {
       </View>
 
       <ScrollView style={{ flex: 1, backgroundColor: "#f8fafc" }} contentContainerStyle={{ paddingBottom: insets.bottom + 70 }} showsVerticalScrollIndicator={false}>
-        {/* HERO IMAGE */}
+        {/* Hero Image */}
         <View style={{ width: "100%", height: 280, backgroundColor: "#e2e8f0" }}>
           {imageUri ? (
             <Image source={{ uri: imageUri }} style={{ width: "100%", height: "100%" }} contentFit="cover" transition={300} />
@@ -265,7 +279,7 @@ export default function ProductDetailPage() {
           )}
         </View>
 
-        {/* PRODUCT INFO CARD */}
+        {/* Content Card */}
         <View style={{ marginTop: -24, backgroundColor: "#fff", borderTopLeftRadius: 32, borderTopRightRadius: 32, paddingTop: 32, paddingHorizontal: 24, paddingBottom: 24 }}>
           <View style={{ flexDirection: "row", alignItems: "center", flexWrap: "wrap", marginBottom: 12, gap: 6 }}>
             <MaterialCommunityIcons name="domain" size={18} color="#64748b" />
@@ -318,7 +332,7 @@ export default function ProductDetailPage() {
           </View>
         </View>
 
-        {/* DESCRIPTION */}
+        {/* Description Section */}
         {hasDescription ? (
           <View style={{ marginTop: 0, borderTopWidth: 1, borderTopColor: "#f1f5f9", backgroundColor: "#fff", paddingHorizontal: 24, paddingVertical: 28 }}>
             <Text style={{ fontSize: 17, fontWeight: "800", color: "#0f172a", marginBottom: 16 }}>Product Description</Text>
@@ -326,7 +340,7 @@ export default function ProductDetailPage() {
           </View>
         ) : null}
 
-        {/* SPECIFICATIONS */}
+        {/* Specs Section */}
         {specs.length > 0 ? (
           <View style={{ marginTop: hasDescription ? 0 : 12, borderTopWidth: hasDescription ? 1 : 0, borderTopColor: "#f1f5f9", backgroundColor: "#fff", paddingHorizontal: 24, paddingVertical: 32 }}>
             <Text style={{ fontSize: 17, fontWeight: "800", color: "#0f172a", marginBottom: 20 }}>Specifications & Details</Text>
@@ -351,7 +365,7 @@ export default function ProductDetailPage() {
           </View>
         ) : null}
 
-        {/* SUPPLIER */}
+        {/* Supplier Details Section */}
         <View style={{ marginTop: (hasDescription || specs.length > 0) ? 0 : 12, borderTopWidth: (hasDescription || specs.length > 0) ? 1 : 0, borderTopColor: "#f1f5f9", backgroundColor: "#fff", paddingHorizontal: 24, paddingVertical: 32, marginBottom: 24 }}>
           <Text style={{ fontSize: 17, fontWeight: "800", color: "#0f172a", marginBottom: 20 }}>Supplier Details</Text>
           <View style={{ backgroundColor: "#f0f7ff", borderWidth: 1, borderColor: "#bfdbfe", borderRadius: 20, padding: 20 }}>
@@ -423,7 +437,7 @@ export default function ProductDetailPage() {
         </View>
       </ScrollView>
 
-      {/* FIXED BOTTOM BAR */}
+      {/* Fixed Bottom Bar Actions */}
       <View style={{ position: "absolute", bottom: 0, left: 0, right: 0, backgroundColor: "#fff", borderTopWidth: 1, borderTopColor: "#f1f5f9", paddingHorizontal: 20, paddingTop: 10, paddingBottom: Math.max(insets.bottom, 10) }}>
         <View style={{ flexDirection: "row", gap: 12 }}>
           <TouchableOpacity onPress={() => phone && Linking.openURL(`tel:${phone}`)} style={{ flex: 1, flexDirection: "row", justifyContent: "center", alignItems: "center", paddingVertical: 12, borderRadius: 12, borderWidth: 2, borderColor: "#e2e8f0", backgroundColor: "#fff" }}>
