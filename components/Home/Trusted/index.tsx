@@ -7,6 +7,7 @@ import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   NativeScrollEvent,
   NativeSyntheticEvent,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -585,11 +586,12 @@ const IBTrusted = ({ isScrolling }: { isScrolling?: SharedValue<boolean> }) => {
           onScrollToIndexFailed={handleScrollToIndexFailed}
 
           // FlatList Optimizations
+         removeClippedSubviews={Platform.OS === 'android'} // Safely destroys hidden views
           getItemLayout={getItemLayout}
           initialNumToRender={4}
-          maxToRenderPerBatch={3}
-          windowSize={5}
-          updateCellsBatchingPeriod={40}
+          maxToRenderPerBatch={6}      // Increased to handle faster swiping
+          windowSize={3}               // Tightened the render window to save RAM
+          updateCellsBatchingPeriod={30} // Faster batch processing
         />
       )}
 

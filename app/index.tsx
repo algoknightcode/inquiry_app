@@ -1,7 +1,7 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
-import { ActivityIndicator, View } from "react-native";
+import { ActivityIndicator, InteractionManager, View } from "react-native";
 import { prefetchHomeData } from "../utils/prefetchHome";
 import { setGlobalBuyerId, setGlobalRole, setGlobalSellerId, setSellerSignedIn } from "../utils/roleCache";
 import {
@@ -27,18 +27,24 @@ export default function Index() {
           setSellerSignedIn(true);
           setGlobalRole("seller");
           // Pre-warm home data so tabs load instantly (no loaders)
-          prefetchHomeData().catch(() => {});
+          InteractionManager.runAfterInteractions(() => {
+            prefetchHomeData().catch(() => {});
+          });
           router.replace("/(tabs)");
         } else if (buyerId) {
           // Restore buyer session in cache
           setGlobalBuyerId(buyerId);
           setGlobalRole("buyer");
           // Pre-warm home data so tabs load instantly
-          prefetchHomeData().catch(() => {});
+          InteractionManager.runAfterInteractions(() => {
+            prefetchHomeData().catch(() => {});
+          });
           router.replace("/(tabs)");
         } else if (skippedRole === "true" || getSessionSkippedRole()) {
           // User skipped role selection — stay in tabs
-          prefetchHomeData().catch(() => {});
+          InteractionManager.runAfterInteractions(() => {
+            prefetchHomeData().catch(() => {});
+          });
           router.replace("/(tabs)");
         } else if (!getSessionWelcomeShown()) {
           // First launch of this app session - show welcome screen

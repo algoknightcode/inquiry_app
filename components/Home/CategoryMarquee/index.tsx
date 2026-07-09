@@ -87,7 +87,7 @@ export default function CategoryMarquee({ isScrolling }: { isScrolling?: SharedV
           data={chunkedIndustries}
           width={screenWidth} 
           height={60}
-          windowSize={5} 
+          windowSize={11} 
           onConfigurePanGesture={(gesture) => {
             "worklet";
             gesture.activeOffsetX([-10, 10]);

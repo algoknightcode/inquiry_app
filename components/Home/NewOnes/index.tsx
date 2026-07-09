@@ -1,25 +1,20 @@
 import { fetchWithCache, getCacheSync } from "@/utils/apiCache";
 import { setProductCache } from "@/utils/productCache";
-import { Ionicons } from "@expo/vector-icons";
 import { useIsFocused } from "@react-navigation/native";
 import { Image } from "expo-image";
 import { useRouter } from "expo-router";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import EnquiryModal from "../../EnquiryModal";
 import {
-  KeyboardAvoidingView,
-  Modal,
   NativeScrollEvent,
   NativeSyntheticEvent,
-  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
   Text,
-  TextInput,
   TouchableOpacity,
   View
 } from "react-native";
+import EnquiryModal from "../../EnquiryModal";
 // 1. Import Reanimated for UI-Thread animations
 import Animated, {
   SharedValue,
@@ -272,7 +267,7 @@ const NewOnes = ({ isScrolling }: { isScrolling?: SharedValue<boolean> }) => {
   // 4. Reduced Infinite Scroll Array Size (30 instead of 100)
   const replicatedData = useMemo(() => {
     if (!productsList || productsList.length === 0) return [];
-    return Array(10).fill(productsList).flat();
+    return Array(7).fill(productsList).flat();
   }, [productsList]);
 
   const baseMiddleIndex = useMemo(() => {

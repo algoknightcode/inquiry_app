@@ -189,29 +189,29 @@ export default function HomeScreen() {
       {/* 3. Pass the Reanimated SharedValue safely to the Navbar */}
       <Navbar scrollY={scrollY} />
 
-      <Animated.FlatList
-        ref={flatListRef}
-        data={data}
-        keyExtractor={keyExtractor}
-        renderItem={renderItem}
-        // Attach the Reanimated scroll handler instead of standard Animated.event
-        onScroll={scrollHandler}
-        scrollEventThrottle={32} // Reduce JS thread spam - fires at ~30fps while UI thread maintains 60fps via Reanimated
-        showsVerticalScrollIndicator={false}
-        keyboardShouldPersistTaps="always"
-        
-        // ── CHANGER THESE PERFORMANCE ATTRIBUTES ──────────────────────
-        removeClippedSubviews={true} // Wipes native memory for off-screen carousels/videos
-        windowSize={5}               // Keeps the rendering window tight and lightweight
-        maxToRenderPerBatch={3}      // Minimizes heavy initial frame spikes
-        initialNumToRender={4}       // Drastically speeds up initial screen paint
-        // ──────────────────────────────────────────────────────────────
-
-        updateCellsBatchingPeriod={100}
-        overScrollMode="never"
-        decelerationRate={Platform.OS === 'android' ? 'normal' : 'normal'}
-        contentContainerStyle={{ paddingBottom: 100 }}
-      />
+    <Animated.FlatList
+      ref={flatListRef as any}
+      data={data}
+      renderItem={renderItem}
+      keyExtractor={keyExtractor}
+  
+  // ── 🏎️ HIGH-SPEED SCROLL CONFIGURATION ──────────────────
+  // Fixes the 'disappearing' issue while maintaining memory safety
+  removeClippedSubviews={Platform.OS === 'android'} 
+  windowSize={11}              
+  maxToRenderPerBatch={8}      
+  initialNumToRender={6}       
+  updateCellsBatchingPeriod={30} 
+  // ──────────────────────────────────────────────────────────────
+  
+  onScroll={scrollHandler}
+  scrollEventThrottle={16}
+  showsVerticalScrollIndicator={false}
+  keyboardShouldPersistTaps="always"
+  overScrollMode="never"
+  decelerationRate="normal"
+  contentContainerStyle={{ paddingBottom: 100 }}
+/>
     </SafeAreaView>
   );
 }

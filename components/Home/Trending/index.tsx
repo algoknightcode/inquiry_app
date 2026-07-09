@@ -9,6 +9,7 @@ import {
   Linking,
   NativeScrollEvent,
   NativeSyntheticEvent,
+  Platform,
   ScrollView,
   Text,
   TouchableOpacity,
@@ -197,7 +198,8 @@ const SkeletonProductCard = ({ cardWidth }: { cardWidth: number }) => (
   </View>
 );
 
-export default function HorizontalProductList({ isScrolling }: { isScrolling?: SharedValue<boolean> }) {
+// 🏎️ NEW
+const HorizontalProductList = ({ isScrolling }: { isScrolling?: SharedValue<boolean> }) => {
   const isFocused = useIsFocused();
   const router = useRouter();
   const { width: screenWidth } = useWindowDimensions();
@@ -424,13 +426,17 @@ export default function HorizontalProductList({ isScrolling }: { isScrolling?: S
           onMomentumScrollEnd={handleMomentumScrollEnd}
           onScrollToIndexFailed={handleScrollToIndexFailed}
           contentContainerStyle={{ paddingLeft: 20 }}
-          removeClippedSubviews={false}
+          removeClippedSubviews={Platform.OS === 'android'} // Critically important for Android memory
           initialNumToRender={4}
-          maxToRenderPerBatch={4}
+          maxToRenderPerBatch={6}      // Increased to render faster during quick swipes
           windowSize={3}
+          updateCellsBatchingPeriod={30} // Renders upcoming cards 3x faster
         />
       )}
       <EnquiryModal visible={isModalVisible} onClose={() => setModalVisible(false)} product={selectedProduct} />
     </View>
   );
-}
+};
+
+// 🏎️ NEW: Completely freezes the carousel from unnecessary homepage re-renders
+export default React.memo(HorizontalProductList);
