@@ -20,7 +20,8 @@ import TrustedBy from '@/components/Home/Trusted';
 import VideoSection from '@/components/Home/Video_component';
 import WeConnectBuyerSeller from '@/components/Home/WeConnect_BuyerSeller';
 import React, { useCallback, useMemo, useRef, useState } from 'react';
-import { FlatList, Platform, SafeAreaView, StyleSheet } from 'react-native';
+
+import { FlatList, InteractionManager, Platform, SafeAreaView, StyleSheet } from 'react-native';
 // Added Reanimated imports
 import Animated, { runOnJS, useAnimatedScrollHandler, useSharedValue } from 'react-native-reanimated';
 
@@ -57,11 +58,12 @@ export default function HomeScreen() {
   const isScrolling = useSharedValue(false);
   const scrollEndTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  React.useEffect(() => {
-    const timer = setTimeout(() => {
+ React.useEffect(() => {
+    // 🔥 FIX: Waits for the app to finish all heavy lifting, THEN renders the rest smoothly
+    const task = InteractionManager.runAfterInteractions(() => {
       setRenderBelowFold(true);
-    }, 300); // 300ms — enough for first frame to paint without blocking below-fold content
-    return () => clearTimeout(timer);
+    });
+    return () => task.cancel();
   }, []);
 
   // Handler for Search Bar focus
@@ -192,16 +194,20 @@ export default function HomeScreen() {
         data={data}
         keyExtractor={keyExtractor}
         renderItem={renderItem}
-        // 4. Attach the Reanimated scroll handler instead of standard Animated.event
+        // Attach the Reanimated scroll handler instead of standard Animated.event
         onScroll={scrollHandler}
         scrollEventThrottle={32} // Reduce JS thread spam - fires at ~30fps while UI thread maintains 60fps via Reanimated
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="always"
-        removeClippedSubviews={false}
-        windowSize={15}
-        maxToRenderPerBatch={5}
-        initialNumToRender={8}
-        updateCellsBatchingPeriod={50}
+        
+        // ── CHANGER THESE PERFORMANCE ATTRIBUTES ──────────────────────
+        removeClippedSubviews={true} // Wipes native memory for off-screen carousels/videos
+        windowSize={5}               // Keeps the rendering window tight and lightweight
+        maxToRenderPerBatch={3}      // Minimizes heavy initial frame spikes
+        initialNumToRender={4}       // Drastically speeds up initial screen paint
+        // ──────────────────────────────────────────────────────────────
+
+        updateCellsBatchingPeriod={100}
         overScrollMode="never"
         decelerationRate={Platform.OS === 'android' ? 'normal' : 'normal'}
         contentContainerStyle={{ paddingBottom: 100 }}

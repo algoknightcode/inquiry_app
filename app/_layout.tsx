@@ -1,4 +1,4 @@
-import CustomTabBar from '@/components/Home/Footer';
+
 import { RoleProvider, useRole } from '@/contexts/RoleContext';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { usePushNotifications } from '@/hooks/usePushNotifications';
@@ -166,7 +166,7 @@ function RootLayoutContent() {
             }} 
           />
         </Stack>
-        <CustomTabBar />
+  
       </View>
         <StatusBar style="dark" />
       </ThemeProvider>

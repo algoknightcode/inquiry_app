@@ -5,6 +5,7 @@ import { router, usePathname, useSegments } from "expo-router";
 import React, { useCallback } from "react";
 import { BackHandler, Text, TouchableOpacity, View, useWindowDimensions } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { BottomTabBarProps } from "@react-navigation/bottom-tabs";
 
 type IconName = React.ComponentProps<typeof Ionicons>["name"];
 
@@ -23,7 +24,7 @@ const tabs: TabItem[] = [
   { id: "account", label: "Account", icon: "person-outline", activeIcon: "person" },
 ];
 
-export default function CustomTabBar() {
+export default function CustomTabBar(props: BottomTabBarProps) {
   const pathname = usePathname();
   const insets = useSafeAreaInsets();
   const { width: screenWidth } = useWindowDimensions();

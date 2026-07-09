@@ -1,12 +1,11 @@
 import { useRole } from "@/contexts/RoleContext";
 import { Ionicons } from "@expo/vector-icons";
-import { router } from "expo-router";
+import { router, usePathname } from "expo-router";
 import React, { memo, useCallback, useEffect, useMemo, useState } from "react";
 import {
   Modal,
   Pressable,
   ScrollView,
-  StyleSheet,
   Text,
   TouchableOpacity,
   TouchableWithoutFeedback,
@@ -34,14 +33,6 @@ type MenuItem = {
   highlight?: boolean;
 };
 
-const baseMenuItems: MenuItem[] = [
-  { icon: "home-outline", title: "Home", route: "/(tabs)" },
-  { icon: "grid-outline", title: "Explore Industries", route: "/Industries" },
-  { icon: "briefcase-outline", title: "Free Listing", route: "/Seller/auth/Signup", highlight: true },
-  { icon: "notifications-outline", title: "Notifications", route: "/NotificationPanel" },
-  { icon: "help-circle-outline", title: "Help & Support", route: "/HelpSupport" },
-];
-
 const sellerSubMenuItems: MenuItem[] = [
   { icon: "speedometer-outline", title: "Dashboard", route: "/Seller/dashboard" },
   { icon: "person-outline", title: "Profile", route: "/Seller/Profile" },
@@ -50,171 +41,104 @@ const sellerSubMenuItems: MenuItem[] = [
   { icon: "headset-outline", title: "Leads", route: "/Seller/Lead" },
 ];
 
-const getIconColorSettings = (title: string, highlight?: boolean) => {
-  if (highlight) return { bg: 'bg-emerald-600', iconColor: '#ffffff' };
-  switch (title) {
-    case "Home":
-      return { bg: "bg-blue-50", iconColor: "#2563eb" };
-    case "Profile":
-      return { bg: "bg-indigo-50", iconColor: "#4f46e5" };
-    case "Account":
-      return { bg: "bg-violet-50", iconColor: "#7c3aed" };
-    case "Explore Industries":
-      return { bg: "bg-emerald-50", iconColor: "#059669" };
-    case "Notifications":
-      return { bg: "bg-amber-50", iconColor: "#d97706" };
-    case "Help & Support":
-      return { bg: "bg-rose-50", iconColor: "#e11d48" };
-    default:
-      return { bg: "bg-slate-100", iconColor: "#475569" };
-  }
-};
-
-const RenderMenuItem = memo(({ item, metrics, onPress }: { item: MenuItem, metrics: any, onPress: (route: string) => void }) => {
+const RenderMenuItem = memo(({ item, isActive, onPress }: { item: MenuItem, isActive: boolean, onPress: (route: string) => void }) => {
   const handlePress = useCallback(() => onPress(item.route), [item.route, onPress]);
-  const colors = getIconColorSettings(item.title, item.highlight);
+  
+  // Magic trick: Automatically use the filled icon when active, outline when inactive
+  const iconName = isActive ? item.icon.replace('-outline', '') as any : item.icon;
   
   return (
     <Pressable
       onPress={handlePress}
-      className={`flex-row items-center rounded-[16px] ${
-        item.highlight ? 'border border-blue-100' : ''
+      className={`flex-row items-center py-4 pl-8 pr-6 mb-1 mr-6 rounded-r-full ${
+        isActive ? 'bg-[#1E3A8A]' : 'bg-transparent'
       }`}
-      style={({ pressed }) => ({
-        paddingHorizontal: metrics.itemPaddingHorizontal,
-        paddingVertical: metrics.itemPaddingVertical,
-        backgroundColor: pressed 
-            ? (item.highlight ? 'rgba(239, 246, 255, 0.8)' : '#f1f5f9')
-            : (item.highlight ? 'rgba(239, 246, 255, 0.5)' : 'transparent'),
-      })}
-      android_ripple={{ color: item.highlight ? "#dbeafe" : "#f1f5f9" }}
+      android_ripple={{ color: isActive ? "#1e3a8a" : "#f1f5f9" }}
     >
-      <View 
-        style={[{ width: metrics.itemIconBoxSize, height: metrics.itemIconBoxSize }]}
-        className={`rounded-xl items-center justify-center mr-4 ${colors.bg}`}
-      >
-        <Ionicons name={item.icon} size={metrics.itemIconSize} color={colors.iconColor} />
-      </View>
+      <Ionicons 
+        name={iconName} 
+        size={24} 
+        color={isActive ? "#ffffff" : "#334155"} 
+        style={{ marginRight: 20 }}
+      />
       <Text 
-        style={{ fontSize: metrics.itemTextSize }}
-        className={`flex-1 tracking-tight ${item.highlight ? 'font-jakarta-bold text-blue-900' : 'font-jakarta-semibold text-slate-700'}`}
+        className={`flex-1 text-[16px] tracking-tight ${
+          isActive ? 'font-jakarta-bold text-white' : 'font-jakarta-medium text-slate-700'
+        }`}
       >
         {item.title}
       </Text>
-      <Ionicons name="chevron-forward" size={metrics.chevronSize} color={item.highlight ? "#1b2a6b" : "#cbd5e1"} />
     </Pressable>
   );
 });
 
-const RenderSubItem = memo(({ subItem, metrics, onPress }: { subItem: MenuItem, metrics: any, onPress: (route: string) => void }) => {
-  const handlePress = useCallback(() => onPress(subItem.route), [subItem.route, onPress]);
-  
-  return (
-    <Pressable
-      onPress={handlePress}
-      style={({ pressed }) => ({ 
-        paddingVertical: metrics.subItemPaddingVertical, 
-        paddingHorizontal: metrics.subItemPaddingHorizontal, 
-        marginBottom: 8,
-        backgroundColor: pressed ? '#ffffff' : 'transparent',
-      })}
-      className="flex-row items-center rounded-xl"
-    >
-      <View 
-        style={{ width: metrics.subItemIconBoxSize, height: metrics.subItemIconBoxSize }}
-        className="rounded-lg bg-slate-50 border border-slate-100 items-center justify-center mr-3"
-      >
-        <Ionicons name={subItem.icon} size={metrics.subItemIconSize} color="#1b2a6b" />
-      </View>
-      <Text style={{ fontSize: metrics.subItemTextSize }} className="font-jakarta-semibold text-slate-700 flex-1">{subItem.title}</Text>
-    </Pressable>
-  );
-});
-
-const SellerHeader = memo(({ metrics, onNavigate }: { metrics: any; onNavigate: (route: string) => void }) => {
+const SellerHeader = memo(({ onNavigate }: { onNavigate: (route: string) => void }) => {
   const [expanded, setExpanded] = useState(true);
-
-  const toggleMenu = useCallback(() => {
-    setExpanded(prev => !prev);
-  }, []);
+  const pathname = usePathname();
 
   return (
     <View className="mb-4">
-      {/* Premium Plan Card */}
-      <View 
-        style={{ 
-          marginHorizontal: 4, 
-          marginBottom: metrics.planCardMarginBottom, 
-          padding: metrics.planCardPadding,
-          borderColor: "#d1fae5",
-          borderWidth: 1,
-        }} 
-        className="rounded-2xl bg-emerald-50/50 flex-row items-center"
+      {/* Sleek Accordion Toggle */}
+      <Pressable 
+        onPress={() => setExpanded(!expanded)} 
+        className="flex-row items-center justify-between py-4 pl-8 pr-6 mb-1 mr-6 rounded-r-full"
+        android_ripple={{ color: "#f1f5f9" }}
       >
-        <View className="h-9 w-9 rounded-xl bg-emerald-500 items-center justify-center mr-3">
-          <Ionicons name="shield-checkmark" size={18} color="#ffffff" />
+        <View className="flex-row items-center">
+          <Ionicons name={expanded ? "briefcase" : "briefcase-outline"} size={24} color="#334155" style={{ marginRight: 20 }} />
+          <Text className="text-[16px] font-jakarta-medium text-slate-700">Seller Central</Text>
         </View>
-        <View className="flex-1">
-          <Text className="text-[14px] font-jakarta-bold text-emerald-800">Standard Plan</Text>
+        <Ionicons name={expanded ? "chevron-up" : "chevron-down"} size={18} color="#94a3b8" />
+      </Pressable>
+
+      {/* Elegant Indented Sub-menu */}
+      {expanded && (
+        <View className="ml-[60px] border-l-[1.5px] border-slate-200 py-2">
+          {sellerSubMenuItems.map((sub, idx) => {
+            const isSubActive = pathname === sub.route;
+            const subIconName = isSubActive ? sub.icon.replace('-outline', '') as any : sub.icon;
+
+            return (
+              <Pressable
+                key={idx}
+                onPress={() => onNavigate(sub.route)}
+                className="flex-row items-center py-3.5 pl-6"
+                style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1 })}
+              >
+                <Ionicons name={subIconName} size={20} color={isSubActive ? "#1E3A8A" : "#64748b"} style={{ marginRight: 16 }} />
+                <Text className={`text-[15px] ${isSubActive ? 'font-jakarta-bold text-[#1E3A8A]' : 'font-jakarta-medium text-slate-500'}`}>
+                  {sub.title}
+                </Text>
+              </Pressable>
+            );
+          })}
         </View>
-      </View>
-
-      {/* Accordion Box */}
-      <View className="rounded-2xl overflow-hidden border border-slate-100 bg-slate-50/70">
-        <Pressable 
-          onPress={toggleMenu} 
-          className="flex-row items-center justify-between" 
-          style={{ paddingHorizontal: metrics.itemPaddingHorizontal, paddingVertical: metrics.itemPaddingVertical }}
-        >
-          <View className="flex-row items-center">
-            <View style={{ width: metrics.itemIconBoxSize - 2, height: metrics.itemIconBoxSize - 2 }} className="rounded-lg bg-blue-900 items-center justify-center mr-3" >
-              <Ionicons name="ribbon" size={metrics.itemIconSize - 2} color="#ffffff" />
-            </View>
-            <Text style={{ fontSize: metrics.itemTextSize - 0.5 }} className="font-jakarta-bold text-slate-800">Seller Central</Text>
-          </View>
-          <View style={{ transform: [{ rotate: expanded ? "180deg" : "0deg" }] }}>
-            <Ionicons name="chevron-down" size={metrics.chevronSize} color="#475569" />
-          </View>
-        </Pressable>
-
-        {expanded && (
-          <View style={{ paddingVertical: 4, paddingHorizontal: 8 }}>
-            {sellerSubMenuItems.map((subItem, idx) => (
-              <RenderSubItem key={idx} subItem={subItem} metrics={metrics} onPress={onNavigate} />
-            ))}
-          </View>
-        )}
-      </View>
+      )}
     </View>
   );
 });
 
-
-
 const Sidebar = ({ visible, onClose, currentRole }: SidebarProps) => {
   const insets = useSafeAreaInsets();
-  const { width: screenWidth, height: screenHeight } = useWindowDimensions();
+  const { width: screenWidth } = useWindowDimensions();
+  const pathname = usePathname();
   const [logoutConfirmVisible, setLogoutConfirmVisible] = useState(false);
   
-  // 👉 USE REACTIVE ROLE STATE FROM CONTEXT
-  const { globalBuyerId, globalSellerId, setGlobalSellerId, setSellerSignedIn, setGlobalBuyerId, setGlobalRole, clearRoleState } = useRole();
-
-  // Only treat user as seller if they have an actual seller session (not just a stale role in storage)
+  const { globalBuyerId, globalSellerId, clearRoleState } = useRole();
   const isActuallySeller = currentRole === "seller" && !!globalSellerId;
 
-  // Build role-aware menu items
   const roleMenuItems = useMemo<MenuItem[]>(() => {
     const profileRoute = isActuallySeller ? "/Seller/Profile" : "/Buyer/profile";
     const items: MenuItem[] = [
       { icon: "home-outline", title: "Home", route: "/(tabs)" },
-      { icon: "person-outline", title: "Profile", route: profileRoute },
-      { icon: "person-circle-outline", title: "Account", route: "/Account" },
       { icon: "grid-outline", title: "Explore Industries", route: "/Industries" },
+      { icon: "person-outline", title: "Profile", route: profileRoute },
+      { icon: "person-circle-outline", title: "Account Settings", route: "/Account" },
       { icon: "notifications-outline", title: "Notifications", route: "/NotificationPanel" },
       { icon: "help-circle-outline", title: "Help & Support", route: "/HelpSupport" },
     ];
     if (!isActuallySeller) {
-      items.splice(3, 0, { icon: "briefcase-outline", title: "Free Listing", route: "/Seller/auth/Signup", highlight: true });
+      items.splice(2, 0, { icon: "briefcase-outline", title: "Free Listing", route: "/Seller/auth/Signup", highlight: true });
     }
     return items;
   }, [isActuallySeller]);
@@ -222,30 +146,24 @@ const Sidebar = ({ visible, onClose, currentRole }: SidebarProps) => {
   const slideAnim = useSharedValue(-400);
   const fadeAnim = useSharedValue(0);
 
-  const metrics = useMemo(() => {
+  const sidebarWidth = useMemo(() => {
     const isTablet = screenWidth >= 768;
-    const baseScale = isTablet ? 1.15 : Math.max(0.85, Math.min(1.1, screenWidth / 375));
-    const hScale = screenHeight < 680 ? 0.78 : 1.0;
-    const sidebarWidth = isTablet ? 320 : Math.min(screenWidth * 0.68, 250 * baseScale);
-    const subItemIconBoxSize = 28 * baseScale;
-    const totalSubmenuHeight = (sellerSubMenuItems.length * (subItemIconBoxSize + (9 * hScale * 2) + 8)) + 8;
-
-    return { sidebarWidth, scale: baseScale, headerPaddingHorizontal: 20 * baseScale, headerPaddingTop: 14 * baseScale, headerPaddingBottom: 16 * baseScale, logoSize: 40 * baseScale, logoTextSize: 17 * baseScale, logoSubTextSize: 13 * baseScale, closeBtnSize: 32 * baseScale, closeIconSize: 18 * baseScale, scrollPaddingHorizontal: 16 * baseScale, scrollPaddingTop: 20 * baseScale, itemMarginBottom: 18 * baseScale, itemPaddingVertical: 12 * baseScale, itemPaddingHorizontal: 16 * baseScale, itemIconBoxSize: 36 * baseScale, itemIconSize: 18 * baseScale, itemTextSize: 16.5 * baseScale, chevronSize: 15 * baseScale, subItemPaddingVertical: 11 * baseScale, subItemPaddingHorizontal: 12 * baseScale, subItemIconBoxSize, subItemIconSize: 14 * baseScale, subItemTextSize: 15 * baseScale, totalSubmenuHeight, planCardPadding: 12 * baseScale, planCardMarginBottom: 16 * baseScale, logoutPaddingHorizontal: 16 * baseScale, logoutPaddingVertical: 10 * baseScale, logoutButtonPaddingVertical: 12 * baseScale, logoutTextSize: 15.5 * baseScale, logoutIconSize: 17 * baseScale, footerPaddingHorizontal: 24 * baseScale, footerPaddingTop: 10 * baseScale, footerPaddingBottom: 8 * baseScale, footerTextSize: 12 * baseScale };
-  }, [screenWidth, screenHeight]);
+    return isTablet ? 320 : Math.min(screenWidth * 0.75, 300);
+  }, [screenWidth]);
 
   useEffect(() => { 
     if (!visible) {
-      slideAnim.value = -metrics.sidebarWidth; 
+      slideAnim.value = -sidebarWidth; 
     }
-  }, [metrics.sidebarWidth, visible]);
+  }, [sidebarWidth, visible]);
 
   useEffect(() => {
     if (visible) {
-      slideAnim.value = withTiming(0, { duration: 200, easing: Easing.out(Easing.cubic) });
-      fadeAnim.value = withTiming(1, { duration: 200 });
+      slideAnim.value = withTiming(0, { duration: 250, easing: Easing.out(Easing.cubic) });
+      fadeAnim.value = withTiming(1, { duration: 250 });
     } else {
-      slideAnim.value = withTiming(-metrics.sidebarWidth, { duration: 200, easing: Easing.out(Easing.cubic) });
-      fadeAnim.value = withTiming(0, { duration: 200 });
+      slideAnim.value = withTiming(-sidebarWidth, { duration: 250, easing: Easing.out(Easing.cubic) });
+      fadeAnim.value = withTiming(0, { duration: 250 });
     }
   }, [visible]);
 
@@ -266,7 +184,6 @@ const Sidebar = ({ visible, onClose, currentRole }: SidebarProps) => {
 
   const handleNavigation = useCallback((route: string) => {
     onClose();
-    
     let finalRoute = route;
     const isGuest = !globalBuyerId && !globalSellerId;
 
@@ -274,7 +191,6 @@ const Sidebar = ({ visible, onClose, currentRole }: SidebarProps) => {
       finalRoute = "/(auth)/choose-role";
     }
 
-    // Navigate immediately without waiting for animations
     requestAnimationFrame(() => {
       router.navigate(finalRoute as any);
     });
@@ -286,73 +202,102 @@ const Sidebar = ({ visible, onClose, currentRole }: SidebarProps) => {
   return (
     <Modal visible={visible} transparent animationType="none" onRequestClose={handleClose}>
       <View style={{ flex: 1 }}>
+        {/* Backdrop */}
         <TouchableWithoutFeedback onPress={handleClose}>
-          <Animated.View style={[{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, backgroundColor: "rgba(15, 23, 42, 0.45)" }, backdropStyle]} />
+          <Animated.View style={[{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, backgroundColor: "rgba(15, 23, 42, 0.4)" }, backdropStyle]} />
         </TouchableWithoutFeedback>
-        <Animated.View style={[{ position: "absolute", top: 0, left: 0, bottom: 0, width: metrics.sidebarWidth, backgroundColor: "#ffffff", borderRightWidth: 1, borderRightColor: "#E2E8F0", paddingTop: Math.max(insets.top, 10), paddingBottom: Math.max(insets.bottom, 12 * metrics.scale) }, drawerStyle]}>
-          <View style={{ paddingHorizontal: metrics.headerPaddingHorizontal, paddingBottom: 10, paddingTop: 6 }} className="border-b border-slate-100 flex-row items-center justify-between">
+        
+        {/* Sidebar Drawer */}
+        <Animated.View style={[{ 
+            position: "absolute", top: 0, left: 0, bottom: 0, width: sidebarWidth, 
+            backgroundColor: "#ffffff", borderRightWidth: 1, borderRightColor: "#E2E8F0", 
+            paddingTop: Math.max(insets.top, 16), paddingBottom: Math.max(insets.bottom, 24) 
+          }, drawerStyle]}
+        >
+          {/* Header */}
+          <View className="px-8 pb-6 pt-4 border-b border-slate-100 flex-row items-center justify-between">
             <View className="flex-row items-center">
-              <View style={{ width: metrics.logoSize, height: metrics.logoSize }} className="rounded-xl bg-slate-900 items-center justify-center mr-3">
-                <Text className="text-white font-jakarta-bold text-lg">IB</Text>
+              <View className="w-10 h-10 rounded-full bg-[#1E3A8A] items-center justify-center mr-4">
+                <Text className="text-white font-jakarta-bold text-[17px]">IB</Text>
               </View>
-              <View>
-                <Text style={{ fontSize: metrics.logoTextSize }} className="font-jakarta-bold text-slate-900">Inquiry Bazaar</Text>
-              </View>
+              <Text className="text-[18px] font-jakarta-bold text-slate-900 tracking-tight">Inquiry Bazaar</Text>
             </View>
-            <Pressable onPress={handleClose} className="p-2 bg-slate-100 rounded-full">
-              <Ionicons name="close" size={20} color="#64748b" />
-            </Pressable>
+            <TouchableOpacity onPress={handleClose} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+              <Ionicons name="close" size={24} color="#94a3b8" />
+            </TouchableOpacity>
           </View>
+
+          {/* Navigation Links - ZERO horizontal padding allows the highlight to touch the left edge */}
           <ScrollView
             style={{ flex: 1 }}
-            contentContainerStyle={{ paddingHorizontal: metrics.scrollPaddingHorizontal, paddingTop: metrics.scrollPaddingTop }}
+            contentContainerStyle={{ paddingTop: 24, paddingBottom: 40 }}
             showsVerticalScrollIndicator={false}
             bounces={false}
-            scrollEnabled={true}
-            nestedScrollEnabled={true}
           >
-            {isActuallySeller && <SellerHeader metrics={metrics} onNavigate={handleNavigation} />}
-            <View style={{ gap: 6 }}>
-              {roleMenuItems.map((item) => (
-                <RenderMenuItem key={item.route} item={item} metrics={metrics} onPress={handleNavigation} />
-              ))}
+            {isActuallySeller && <SellerHeader onNavigate={handleNavigation} />}
+            
+            <View>
+              {roleMenuItems.map((item) => {
+                const isActive = pathname === item.route || item.highlight;
+                return (
+                  <RenderMenuItem key={item.route} item={item} isActive={isActive!} onPress={handleNavigation} />
+                );
+              })}
             </View>
           </ScrollView>
-          <View style={{ padding: 20 }} className="border-t border-slate-100">
+
+          {/* Footer Actions - Minimal Text Ghost Buttons */}
+          <View className="px-8 pt-6 pb-2 border-t border-slate-100">
              {(!globalBuyerId && !globalSellerId) ? (
-               <TouchableOpacity onPress={() => handleNavigation("/(auth)/choose-role")} className="flex-row items-center justify-center bg-blue-50 p-3 rounded-xl">
-                 <Text className="font-jakarta-bold text-blue-600">Log In / Sign Up</Text>
+               <TouchableOpacity 
+                 onPress={() => handleNavigation("/(auth)/choose-role")} 
+                 className="flex-row items-center py-3"
+               >
+                 <Ionicons name="log-in-outline" size={24} color="#1E3A8A" style={{ marginRight: 16 }} />
+                 <Text className="font-jakarta-bold text-[#1E3A8A] text-[16px]">Log In / Sign Up</Text>
                </TouchableOpacity>
              ) : (
-               <TouchableOpacity onPress={() => setLogoutConfirmVisible(true)} className="flex-row items-center justify-center bg-rose-50 p-3 rounded-xl">
-                 <Text className="font-jakarta-bold text-rose-600">Log Out</Text>
+               <TouchableOpacity 
+                 onPress={() => setLogoutConfirmVisible(true)} 
+                 className="flex-row items-center py-3"
+               >
+                 <Ionicons name="log-out-outline" size={24} color="#e11d48" style={{ marginRight: 16 }} />
+                 <Text className="font-jakarta-bold text-rose-600 text-[16px]">Log Out</Text>
                </TouchableOpacity>
              )}
           </View>
         </Animated.View>
       </View>
 
-      {/* Logout Confirmation Modal */}
+      {/* Shadowless Logout Confirmation Modal */}
       <Modal visible={logoutConfirmVisible} transparent animationType="fade" onRequestClose={() => setLogoutConfirmVisible(false)}>
-        <View style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.5)", justifyContent: "center", alignItems: "center", paddingHorizontal: 24 }}>
-          <View style={{ backgroundColor: "white", borderRadius: 16, padding: 24, width: "100%", maxWidth: 300 }}>
-            <Text style={{ fontSize: 16, fontWeight: "700", color: "#0f172a", marginBottom: 12 }}>Confirm Logout</Text>
-            <Text style={{ fontSize: 14, color: "#64748b", marginBottom: 24, lineHeight: 20 }}>Are you sure you want to log out? You can log back in anytime.</Text>
-            <View style={{ flexDirection: "row", gap: 12 }}>
-              <TouchableOpacity onPress={() => setLogoutConfirmVisible(false)} style={{ flex: 1, paddingVertical: 12, borderRadius: 8, borderWidth: 1, borderColor: "#e2e8f0", alignItems: "center" }}>
-                <Text style={{ fontSize: 14, fontWeight: "600", color: "#64748b" }}>Cancel</Text>
-              </TouchableOpacity>
-              <TouchableOpacity onPress={async () => {
-                setLogoutConfirmVisible(false);
-                onClose();
-                await clearRoleState();
-                router.replace("/(auth)/choose-role");
-              }} style={{ flex: 1, paddingVertical: 12, borderRadius: 8, backgroundColor: "#ef4444", alignItems: "center" }}>
-                <Text style={{ fontSize: 14, fontWeight: "600", color: "white" }}>Log Out</Text>
-              </TouchableOpacity>
+        {logoutConfirmVisible && (
+          <View style={{ flex: 1, backgroundColor: "rgba(15, 23, 42, 0.6)", justifyContent: "center", alignItems: "center", paddingHorizontal: 24 }}>
+            <View style={{ backgroundColor: "#ffffff", borderRadius: 20, padding: 24, width: "100%", maxWidth: 320, borderWidth: 1, borderColor: "#e2e8f0" }}>
+              
+              <View className="w-12 h-12 rounded-full bg-rose-50 items-center justify-center mb-4 border border-rose-100">
+                <Ionicons name="log-out-outline" size={24} color="#e11d48" />
+              </View>
+
+              <Text style={{ fontSize: 18, fontWeight: "800", color: "#0f172a", marginBottom: 8 }}>Log Out</Text>
+              <Text style={{ fontSize: 14.5, color: "#64748b", marginBottom: 28, lineHeight: 22 }}>Are you sure you want to log out of InquiryBazaar? You will need to sign in again to manage your account.</Text>
+              
+              <View style={{ flexDirection: "row", gap: 12 }}>
+                <TouchableOpacity onPress={() => setLogoutConfirmVisible(false)} style={{ flex: 1, paddingVertical: 14, borderRadius: 12, backgroundColor: "#f1f5f9", alignItems: "center" }}>
+                  <Text style={{ fontSize: 15, fontWeight: "700", color: "#475569" }}>Cancel</Text>
+                </TouchableOpacity>
+                <TouchableOpacity onPress={async () => {
+                  setLogoutConfirmVisible(false);
+                  onClose();
+                  await clearRoleState();
+                  router.replace("/(auth)/choose-role");
+                }} style={{ flex: 1, paddingVertical: 14, borderRadius: 12, backgroundColor: "#e11d48", alignItems: "center" }}>
+                  <Text style={{ fontSize: 15, fontWeight: "700", color: "#ffffff" }}>Log Out</Text>
+                </TouchableOpacity>
+              </View>
             </View>
           </View>
-        </View>
+        )}
       </Modal>
     </Modal>
   );
