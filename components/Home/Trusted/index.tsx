@@ -535,7 +535,7 @@ const IBTrusted = ({ isScrolling }: { isScrolling?: SharedValue<boolean> }) => {
     />
   ), [layout, scale, handleCardPress, handleOpenQuote]);
 
-  const keyExtractor = useCallback((item: Product, index: number) => `${item._id || item.id || 'brand'}-${index}`, []);
+  const keyExtractor = useCallback((item: Product | undefined, index: number) => item ? `${item._id || 'brand'}-${index}` : `empty-${index}`, []);
   const getItemLayout = useCallback((_: any, index: number) => ({
     length: layout.ITEM_SIZE,
     offset: layout.ITEM_SIZE * index,

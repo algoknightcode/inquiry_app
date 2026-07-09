@@ -214,22 +214,24 @@ const NewOnes = ({ isScrolling }: { isScrolling?: SharedValue<boolean> }) => {
 
   // Fetch Data
   useEffect(() => {
+    let active = true;
+
     // 🚀 JS Thread protection: Let the main page render first before mounting the heavy list
     const mountTimer = setTimeout(() => {
-      setIsLoading(false);
+      if (active) setIsLoading(false);
     }, 250);
 
     const fetchCategoryProducts = async () => {
       try {
         // Safe asynchronous cache recovery during initial mounting
         const cacheData = getInitialCachedProducts();
-        if (cacheData.products && cacheData.products.length > 0) {
+        if (cacheData.products && cacheData.products.length > 0 && active) {
           setProductsList(cacheData.products);
           setCategoryObjId(cacheData.categoryId);
         }
 
         const json = await fetchWithCache("https://backend.inquirybazaar.com/api/industries/tree");
-        if (json.success && json.data) {
+        if (json.success && json.data && active) {
           const industry = json.data.find(
             (ind: any) => ind.name?.toLowerCase().includes("plants") || ind.name?.toLowerCase().includes("machinery")
           );
@@ -238,7 +240,7 @@ const NewOnes = ({ isScrolling }: { isScrolling?: SharedValue<boolean> }) => {
               (cat: any) => cat.name?.toLowerCase().includes("machines") || cat.name?.toLowerCase().includes("equipment")
             );
             if (categoryObj) {
-              setCategoryObjId(categoryObj._id);
+              if (active) setCategoryObjId(categoryObj._id);
               if (categoryObj.subCategories) {
                 const productRequests = categoryObj.subCategories.map(async (sub: any) => {
                   try {
@@ -253,10 +255,12 @@ const NewOnes = ({ isScrolling }: { isScrolling?: SharedValue<boolean> }) => {
                 });
                 const allProductsArrays = await Promise.all(productRequests);
                 const flattened = allProductsArrays.flat().slice(0, 10);
-                setProductsList((prev) => {
-                  if (prev.length === flattened.length && prev[0]?._id === flattened[0]?._id) return prev;
-                  return flattened;
-                });
+                if (active) {
+                  setProductsList((prev) => {
+                    if (prev.length === flattened.length && prev[0]?._id === flattened[0]?._id) return prev;
+                    return flattened;
+                  });
+                }
               }
             }
           }
@@ -264,12 +268,13 @@ const NewOnes = ({ isScrolling }: { isScrolling?: SharedValue<boolean> }) => {
       } catch (error) {
         console.error("Error fetching B2B products:", error);
       } finally {
-        setIsLoading(false);
+        if (active) setIsLoading(false);
       }
     };
     fetchCategoryProducts();
 
     return () => {
+      active = false;
       clearTimeout(mountTimer);
     };
   }, []);

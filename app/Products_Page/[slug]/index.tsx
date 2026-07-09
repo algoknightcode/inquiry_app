@@ -70,14 +70,22 @@ export default function ProductDetailPage() {
       try {
         const storedStr = await AsyncStorage.getItem("wishlist");
         if (storedStr) {
-          const list: any[] = JSON.parse(storedStr);
-          const exists = list.some((item) => item._id === product._id);
-          if (isMounted.current) {
-            setIsWishlisted(exists);
+          const list = JSON.parse(storedStr);
+          if (Array.isArray(list)) {
+            const exists = list.some((item) => item && item._id === product._id);
+            if (isMounted.current) {
+              setIsWishlisted(exists);
+            }
+          } else {
+            // Reset corrupted data
+            await AsyncStorage.setItem("wishlist", JSON.stringify([]));
           }
         }
       } catch (err) {
         console.error("Error checking wishlist:", err);
+        try {
+          await AsyncStorage.setItem("wishlist", JSON.stringify([]));
+        } catch (_) {}
       }
     };
     checkWishlist();
@@ -91,12 +99,18 @@ export default function ProductDetailPage() {
       const storedStr = await AsyncStorage.getItem("wishlist");
       let list: any[] = [];
       if (storedStr) {
-        list = JSON.parse(storedStr);
+        const parsed = JSON.parse(storedStr);
+        if (Array.isArray(parsed)) {
+          list = parsed;
+        } else {
+          list = [];
+          await AsyncStorage.setItem("wishlist", JSON.stringify([]));
+        }
       }
 
-      const exists = list.some((item) => item._id === product._id);
+      const exists = list.some((item) => item && item._id === product._id);
       if (exists) {
-        list = list.filter((item) => item._id !== product._id);
+        list = list.filter((item) => item && item._id !== product._id);
         if (isMounted.current) setIsWishlisted(false);
       } else {
         list.push(product);
@@ -105,6 +119,9 @@ export default function ProductDetailPage() {
       await AsyncStorage.setItem("wishlist", JSON.stringify(list));
     } catch (err) {
       console.error("Error toggling wishlist:", err);
+      try {
+        await AsyncStorage.setItem("wishlist", JSON.stringify([]));
+      } catch (_) {}
     }
   };
 

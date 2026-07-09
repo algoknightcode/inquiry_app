@@ -426,7 +426,7 @@ const HorizontalProductList = ({ isScrolling }: { isScrolling?: SharedValue<bool
           ref={flatListRef}
           data={replicatedData}
           renderItem={renderItem}
-          keyExtractor={(item, index) => `${item._id || 'brand'}-${index}`}
+          keyExtractor={(item, index) => item ? `${item._id || 'brand'}-${index}` : `empty-${index}`}
           getItemLayout={getItemLayout}
           horizontal
           showsHorizontalScrollIndicator={false}
