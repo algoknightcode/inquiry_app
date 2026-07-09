@@ -6,13 +6,13 @@ import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import React, { useState } from "react";
 import {
-    Image,
-    Pressable,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
+  Image,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { moderateScale, scale, verticalScale } from "react-native-size-matters";
@@ -35,16 +35,15 @@ const ChooseRole = () => {
 
   const handleSkip = async () => {
     try {
-      // Set session-level flag so app doesn't show welcome again until restart
       setSessionSkipRole();
       await AsyncStorage.setItem("skippedRole", "true");
-      router.navigate("/(tabs)");
+      // 🔥 FIX 3: 'replace' deletes the auth screen from navigation history
+      router.replace("/(tabs)"); 
     } catch (e) {
       console.log("Error navigating", e);
-      router.navigate("/(tabs)");
+      router.replace("/(tabs)");
     }
   };
-
   return (
     <SafeAreaView style={styles.safeArea}>
       <ScrollView 

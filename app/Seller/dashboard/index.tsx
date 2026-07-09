@@ -5,15 +5,15 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useIsFocused } from "@react-navigation/native";
 import React, { useCallback, useEffect, useState } from "react";
 import {
-    ActivityIndicator,
-    FlatList,
-    InteractionManager,
-    RefreshControl,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  FlatList,
+  InteractionManager,
+  RefreshControl,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from "react-native";
 import { moderateScale, scale, verticalScale } from "react-native-size-matters";
 
@@ -31,8 +31,8 @@ const Dashboard = () => {
       const supplierId = globalSellerId || await AsyncStorage.getItem("supplierId");
 
       if (supplierId) {
-        // 🔥 PARALLEL: All 3 API calls fire simultaneously with Promise.all
-        const [prodRes, leadRes, businessRes] = await Promise.all([
+        // 🔥 FIX 1: allSettled prevents one broken API from crashing the whole dashboard
+        const results = await Promise.allSettled([
           fetch(`https://seller.inquirybazaar.com/api/product?supplierId=${supplierId}`),
           fetch(`https://brandbnalo.com/api/form/get-forms/${supplierId}?filter=today`),
           fetch("https://seller.inquirybazaar.com/api/profile/business", {
@@ -44,32 +44,35 @@ const Dashboard = () => {
           }),
         ]);
 
-        // Process products
-        const prodJson = await prodRes.json();
-        const productsArray = prodJson.data || prodJson.products || prodJson || [];
-        setProductsCount(productsArray.length);
+        // Safely process products
+        if (results[0].status === "fulfilled" && results[0].value.ok) {
+          const prodJson = await results[0].value.json();
+          const productsArray = prodJson.data || prodJson.products || prodJson || [];
+          setProductsCount(productsArray.length);
 
-        // Extract unique category names
-        const categorySet = new Set<string>();
-        productsArray.forEach((p: any) => {
-          const cat = p.categoryName || p.category?.name || p.category;
-          if (cat && typeof cat === 'string') {
-            categorySet.add(cat);
-          } else if (cat && typeof cat === 'object' && cat.name) {
-            categorySet.add(cat.name);
-          }
-        });
-        setCategoriesList(Array.from(categorySet));
-
-        // Process inquiries
-        const leadJson = await leadRes.json();
-        if (leadJson.success && leadJson.data) {
-          setInquiries(leadJson.data);
+          const categorySet = new Set<string>();
+          productsArray.forEach((p: any) => {
+            const cat = p.categoryName || p.category?.name || p.category;
+            if (cat && typeof cat === 'string') {
+              categorySet.add(cat);
+            } else if (cat && typeof cat === 'object' && cat.name) {
+              categorySet.add(cat.name);
+            }
+          });
+          setCategoriesList(Array.from(categorySet));
         }
 
-        // Process business profile
-        if (businessRes.ok) {
-          const businessJson = await businessRes.json();
+        // Safely process inquiries
+        if (results[1].status === "fulfilled" && results[1].value.ok) {
+          const leadJson = await results[1].value.json();
+          if (leadJson.success && leadJson.data) {
+            setInquiries(leadJson.data);
+          }
+        }
+
+        // Safely process business profile
+        if (results[2].status === "fulfilled" && results[2].value.ok) {
+          const businessJson = await results[2].value.json();
           const bData = businessJson.data || businessJson.profile || businessJson || null;
           setBusinessProfile(bData);
         }
@@ -86,12 +89,13 @@ const Dashboard = () => {
 
   useEffect(() => {
     if (!isFocused) return;
-    // Wait for the navigation transition to complete before doing heavy data processing
     const task = InteractionManager.runAfterInteractions(() => {
-      fetchDashboardData(true);
+      // 🔥 FIX 2: Only show full-screen loader if data is completely empty
+      const needsLoader = !businessProfile; 
+      fetchDashboardData(needsLoader);
     });
     return () => task.cancel();
-  }, [fetchDashboardData, isFocused]);
+  }, [fetchDashboardData, isFocused, businessProfile]);
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
