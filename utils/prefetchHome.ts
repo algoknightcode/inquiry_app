@@ -5,40 +5,45 @@ const BASE = "https://backend.inquirybazaar.com/api";
 
 /**
  * Pre-warms the API cache with every URL used on the home screen.
- * Called during the welcome screen loading bar so components get
- * instant cache hits and show ZERO loaders when the home renders.
+ * Structured into prioritized waves so the CPU is never overwhelmed
+ * at startup on budget/single-core devices.
  *
- * Now also preloads critical images and more API endpoints.
+ * Wave 1 → Critical layout (industries, categories, cities)
+ * Wave 2 → Structural layout (brands, sellers, sub-categories)
+ * Wave 3 → Non-critical content deferred 200ms (faqs, testimonials, about)
  */
 export async function prefetchHomeData(): Promise<void> {
-  // ── Step 0: Preload critical images ──────────────────────────
+  // ── Wave 0: Preload critical images (non-blocking fire-and-forget) ──
   const criticalImages = [
     require("../assets/images/logoo-Photoroom.png"),
-    // Add other critical image paths here as needed
   ];
-
-  // Start image preloading in parallel (non-blocking)
   criticalImages.forEach((image) => {
     Image.prefetch(typeof image === "string" ? image : image?.uri || "").catch(
       () => {},
     );
   });
 
-  // ── Step 1: Fire all top-level requests concurrently ──────────
-  const topLevel = [
+  // ── Wave 1: High Priority — Core layout essentials ──────────────────
+  // These endpoints power the first visible sections on screen.
+  const essentialEndpoints = [
     `${BASE}/industries/tree`, // CategoryMarquee, IndusTreeCasaroul, SearchBar, NewOnes
-    `${BASE}/industries`, // Industry
+    `${BASE}/industries`,      // Industry
     `${BASE}/categories/main`, // TopCategory
-    `${BASE}/categories/sub/led-display-board/Delhi`, // Trending, Trusted
-    `${BASE}/brands`, // TrendingBrandsCarousel
-    `${BASE}/sellers/top`, // SellersByCityGrid
-    `${BASE}/cities`, // Cities list
+    `${BASE}/cities`,          // Cities list
   ];
+  await Promise.allSettled(essentialEndpoints.map((url) => fetchWithCache(url)));
 
-  await Promise.allSettled(topLevel.map((url) => fetchWithCache(url)));
+  // ── Wave 2: Structural layout — loads after Wave 1 completes ────────
+  // Slightly lower priority — these components appear below the fold.
+  const structuralEndpoints = [
+    `${BASE}/categories/sub/led-display-board/Delhi`, // Trending, Trusted
+    `${BASE}/brands`,      // TrendingBrandsCarousel
+    `${BASE}/sellers/top`, // SellersByCityGrid
+  ];
+  await Promise.allSettled(structuralEndpoints.map((url) => fetchWithCache(url)));
 
-  // ── Step 2: Use cached tree to pre-warm NewOnes subcategory URLs ──
-  // The tree is now in cache so this is instant (no network hit)
+  // ── Wave 2b: Pre-warm NewOnes subcategory URLs from cached tree ─────
+  // Tree is already cached from Wave 1 — no network hit here.
   try {
     const treeJson = await fetchWithCache(`${BASE}/industries/tree`);
     if (treeJson?.success && Array.isArray(treeJson.data)) {
@@ -47,18 +52,15 @@ export async function prefetchHomeData(): Promise<void> {
           ind.name?.toLowerCase().includes("plants") ||
           ind.name?.toLowerCase().includes("machinery"),
       );
-
       const categoryObj = industry?.categories?.find(
         (cat: any) =>
           cat.name?.toLowerCase().includes("machines") ||
           cat.name?.toLowerCase().includes("equipment"),
       );
-
       if (categoryObj?.subCategories?.length) {
         const subCatUrls = categoryObj.subCategories.map(
           (sub: any) => `${BASE}/categories/sub/${sub.slug}/Delhi`,
         );
-        // Fire all subcategory product fetches in parallel
         await Promise.allSettled(
           subCatUrls.map((url: string) => fetchWithCache(url)),
         );
@@ -68,14 +70,15 @@ export async function prefetchHomeData(): Promise<void> {
     // Silently skip — home will fallback to its own fetch
   }
 
-  // ── Step 3: Preload additional common endpoints ──────────────
-  const additionalEndpoints = [
-    `${BASE}/testimonials`, // Reviews/Testimonials
-    `${BASE}/faqs`, // FAQ section
-    `${BASE}/content/about`, // About/footer content
-  ];
-
-  await Promise.allSettled(
-    additionalEndpoints.map((url) => fetchWithCache(url)),
-  );
+  // ── Wave 3: Non-critical background content — deferred 200ms ────────
+  // Testimonials, FAQs and about content are below-fold and non-essential.
+  // Deferring keeps them completely clear of the main boot sequence window.
+  setTimeout(() => {
+    const backgroundEndpoints = [
+      `${BASE}/testimonials`, // Reviews/Testimonials
+      `${BASE}/faqs`,         // FAQ section
+      `${BASE}/content/about`, // About/footer content
+    ];
+    Promise.allSettled(backgroundEndpoints.map((url) => fetchWithCache(url))).catch(() => {});
+  }, 200);
 }
