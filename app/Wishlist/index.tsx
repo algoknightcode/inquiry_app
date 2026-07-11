@@ -19,6 +19,7 @@ import {
 
 import { fetchWithCache } from "@/utils/apiCache";
 import EnquiryModal from "@/components/EnquiryModal";
+import Navbar from "@/components/Home/Navbar";
 
 export default function B2BWishlist() {
   const router = useRouter();
@@ -207,8 +208,10 @@ export default function B2BWishlist() {
     <SafeAreaView className="flex-1 bg-slate-50">
       <StatusBar barStyle="dark-content" backgroundColor="#f8fafc" />
       
+      <Navbar />
+
       {/* Header */}
-      <View className={`px-5 pt-6 pb-4 ${Platform.OS === 'android' ? 'mt-8' : ''}`}>
+      <View className="px-5 pt-6 pb-4">
         <Text className="text-3xl font-jakarta-bold text-slate-900 tracking-tight">
           Wishlist
         </Text>

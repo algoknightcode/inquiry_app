@@ -388,7 +388,7 @@ const IBTrusted = ({ isScrolling }: { isScrolling?: SharedValue<boolean> }) => {
 
   const replicatedData = useMemo(() => {
     if (!products || products.length === 0) return [];
-    return Array(5).fill(products).flat();
+    return Array(3).fill(products).flat();
   }, [products]);
 
   const baseMiddleIndex = useMemo(() => {

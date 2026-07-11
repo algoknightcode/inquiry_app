@@ -1,4 +1,5 @@
 import { useRole } from "@/contexts/RoleContext";
+import { addNotification } from "@/utils/notificationService";
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useRouter } from "expo-router";
@@ -56,6 +57,7 @@ const BuyerLogin = () => {
       setGlobalSellerId(null);
       setSellerSignedIn(false);
       setGlobalRole("buyer");
+      await addNotification("Buyer logged in successfully.");
       setIsSuccess(true);
       setTimeout(() => {
         setIsSuccess(false);
@@ -90,6 +92,7 @@ const BuyerLogin = () => {
           setGlobalSellerId(null);
           setSellerSignedIn(false);
           setGlobalRole("buyer");
+          await addNotification("Buyer logged in successfully.");
           
           setIsSuccess(true);
           setTimeout(() => {

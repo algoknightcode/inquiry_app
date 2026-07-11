@@ -70,9 +70,9 @@ const cardsData: MoreForYouCard[] = [
 ];
 
 const CARDS_LENGTH = cardsData.length;
-const REPLICATED_COUNT = 5;
-const TOTAL_ITEMS = CARDS_LENGTH * REPLICATED_COUNT; // 20 items
-const BASE_MIDDLE = CARDS_LENGTH * 2; // Starts exactly at index 8 (3rd copy)
+const REPLICATED_COUNT = 3;
+const TOTAL_ITEMS = CARDS_LENGTH * REPLICATED_COUNT; // 12 items
+const BASE_MIDDLE = CARDS_LENGTH; // Starts exactly at index 4 (2nd copy)
 
 // 2. Extracted and Memoized Card Component
 const MoreForYouCardItem = React.memo(({

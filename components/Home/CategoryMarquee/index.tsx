@@ -2,7 +2,7 @@ import { fetchWithCache } from "@/utils/apiCache";
 import { useRouter } from "expo-router";
 import React, { useEffect, useMemo, useState } from "react";
 import { ActivityIndicator, Pressable, StyleSheet, Text, View, useWindowDimensions } from "react-native";
-import Animated, { FadeInDown, SharedValue, runOnJS, useAnimatedReaction } from "react-native-reanimated";
+import Animated, { FadeInDown, SharedValue } from "react-native-reanimated";
 import Carousel from "react-native-reanimated-carousel";
 
 type Industry = {
@@ -13,19 +13,6 @@ type Industry = {
 export default function CategoryMarquee({ isScrolling }: { isScrolling?: SharedValue<boolean> }) {
   const router = useRouter();
   const { width: screenWidth } = useWindowDimensions();
-
-  const [isParentScrolling, setIsParentScrolling] = useState(false);
-
-  useAnimatedReaction(
-    () => isScrolling?.value ?? false,
-    (scrolling, previousValue) => {
-      // 🔥 FIX: Only cross the JS bridge if the scrolling state changes!
-      if (scrolling !== previousValue) {
-        runOnJS(setIsParentScrolling)(scrolling);
-      }
-    },
-    [isScrolling]
-  );
 
   const [industries, setIndustries] = useState<Industry[]>([]);
   const [loading, setLoading] = useState(true);
@@ -84,13 +71,13 @@ export default function CategoryMarquee({ isScrolling }: { isScrolling?: SharedV
       <Animated.View entering={FadeInDown.duration(600).springify()}>
         <Carousel
           loop={true}
-          autoPlay={!isParentScrolling}
+          autoPlay={true}
           autoPlayInterval={2500}
           scrollAnimationDuration={800}
           data={chunkedIndustries}
           width={screenWidth}
           height={60}
-          windowSize={11}
+          windowSize={5}
           onConfigurePanGesture={(gesture) => {
             "worklet";
             gesture.activeOffsetX([-10, 10]);

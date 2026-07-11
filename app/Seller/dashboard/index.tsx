@@ -3,7 +3,7 @@ import { globalSellerId } from "@/utils/roleCache";
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useIsFocused } from "@react-navigation/native";
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   FlatList,
@@ -86,16 +86,17 @@ const Dashboard = () => {
   }, []);
 
   const isFocused = useIsFocused();
+  const hasLoadedInitialData = useRef(false);
 
   useEffect(() => {
     if (!isFocused) return;
     const task = InteractionManager.runAfterInteractions(() => {
-      // 🔥 FIX 2: Only show full-screen loader if data is completely empty
-      const needsLoader = !businessProfile; 
-      fetchDashboardData(needsLoader);
+      // Only show loader on the very first mount
+      fetchDashboardData(!hasLoadedInitialData.current);
+      hasLoadedInitialData.current = true;
     });
     return () => task.cancel();
-  }, [fetchDashboardData, isFocused, businessProfile]);
+  }, [fetchDashboardData, isFocused]);
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -180,10 +181,9 @@ const Dashboard = () => {
             </TouchableOpacity>
           </View>
 
-          <View style={{ flex: 1, height: verticalScale(300) }}>
-            <FlatList
-              data={inquiries.slice(0, 10)}
-              renderItem={({ item, index }) => {
+          <View>
+            {inquiries.length > 0 ? (
+              inquiries.slice(0, 10).map((item, index) => {
                 const userName = item.name || item.fullName || item.userName || "Anonymous";
                 const timeString = item.createdAt ? new Date(item.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : "N/A";
                 const messageDetail = item.message || item.query || item.requirements || "Inquiry Request";
@@ -198,16 +198,12 @@ const Dashboard = () => {
                     </Text>
                   </TouchableOpacity>
                 );
-              }}
-              keyExtractor={(item, index) => item._id || index.toString()}
-              ListEmptyComponent={
-                <View style={s.emptyWrapper}>
-                  <Text style={s.emptyText}>No inquiries found today.</Text>
-                </View>
-              }
-              scrollEnabled={false}
-              nestedScrollEnabled={false}
-            />
+              })
+            ) : (
+              <View style={s.emptyWrapper}>
+                <Text style={s.emptyText}>No inquiries found today.</Text>
+              </View>
+            )}
           </View>
         </View>
 

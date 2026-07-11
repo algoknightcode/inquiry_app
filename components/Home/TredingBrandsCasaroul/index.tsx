@@ -96,8 +96,6 @@ function TrendingBrandsCarousel({ isScrolling }: { isScrolling?: SharedValue<boo
 
   const flatListRef = useAnimatedRef<Animated.FlatList<Brand>>();
   const scrollIndex = useSharedValue(0);
-  const isAutoPlaying = useSharedValue(false);
-  const autoplayPulse = useSharedValue(0);
 
   const scale = useMemo(() => {
     const isTablet = screenWidth >= 768;
@@ -150,80 +148,50 @@ function TrendingBrandsCarousel({ isScrolling }: { isScrolling?: SharedValue<boo
     return middle - (middle % mockBrands.length);
   }, [replicatedData.length]);
 
-  const startAutoPlayUI = () => {
-    'worklet';
-    isAutoPlaying.value = false;
-    autoplayPulse.value = 0; // Safe reset
-    isAutoPlaying.value = true;
-    autoplayPulse.value = withRepeat(withTiming(1, { duration: 4500 }), -1);
-  };
-
-  const stopAutoPlayUI = () => {
-    'worklet';
-    cancelAnimation(autoplayPulse);
-  };
-
-  useAnimatedReaction(
-    () => autoplayPulse.value,
-    (currentPulse, prevPulse) => {
-      if (!isFocused || !isAutoPlaying.value) return;
-      if (isScrolling?.value) return;
-
-      // 🚀 FIXED: Only trigger on a natural loop (1 -> 0), never on a manual start/reset
-      if (prevPulse !== null && currentPulse < prevPulse && prevPulse > 0.5) {
-        scrollIndex.value = scrollIndex.value + 1;
-        scrollTo(flatListRef, scrollIndex.value * ITEM_SIZE, 0, true);
-        
-        if (scrollIndex.value >= replicatedData.length - 3) {
-          const safeIndex = baseMiddleIndex + (scrollIndex.value % mockBrands.length);
-          scrollIndex.value = safeIndex;
-          scrollTo(flatListRef, safeIndex * ITEM_SIZE, 0, false);
-        }
-      }
-    },
-    [isFocused]
-  );
-
   useEffect(() => {
-    if (!isFocused) {
-      runOnUI(stopAutoPlayUI)();
-      isAutoPlaying.value = false;
-      return;
-    }
+    if (!isFocused || replicatedData.length === 0) return;
 
-    if (replicatedData.length > 0) {
-      scrollIndex.value = baseMiddleIndex;
-      const initTimer = setTimeout(() => {
-        flatListRef.current?.scrollToIndex({ index: baseMiddleIndex, animated: false });
-        runOnUI(() => {
-          'worklet';
-          isAutoPlaying.value = true;
-          startAutoPlayUI();
-        })();
-      }, 500);
+    // Set initial center position
+    scrollIndex.value = baseMiddleIndex;
+    const initTimer = setTimeout(() => {
+      flatListRef.current?.scrollToIndex({ index: baseMiddleIndex, animated: false });
+    }, 500);
 
-      return () => {
-        clearTimeout(initTimer);
-        runOnUI(stopAutoPlayUI)();
-        isAutoPlaying.value = false;
-      };
-    }
-  }, [isFocused, replicatedData, baseMiddleIndex]);
+    const interval = setInterval(() => {
+      if (isUserDragging.current) return;
+
+      scrollIndex.value = scrollIndex.value + 1;
+      runOnUI(() => {
+        'worklet';
+        scrollTo(flatListRef, scrollIndex.value * ITEM_SIZE, 0, true);
+      })();
+
+      // Handle loop reset
+      if (scrollIndex.value >= replicatedData.length - 3) {
+        const safeIndex = baseMiddleIndex + (scrollIndex.value % mockBrands.length);
+        scrollIndex.value = safeIndex;
+        setTimeout(() => {
+          runOnUI(() => {
+            'worklet';
+            scrollTo(flatListRef, safeIndex * ITEM_SIZE, 0, false);
+          })();
+        }, 500);
+      }
+    }, 2500);
+
+    return () => {
+      clearTimeout(initTimer);
+      clearInterval(interval);
+    };
+  }, [isFocused, replicatedData, baseMiddleIndex, ITEM_SIZE]);
 
   const handleScrollBegin = useCallback(() => {
-    isUserDragging.current = true; // 🚀 Flag that human fingers are touching the list
-    runOnUI(() => {
-      'worklet';
-      isAutoPlaying.value = false;
-      stopAutoPlayUI();
-    })();
+    isUserDragging.current = true; // Flag that human fingers are touching the list
   }, []);
 
   const handleMomentumScrollEnd = useCallback((event: NativeSyntheticEvent<NativeScrollEvent>) => {
-    // 🚀 FIXED: If a programmatic animation caused this scroll end, IGNORE IT immediately.
     if (!isUserDragging.current) return;
     
-    // Reset flag since human let go
     isUserDragging.current = false;
 
     let currentIndex = Math.round(event.nativeEvent.contentOffset.x / ITEM_SIZE);
@@ -234,12 +202,6 @@ function TrendingBrandsCarousel({ isScrolling }: { isScrolling?: SharedValue<boo
     }
 
     scrollIndex.value = currentIndex;
-    
-    runOnUI(() => {
-      'worklet';
-      isAutoPlaying.value = true;
-      startAutoPlayUI();
-    })();
   }, [ITEM_SIZE, replicatedData.length, baseMiddleIndex]);
 
   const handleScrollToIndexFailed = useCallback((info: { index: number }) => {

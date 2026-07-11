@@ -122,7 +122,7 @@ const ProductCard = React.memo(({
   return (
     <TouchableOpacity
       className="bg-white rounded-2xl border border-slate-100 overflow-hidden"
-      style={{ width: cardWidth, marginRight: CARD_MARGIN }}
+      style={{ width: cardWidth, marginRight: CARD_MARGIN, height: 305 }}
       activeOpacity={1} 
       onPress={handlePress}
     >
@@ -189,7 +189,7 @@ const ProductCard = React.memo(({
 
 const SkeletonProductCard = ({ cardWidth }: { cardWidth: number }) => (
   <View
-    style={{ width: cardWidth, marginRight: CARD_MARGIN }}
+    style={{ width: cardWidth, marginRight: CARD_MARGIN, height: 305 }}
     className="bg-white rounded-2xl border border-slate-100 overflow-hidden"
   >
     <View className="h-36 w-full bg-slate-200" />
@@ -230,8 +230,6 @@ const HorizontalProductList = ({ isScrolling }: { isScrolling?: SharedValue<bool
 
   const flatListRef = useAnimatedRef<Animated.FlatList<Product>>();
   const scrollIndex = useSharedValue(0);
-  const isAutoPlaying = useSharedValue(false);
-  const autoplayPulse = useSharedValue(0);
 
   useEffect(() => {
     // 🚀 JS Thread protection: Let the main page render first before mounting the heavy list
@@ -281,75 +279,50 @@ const HorizontalProductList = ({ isScrolling }: { isScrolling?: SharedValue<bool
     return middle - (middle % products.length);
   }, [replicatedData.length, products.length]);
 
-  const startAutoPlayUI = () => {
-    'worklet';
-    if (products.length <= 0) return;
-    autoplayPulse.value = 0; // Safe reset
-    autoplayPulse.value = withRepeat(withTiming(1, { duration: 3500 }), -1);
-  };
-
-  const stopAutoPlayUI = () => {
-    'worklet';
-    cancelAnimation(autoplayPulse);
-  };
-
-  useAnimatedReaction(
-    () => autoplayPulse.value,
-    (currentPulse, prevPulse) => {
-      if (!isFocused || !isAutoPlaying.value) return;
-      
-      // 🚀 FIXED: Only trigger on a natural loop (1 -> 0), never on a manual start/reset
-      if (prevPulse !== null && currentPulse < prevPulse && prevPulse > 0.5) {
-        scrollIndex.value = scrollIndex.value + 1;
-        scrollTo(flatListRef, scrollIndex.value * ITEM_SIZE, 0, true);
-        
-        if (scrollIndex.value >= replicatedData.length - 2) {
-          const safeIndex = baseMiddleIndex + (scrollIndex.value % products.length);
-          scrollIndex.value = safeIndex;
-          scrollTo(flatListRef, safeIndex * ITEM_SIZE, 0, false);
-        }
-      }
-    },
-    [isFocused]
-  );
-
   useEffect(() => {
-    if (replicatedData.length > 0 && isFocused) {
-      scrollIndex.value = baseMiddleIndex;
-      const initTimer = setTimeout(() => {
-        flatListRef.current?.scrollToIndex({ index: baseMiddleIndex, animated: false });
-        runOnUI(() => {
-          'worklet';
-          isAutoPlaying.value = true;
-          startAutoPlayUI();
-        })();
-      }, 500);
+    if (!isFocused || replicatedData.length === 0) return;
 
-      return () => {
-        clearTimeout(initTimer);
-        runOnUI(stopAutoPlayUI)();
-        isAutoPlaying.value = false;
-      };
-    } else {
-      runOnUI(stopAutoPlayUI)();
-      isAutoPlaying.value = false;
-    }
-  }, [isFocused, replicatedData, baseMiddleIndex]);
+    // Set initial center position
+    scrollIndex.value = baseMiddleIndex;
+    const initTimer = setTimeout(() => {
+      flatListRef.current?.scrollToIndex({ index: baseMiddleIndex, animated: false });
+    }, 500);
+
+    const interval = setInterval(() => {
+      if (isUserDragging.current) return;
+
+      scrollIndex.value = scrollIndex.value + 1;
+      runOnUI(() => {
+        'worklet';
+        scrollTo(flatListRef, scrollIndex.value * ITEM_SIZE, 0, true);
+      })();
+
+      // Handle loop reset
+      if (scrollIndex.value >= replicatedData.length - 2) {
+        const safeIndex = baseMiddleIndex + (scrollIndex.value % products.length);
+        scrollIndex.value = safeIndex;
+        setTimeout(() => {
+          runOnUI(() => {
+            'worklet';
+            scrollTo(flatListRef, safeIndex * ITEM_SIZE, 0, false);
+          })();
+        }, 500);
+      }
+    }, 2500);
+
+    return () => {
+      clearTimeout(initTimer);
+      clearInterval(interval);
+    };
+  }, [isFocused, replicatedData, baseMiddleIndex, ITEM_SIZE, products.length]);
 
   const handleScrollBegin = useCallback(() => {
     isUserDragging.current = true; // Flag that human fingers are touching the list
-    runOnUI(() => {
-      'worklet';
-      isAutoPlaying.value = false;
-      stopAutoPlayUI();
-    })();
   }, []);
 
   const handleMomentumScrollEnd = useCallback((event: NativeSyntheticEvent<NativeScrollEvent>) => {
-    // 🚀 FIXED: If a programmatic animation caused this scroll end, IGNORE IT immediately.
     if (!isUserDragging.current) return;
     
-    // Reset flag since human let go
     isUserDragging.current = false;
 
     let currentIndex = Math.round(event.nativeEvent.contentOffset.x / ITEM_SIZE);
@@ -360,12 +333,6 @@ const HorizontalProductList = ({ isScrolling }: { isScrolling?: SharedValue<bool
     }
 
     scrollIndex.value = currentIndex;
-    
-    runOnUI(() => {
-      'worklet';
-      isAutoPlaying.value = true;
-      startAutoPlayUI();
-    })();
   }, [ITEM_SIZE, replicatedData.length, products.length, baseMiddleIndex]);
 
   const handleScrollToIndexFailed = useCallback((info: { index: number }) => {
@@ -437,11 +404,11 @@ const HorizontalProductList = ({ isScrolling }: { isScrolling?: SharedValue<bool
           onMomentumScrollEnd={handleMomentumScrollEnd}
           onScrollToIndexFailed={handleScrollToIndexFailed}
           contentContainerStyle={{ paddingLeft: 20 }}
-          removeClippedSubviews={Platform.OS === 'android'} // Critically important for Android memory
-          initialNumToRender={4}
-          maxToRenderPerBatch={6}      // Increased to render faster during quick swipes
-          windowSize={3}
-          updateCellsBatchingPeriod={30} // Renders upcoming cards 3x faster
+          removeClippedSubviews={false} // Disable aggressive unmounting on both iOS and Android to prevent blank flashes
+          initialNumToRender={6}        // Render more items initially to support fast jump/scrolling
+          maxToRenderPerBatch={10}      // Render larger chunks at once
+          windowSize={7}                // Keep more off-screen items alive so jumps are seamless
+          updateCellsBatchingPeriod={50} // Let the JS thread breathe
         />
       )}
       <EnquiryModal visible={isModalVisible} onClose={() => setModalVisible(false)} product={selectedProduct} />

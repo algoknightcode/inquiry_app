@@ -504,34 +504,6 @@ export default function ProductListingPage() {
         }
       />
 
-      {/* FLOATING POST REQUIREMENT BUTTON */}
-      <View
-        className={`absolute bottom-0 w-full px-5 pt-10 ${
-          Platform.OS === "ios" ? "pb-8" : "pb-6"
-        }`}
-        style={{ backgroundColor: "transparent" }}
-        pointerEvents="box-none"
-      >
-        <TouchableOpacity
-          activeOpacity={0.9}
-          className="w-full bg-[#0f172a] flex-row justify-between items-center px-6 py-4 rounded-2xl shadow-xl shadow-slate-900/20"
-        >
-          <View className="flex-row items-center">
-            <View className="w-8 h-8 bg-white/10 rounded-full items-center justify-center mr-3">
-              <Ionicons name="document-text" size={16} color="#fff" />
-            </View>
-            <View>
-              <Text className="text-white font-jakarta-bold text-[16px]">Post a Requirement</Text>
-              <Text className="text-slate-400 font-jakarta-medium text-[11px] mt-0.5">
-                Get multiple quotes instantly
-              </Text>
-            </View>
-          </View>
-          <View className="w-8 h-8 bg-indigo-600 rounded-full items-center justify-center">
-            <Ionicons name="arrow-forward" size={18} color="white" />
-          </View>
-        </TouchableOpacity>
-      </View>
 
       {/* CITY SELECTION MODAL */}
       <Modal

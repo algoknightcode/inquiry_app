@@ -139,7 +139,7 @@ export default function TestimonialCarousel({ isScrolling }: { isScrolling?: Sha
   const [activeDotIndex, setActiveDotIndex] = useState(0);
 
   // 2. Data Replication for Seamless Infinite Loop
-  const replicatedData = useMemo(() => Array(15).fill(testimonials).flat(), []);
+  const replicatedData = useMemo(() => Array(3).fill(testimonials).flat(), []);
   const baseMiddleIndex = useMemo(() => {
     const middle = Math.floor(replicatedData.length / 2);
     return middle - (middle % testimonials.length);

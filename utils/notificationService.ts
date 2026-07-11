@@ -53,3 +53,22 @@ export const logProductInteraction = async (
     console.error("Failed to write notification", e);
   }
 };
+
+export const addNotification = async (message: string) => {
+  const timeString = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  try {
+    const existing = await AsyncStorage.getItem("app_notifications");
+    const notifications: AppNotification[] = existing ? JSON.parse(existing) : [];
+    
+    const newNotification: AppNotification = {
+      id: `${Date.now()}-${Math.random()}`,
+      text: message,
+      timestamp: timeString,
+    };
+
+    const updated = [newNotification, ...notifications].slice(0, 30);
+    await AsyncStorage.setItem("app_notifications", JSON.stringify(updated));
+  } catch (e) {
+    console.error("Failed to write notification", e);
+  }
+};

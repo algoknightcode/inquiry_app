@@ -282,7 +282,7 @@ const NewOnes = ({ isScrolling }: { isScrolling?: SharedValue<boolean> }) => {
   // 4. Reduced Infinite Scroll Array Size (30 instead of 100)
   const replicatedData = useMemo(() => {
     if (!productsList || productsList.length === 0) return [];
-    return Array(7).fill(productsList).flat();
+    return Array(3).fill(productsList).flat();
   }, [productsList]);
 
   const baseMiddleIndex = useMemo(() => {
