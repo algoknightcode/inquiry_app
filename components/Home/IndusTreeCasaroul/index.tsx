@@ -11,6 +11,7 @@ import {
     StyleSheet,
     Text,
     View,
+    useWindowDimensions,
 } from "react-native";
 import Animated, {
     Extrapolation,
@@ -143,8 +144,20 @@ function getInitialData(): Industry[] {
 // ------------------------------------------------------------------
 // Main Component
 // ------------------------------------------------------------------
-export default function IndustryTreeCarousel({ isScrolling }: { isScrolling?: SharedValue<boolean> }) {
+export default function IndustryTreeCarousel({ 
+  isScrolling, 
+  scrollY 
+}: { 
+  isScrolling?: SharedValue<boolean>;
+  scrollY?: SharedValue<number>;
+}) {
   const router = useRouter();
+  
+  const containerRef = useRef<View>(null);
+  const { height: screenHeight } = useWindowDimensions();
+  const [absoluteY, setAbsoluteY] = useState(0);
+  const [hasBeenVisible, setHasBeenVisible] = useState(false);
+
   const initialData = getInitialData();
   const [data, setData] = useState<Industry[]>(initialData);
   const [loading, setLoading] = useState(initialData.length === 0); // skip loader if cache hit
@@ -157,6 +170,7 @@ export default function IndustryTreeCarousel({ isScrolling }: { isScrolling?: Sh
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
+    if (!hasBeenVisible) return;
     (async () => {
       try {
         const json: ApiResponse = await fetchWithCache(TREE_URL);
@@ -173,7 +187,7 @@ export default function IndustryTreeCarousel({ isScrolling }: { isScrolling?: Sh
         setLoading(false);
       }
     })();
-  }, []);
+  }, [hasBeenVisible]);
 
   const startAutoPlay = useCallback(() => {
     if (!isFocused || data.length <= 1) return;
@@ -193,25 +207,49 @@ export default function IndustryTreeCarousel({ isScrolling }: { isScrolling?: Sh
   }, []);
 
   useEffect(() => {
+    if (!hasBeenVisible) return;
     if (isFocused && data.length > 1) {
       startAutoPlay();
     } else {
       stopAutoPlay();
     }
     return stopAutoPlay;
-  }, [isFocused, data.length, startAutoPlay, stopAutoPlay]);
+  }, [hasBeenVisible, isFocused, data.length, startAutoPlay, stopAutoPlay]);
 
   useAnimatedReaction(
     () => isScrolling?.value ?? false,
     (scrolling) => {
+      if (!hasBeenVisible) return;
       if (scrolling) {
         runOnJS(stopAutoPlay)();
       } else {
         runOnJS(startAutoPlay)();
       }
     },
-    [startAutoPlay, stopAutoPlay, isScrolling]
+    [hasBeenVisible, startAutoPlay, stopAutoPlay, isScrolling]
   );
+
+  useAnimatedReaction(
+    () => scrollY?.value ?? 0,
+    (y) => {
+      if (hasBeenVisible || !absoluteY || !scrollY) return;
+      const isNearViewport = y + screenHeight * 1.5 > absoluteY;
+      if (isNearViewport) {
+        runOnJS(setHasBeenVisible)(true);
+      }
+    },
+    [absoluteY, hasBeenVisible, scrollY, screenHeight]
+  );
+
+  const handleLayout = useCallback((event: any) => {
+    // Measure absolute Y position relative to page
+    setTimeout(() => {
+      containerRef.current?.measure((x, y, width, measuredHeight, pageX, pageY) => {
+        const currentScroll = scrollY?.value ?? 0;
+        setAbsoluteY(pageY + currentScroll);
+      });
+    }, 100);
+  }, [scrollY]);
 
   const scrollHandler = (event: any) => {
     scrollX.value = event.nativeEvent.contentOffset.x;
@@ -254,9 +292,22 @@ export default function IndustryTreeCarousel({ isScrolling }: { isScrolling?: Sh
     index,
   }), []);
 
+  if (!hasBeenVisible) {
+    return (
+      <View 
+        ref={containerRef} 
+        onLayout={handleLayout} 
+        style={[s.stateBox, { height: 560 }]}
+      >
+        <ActivityIndicator size="large" color="#3b82f6" />
+        <Text style={s.stateText}>Loading industries…</Text>
+      </View>
+    );
+  }
+
   if (loading) {
     return (
-      <View style={s.stateBox}>
+      <View ref={containerRef} onLayout={handleLayout} style={s.stateBox}>
         <ActivityIndicator size="large" color="#3b82f6" />
         <Text style={s.stateText}>Loading industries…</Text>
       </View>
@@ -265,14 +316,14 @@ export default function IndustryTreeCarousel({ isScrolling }: { isScrolling?: Sh
 
   if (error) {
     return (
-      <View style={s.stateBox}>
+      <View ref={containerRef} onLayout={handleLayout} style={s.stateBox}>
         <Text style={[s.stateText, { color: "#ef4444" }]}>Error: {error}</Text>
       </View>
     );
   }
 
   return (
-    <View style={s.root}>
+    <View ref={containerRef} onLayout={handleLayout} style={s.root}>
       {data.length > 0 ? (
         <>
           <Animated.FlatList

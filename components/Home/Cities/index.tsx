@@ -86,6 +86,7 @@ export default function SellersByCityGrid() {
 
   const titleStyle = useMemo(() => ({ fontSize: titleSize }), [titleSize]);
   const labelStyle = useMemo(() => ({ fontSize: textFontSize }), [textFontSize]);
+  const exactItemWidth = useMemo(() => (screenWidth - 32) * 0.235, [screenWidth]);
 
   return (
     <View style={cityStyles.wrapper}>
@@ -100,7 +101,7 @@ export default function SellersByCityGrid() {
           <Pressable
             key={city.id}
             onPress={() => handleCityPress(city.name)}
-            style={cityStyles.gridItem}
+            style={[cityStyles.gridItem, { width: exactItemWidth }]}
             activeOpacity={0.75}
           >
             <View
@@ -130,7 +131,7 @@ const cityStyles = StyleSheet.create({
   wrapper: { paddingHorizontal: 16, marginTop: 12 },
   title: { fontFamily: "PlusJakartaSans-ExtraBold", color: "#0f172a", letterSpacing: -0.5, marginBottom: 24, paddingHorizontal: 4 },
   grid: { flexDirection: "row", flexWrap: "wrap", justifyContent: "space-between" },
-  gridItem: { width: "23.5%", alignItems: "center", marginBottom: 24 },
+  gridItem: { alignItems: "center", marginBottom: 24 },
   circle: { backgroundColor: "#F4F6F9", borderWidth: 1, borderColor: "rgba(226,232,240,0.6)", alignItems: "center", justifyContent: "center", marginBottom: 8 },
   label: { color: "#1e293b", fontFamily: "PlusJakartaSans-SemiBold", textAlign: "center", letterSpacing: -0.3 },
 });

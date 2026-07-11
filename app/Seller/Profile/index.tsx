@@ -7,6 +7,7 @@ import React, { useEffect, useState } from "react";
 import {
     ActivityIndicator,
     Alert,
+    BackHandler,
     FlatList,
     Image,
     InteractionManager,
@@ -165,6 +166,23 @@ const SellerProfileSettings = () => {
   const [sellerId, setSellerId] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+
+  useEffect(() => {
+    const backAction = () => {
+      if (!router.canGoBack()) {
+        router.replace("/(tabs)");
+        return true;
+      }
+      return false;
+    };
+
+    const backHandler = BackHandler.addEventListener(
+      "hardwareBackPress",
+      backAction
+    );
+
+    return () => backHandler.remove();
+  }, []);
 
   const handleLogout = async () => {
     await clearRoleState();

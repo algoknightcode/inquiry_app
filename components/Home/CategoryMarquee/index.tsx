@@ -1,30 +1,57 @@
-import { fetchWithCache } from "@/utils/apiCache";
+import { fetchWithCache, getCacheSync } from "@/utils/apiCache";
 import { useRouter } from "expo-router";
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { ActivityIndicator, Pressable, StyleSheet, Text, View, useWindowDimensions } from "react-native";
-import Animated, { FadeInDown, SharedValue } from "react-native-reanimated";
-import Carousel from "react-native-reanimated-carousel";
+import Animated, { FadeInDown, runOnJS, SharedValue, useAnimatedReaction } from "react-native-reanimated";
+import Carousel, { ICarouselInstance } from "react-native-reanimated-carousel";
 
 type Industry = {
   _id: string;
   name: string;
 };
 
+const TREE_URL = "https://backend.inquirybazaar.com/api/industries/tree";
+
+function getInitialCachedIndustries(): Industry[] {
+  try {
+    const json = getCacheSync(TREE_URL);
+    if (json?.success && Array.isArray(json.data)) {
+      return json.data;
+    }
+  } catch (err) {
+    console.warn("Error reading CategoryMarquee cache:", err);
+  }
+  return [];
+}
+
 export default function CategoryMarquee({ isScrolling }: { isScrolling?: SharedValue<boolean> }) {
   const router = useRouter();
   const { width: screenWidth } = useWindowDimensions();
+  const carouselRef = useRef<ICarouselInstance>(null);
 
-  const [industries, setIndustries] = useState<Industry[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [autoPlay, setAutoPlay] = useState(true);
+
+  // Pause carousel autoplay while parent list is scrolling to save JS resources
+  useAnimatedReaction(
+    () => isScrolling?.value ?? false,
+    (scrolling, previousValue) => {
+      if (scrolling !== previousValue) {
+        runOnJS(setAutoPlay)(!scrolling);
+      }
+    },
+    [isScrolling]
+  );
+
+  const initialIndustries = getInitialCachedIndustries();
+  const [industries, setIndustries] = useState<Industry[]>(initialIndustries);
+  const [loading, setLoading] = useState(initialIndustries.length === 0);
 
   useEffect(() => {
     (async () => {
       try {
-        const json = await fetchWithCache(
-          "https://backend.inquirybazaar.com/api/industries/tree"
-        );
+        const json = await fetchWithCache(TREE_URL);
 
-        if (json?.success) {
+        if (json?.success && json.data) {
           setIndustries(json.data);
         }
       } finally {
@@ -70,8 +97,9 @@ export default function CategoryMarquee({ isScrolling }: { isScrolling?: SharedV
     <View style={styles.container}>
       <Animated.View entering={FadeInDown.duration(600).springify()}>
         <Carousel
+          ref={carouselRef}
           loop={true}
-          autoPlay={true}
+          autoPlay={autoPlay}
           autoPlayInterval={2500}
           scrollAnimationDuration={800}
           data={chunkedIndustries}

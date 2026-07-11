@@ -1,25 +1,18 @@
 import { useIsFocused } from "@react-navigation/native";
 import { useRouter } from "expo-router";
-import React, { useCallback, useEffect, useMemo, useRef } from "react";
+import React, { useCallback, useMemo, useState } from "react";
 import {
-  NativeScrollEvent,
-  NativeSyntheticEvent,
   Pressable,
   Text,
   useWindowDimensions,
   View,
 } from "react-native";
 import Animated, {
-  cancelAnimation,
-  runOnUI,
-  scrollTo,
+  runOnJS,
   SharedValue,
   useAnimatedReaction,
-  useAnimatedRef,
-  useSharedValue,
-  withRepeat,
-  withTiming
 } from "react-native-reanimated";
+import Carousel from "react-native-reanimated-carousel";
 
 type Brand = {
   id: string;
@@ -91,11 +84,18 @@ function TrendingBrandsCarousel({ isScrolling }: { isScrolling?: SharedValue<boo
   const router = useRouter();
   const { width: screenWidth } = useWindowDimensions();
 
-  // 🚀 FIXED: Added ref to track if HUMAN is touching the screen vs ROBOT scrolling
-  const isUserDragging = useRef(false);
+  const [autoPlay, setAutoPlay] = useState(true);
 
-  const flatListRef = useAnimatedRef<Animated.FlatList<Brand>>();
-  const scrollIndex = useSharedValue(0);
+  // Pause carousel autoplay while parent list is scrolling to save JS resources
+  useAnimatedReaction(
+    () => isScrolling?.value ?? false,
+    (scrolling, previousValue) => {
+      if (scrolling !== previousValue) {
+        runOnJS(setAutoPlay)(!scrolling);
+      }
+    },
+    [isScrolling]
+  );
 
   const scale = useMemo(() => {
     const isTablet = screenWidth >= 768;
@@ -136,79 +136,6 @@ function TrendingBrandsCarousel({ isScrolling }: { isScrolling?: SharedValue<boo
       avatar: { width: avatarSize, height: avatarSize, borderRadius: avatarSize * 0.32 },
     };
   }, [scale, screenWidth]);
-
-  const ITEM_SIZE = dynamicStyles.itemWidth;
-
-  const replicatedData = useMemo(() => {
-    return Array(8).fill(mockBrands).flat();
-  }, []);
-
-  const baseMiddleIndex = useMemo(() => {
-    const middle = Math.floor(replicatedData.length / 2);
-    return middle - (middle % mockBrands.length);
-  }, [replicatedData.length]);
-
-  useEffect(() => {
-    if (!isFocused || replicatedData.length === 0) return;
-
-    // Set initial center position
-    scrollIndex.value = baseMiddleIndex;
-    const initTimer = setTimeout(() => {
-      flatListRef.current?.scrollToIndex({ index: baseMiddleIndex, animated: false });
-    }, 500);
-
-    const interval = setInterval(() => {
-      if (isUserDragging.current) return;
-
-      scrollIndex.value = scrollIndex.value + 1;
-      runOnUI(() => {
-        'worklet';
-        scrollTo(flatListRef, scrollIndex.value * ITEM_SIZE, 0, true);
-      })();
-
-      // Handle loop reset
-      if (scrollIndex.value >= replicatedData.length - 3) {
-        const safeIndex = baseMiddleIndex + (scrollIndex.value % mockBrands.length);
-        scrollIndex.value = safeIndex;
-        setTimeout(() => {
-          runOnUI(() => {
-            'worklet';
-            scrollTo(flatListRef, safeIndex * ITEM_SIZE, 0, false);
-          })();
-        }, 500);
-      }
-    }, 2500);
-
-    return () => {
-      clearTimeout(initTimer);
-      clearInterval(interval);
-    };
-  }, [isFocused, replicatedData, baseMiddleIndex, ITEM_SIZE]);
-
-  const handleScrollBegin = useCallback(() => {
-    isUserDragging.current = true; // Flag that human fingers are touching the list
-  }, []);
-
-  const handleMomentumScrollEnd = useCallback((event: NativeSyntheticEvent<NativeScrollEvent>) => {
-    if (!isUserDragging.current) return;
-    
-    isUserDragging.current = false;
-
-    let currentIndex = Math.round(event.nativeEvent.contentOffset.x / ITEM_SIZE);
-
-    if (currentIndex < 3 || currentIndex > replicatedData.length - 4) {
-      currentIndex = baseMiddleIndex + (currentIndex % mockBrands.length);
-      flatListRef.current?.scrollToIndex({ index: currentIndex, animated: false });
-    }
-
-    scrollIndex.value = currentIndex;
-  }, [ITEM_SIZE, replicatedData.length, baseMiddleIndex]);
-
-  const handleScrollToIndexFailed = useCallback((info: { index: number }) => {
-    setTimeout(() => {
-      flatListRef.current?.scrollToIndex({ index: info.index, animated: true });
-    }, 500);
-  }, []);
 
   const handleFreeListingPress = useCallback(() => {
     router.push("/Seller/auth/Signup");
@@ -252,31 +179,25 @@ function TrendingBrandsCarousel({ isScrolling }: { isScrolling?: SharedValue<boo
         className="bg-white border border-slate-200 rounded-[28px]"
       >
         <View style={{ height: dynamicStyles.marqueeHeight, width: "100%", justifyContent: 'center' }}>
-          <Animated.FlatList
-            ref={flatListRef}
-            data={replicatedData}
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            keyExtractor={(item, index) => `${item._id || item.id || 'brand'}-${index}`}
-            renderItem={({ item }) => (
-              <BrandCard brand={item} dynamicStyles={dynamicStyles} />
-            )}
-            snapToInterval={ITEM_SIZE}
-            snapToAlignment="start"
-            decelerationRate="fast"
-            onScrollBeginDrag={handleScrollBegin}
-            onMomentumScrollEnd={handleMomentumScrollEnd}
-            onScrollToIndexFailed={handleScrollToIndexFailed}
-            getItemLayout={(_, index) => ({
-              length: ITEM_SIZE,
-              offset: ITEM_SIZE * index,
-              index,
-            })}
-            initialNumToRender={6}
-            maxToRenderPerBatch={4}
-            windowSize={5}
-            removeClippedSubviews={false} 
-          />
+          {isFocused && (
+            <Carousel
+              loop={true}
+              autoPlay={autoPlay}
+              autoPlayInterval={2500}
+              scrollAnimationDuration={800}
+              data={mockBrands}
+              width={dynamicStyles.itemWidth}
+              height={dynamicStyles.marqueeHeight}
+              style={{ width: screenWidth - dynamicStyles.paddingHorizontal * 2 }}
+              renderItem={({ item }) => (
+                <BrandCard brand={item} dynamicStyles={dynamicStyles} />
+              )}
+              onConfigurePanGesture={(gesture) => {
+                "worklet";
+                gesture.activeOffsetX([-10, 10]);
+              }}
+            />
+          )}
         </View>
 
         <View className="border-t border-slate-100/80 my-4 mb-4" />

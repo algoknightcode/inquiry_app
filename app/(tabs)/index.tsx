@@ -127,7 +127,7 @@ export default function HomeScreen() {
       case 'products':
         return <MemoizedHorizontalProductList isScrolling={isScrolling} />;
       case 'indusTree':
-        return <MemoizedIndustryTreeCarousel isScrolling={isScrolling} />;
+        return <MemoizedIndustryTreeCarousel isScrolling={isScrolling} scrollY={scrollY} />;
       case 'cities':
         return <MemoizedSellersByCityGrid />;
       case 'newones':
@@ -139,7 +139,7 @@ export default function HomeScreen() {
       case 'moreForYou':
         return <MemoizedMoreForYou isScrolling={isScrolling} />;
       case 'video':
-        return <MemoizedVideoSection />;
+        return <MemoizedVideoSection scrollY={scrollY} />;
       case 'leadform':
         return <MemoizedLeadGenCard />;
       case 'testimonials':

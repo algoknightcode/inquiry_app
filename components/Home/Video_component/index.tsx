@@ -1,7 +1,9 @@
 import { FontAwesome, Ionicons } from "@expo/vector-icons";
 import { useVideoPlayer, VideoView } from "expo-video";
-import React, { useCallback, useState } from "react";
-import { Dimensions, Pressable, Text, View } from "react-native";
+import React, { useCallback, useState, useEffect } from "react";
+import { Dimensions, Pressable, Text, View, useWindowDimensions } from "react-native";
+import { useIsFocused } from "@react-navigation/native";
+import Animated, { runOnJS, SharedValue, useAnimatedReaction } from "react-native-reanimated";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 const CARD_WIDTH = SCREEN_WIDTH;
@@ -9,15 +11,63 @@ const CARD_HEIGHT = CARD_WIDTH * 0.65; // Increased height aspect ratio
 
 const videoSource = require("../../../assets/Video/3D_graphic_animation_InquiryBazaar_202606191118 (1).mp4");
 
-const VideoSection = () => {
+const VideoSection = ({ scrollY }: { scrollY?: SharedValue<number> }) => {
   const [isMuted, setIsMuted] = useState(true);
   const [isPlaying, setIsPlaying] = useState(false);
+  const isFocused = useIsFocused();
+  const { height: screenHeight } = useWindowDimensions();
+
+  const viewRef = React.useRef<View>(null);
+  const [absoluteY, setAbsoluteY] = useState(0);
+  const [layoutHeight, setLayoutHeight] = useState(0);
 
   // Setup video player with loop enabled
   const player = useVideoPlayer(videoSource, (setupPlayer) => {
     setupPlayer.loop = true;
     setupPlayer.muted = true;
   });
+
+  const pauseVideo = useCallback(() => {
+    try {
+      if (player) player.pause();
+    } catch (e) {
+      console.warn('Error pausing video:', e);
+    }
+    setIsPlaying(false);
+  }, [player]);
+
+  // Tab/Screen focus changes
+  useEffect(() => {
+    if (!isFocused) {
+      pauseVideo();
+    }
+  }, [isFocused, pauseVideo]);
+
+  // Viewport/Scroll visibility changes
+  useAnimatedReaction(
+    () => scrollY?.value ?? 0,
+    (y) => {
+      if (!layoutHeight || !scrollY || !absoluteY) return;
+      const isVisible = y + screenHeight > absoluteY && y < absoluteY + layoutHeight;
+      if (!isVisible) {
+        runOnJS(pauseVideo)();
+      }
+    },
+    [absoluteY, layoutHeight, screenHeight, scrollY, pauseVideo]
+  );
+
+  const handleLayout = useCallback((event: any) => {
+    const { height } = event.nativeEvent.layout;
+    setLayoutHeight(height);
+    
+    // Wait a brief tick to ensure layout positions are computed in screen coordinates
+    setTimeout(() => {
+      viewRef.current?.measure((x, y, width, measuredHeight, pageX, pageY) => {
+        const currentScroll = scrollY?.value ?? 0;
+        setAbsoluteY(pageY + currentScroll);
+      });
+    }, 100);
+  }, [scrollY]);
 
   // Manual play/pause control
   const togglePlay = useCallback(() => {
@@ -51,7 +101,7 @@ const VideoSection = () => {
   }, [isMuted, player]);
 
   return (
-    <View className="mt-0 py-6 bg-slate-100"> 
+    <View ref={viewRef} onLayout={handleLayout} className="mt-0 py-6 bg-slate-100"> 
       {/* Header Section */}
       <View className="mb-6 px-5">
         <Text className="text-[13px] font-jakarta-bold text-blue-700 tracking-[0.2em] mb-1.5 uppercase">

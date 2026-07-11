@@ -188,10 +188,9 @@ const catStyles = StyleSheet.create({
     width: 80,
     height: 80, // Enforces the size rule (image requested close to display size)
     borderRadius: 16,
-    overflow: "hidden",
     backgroundColor: "#f1f5f9",
   },
-  image: { width: "100%", height: "100%" },
+  image: { width: "100%", height: "100%", borderRadius: 16 },
   cardText: {
     marginTop: 8,
     fontSize: 14,

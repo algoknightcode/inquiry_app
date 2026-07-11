@@ -9,8 +9,6 @@ import { useRouter } from "expo-router";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Linking,
-  NativeScrollEvent,
-  NativeSyntheticEvent,
   Platform,
   ScrollView,
   Text,
@@ -19,16 +17,11 @@ import {
   View,
 } from "react-native";
 import Animated, {
-  cancelAnimation,
-  runOnUI,
-  scrollTo,
+  runOnJS,
   SharedValue,
   useAnimatedReaction,
-  useAnimatedRef,
-  useSharedValue,
-  withRepeat,
-  withTiming
 } from "react-native-reanimated";
+import Carousel from "react-native-reanimated-carousel";
 
 type Media = {
   _id: string;
@@ -209,7 +202,6 @@ const SkeletonProductCard = ({ cardWidth }: { cardWidth: number }) => (
   </View>
 );
 
-// 🏎️ NEW
 const HorizontalProductList = ({ isScrolling }: { isScrolling?: SharedValue<boolean> }) => {
   const isFocused = useIsFocused();
   const router = useRouter();
@@ -225,14 +217,12 @@ const HorizontalProductList = ({ isScrolling }: { isScrolling?: SharedValue<bool
   const [products, setProducts] = useState<Product[]>(initialProducts);
   const [isLoading, setIsLoading] = useState(true);
 
-  // 🚀 FIXED: Added ref to track if HUMAN is touching the screen vs ROBOT scrolling
   const isUserDragging = useRef(false);
-
-  const flatListRef = useAnimatedRef<Animated.FlatList<Product>>();
-  const scrollIndex = useSharedValue(0);
+  const flatListRef = useRef<any>(null);
+  const [scrollIndex, setScrollIndex] = useState(0);
 
   useEffect(() => {
-    // 🚀 JS Thread protection: Let the main page render first before mounting the heavy list
+    // JS Thread protection
     const mountTimer = setTimeout(() => {
       setIsLoading(false);
     }, 250);
@@ -282,57 +272,50 @@ const HorizontalProductList = ({ isScrolling }: { isScrolling?: SharedValue<bool
   useEffect(() => {
     if (!isFocused || replicatedData.length === 0) return;
 
-    // Set initial center position
-    scrollIndex.value = baseMiddleIndex;
+    setScrollIndex(baseMiddleIndex);
     const initTimer = setTimeout(() => {
       flatListRef.current?.scrollToIndex({ index: baseMiddleIndex, animated: false });
     }, 500);
 
     const interval = setInterval(() => {
       if (isUserDragging.current) return;
+      if (isScrolling && isScrolling.value) return;
 
-      scrollIndex.value = scrollIndex.value + 1;
-      runOnUI(() => {
-        'worklet';
-        scrollTo(flatListRef, scrollIndex.value * ITEM_SIZE, 0, true);
-      })();
-
-      // Handle loop reset
-      if (scrollIndex.value >= replicatedData.length - 2) {
-        const safeIndex = baseMiddleIndex + (scrollIndex.value % products.length);
-        scrollIndex.value = safeIndex;
-        setTimeout(() => {
-          runOnUI(() => {
-            'worklet';
-            scrollTo(flatListRef, safeIndex * ITEM_SIZE, 0, false);
-          })();
-        }, 500);
-      }
+      setScrollIndex(prev => {
+        const nextIndex = prev + 1;
+        flatListRef.current?.scrollToIndex({ index: nextIndex, animated: true });
+        
+        // Loop reset check
+        if (nextIndex >= replicatedData.length - 2) {
+          const safeIndex = baseMiddleIndex + (nextIndex % products.length);
+          setTimeout(() => {
+            flatListRef.current?.scrollToIndex({ index: safeIndex, animated: false });
+          }, 500);
+          return safeIndex;
+        }
+        return nextIndex;
+      });
     }, 2500);
 
     return () => {
       clearTimeout(initTimer);
       clearInterval(interval);
     };
-  }, [isFocused, replicatedData, baseMiddleIndex, ITEM_SIZE, products.length]);
+  }, [isFocused, replicatedData, baseMiddleIndex, products.length, isScrolling]);
 
   const handleScrollBegin = useCallback(() => {
-    isUserDragging.current = true; // Flag that human fingers are touching the list
+    isUserDragging.current = true;
   }, []);
 
-  const handleMomentumScrollEnd = useCallback((event: NativeSyntheticEvent<NativeScrollEvent>) => {
-    if (!isUserDragging.current) return;
-    
+  const handleMomentumScrollEnd = useCallback((event: any) => {
     isUserDragging.current = false;
-
     let currentIndex = Math.round(event.nativeEvent.contentOffset.x / ITEM_SIZE);
 
     if (currentIndex < 2 || currentIndex > replicatedData.length - 3) {
       currentIndex = baseMiddleIndex + (currentIndex % products.length);
       flatListRef.current?.scrollToIndex({ index: currentIndex, animated: false });
     }
-
-    scrollIndex.value = currentIndex;
+    setScrollIndex(currentIndex);
   }, [ITEM_SIZE, replicatedData.length, products.length, baseMiddleIndex]);
 
   const handleScrollToIndexFailed = useCallback((info: { index: number }) => {
@@ -404,11 +387,10 @@ const HorizontalProductList = ({ isScrolling }: { isScrolling?: SharedValue<bool
           onMomentumScrollEnd={handleMomentumScrollEnd}
           onScrollToIndexFailed={handleScrollToIndexFailed}
           contentContainerStyle={{ paddingLeft: 20 }}
-          removeClippedSubviews={false} // Disable aggressive unmounting on both iOS and Android to prevent blank flashes
-          initialNumToRender={6}        // Render more items initially to support fast jump/scrolling
-          maxToRenderPerBatch={10}      // Render larger chunks at once
-          windowSize={7}                // Keep more off-screen items alive so jumps are seamless
-          updateCellsBatchingPeriod={50} // Let the JS thread breathe
+          removeClippedSubviews={Platform.OS === 'android'}
+          initialNumToRender={5}
+          maxToRenderPerBatch={3}
+          windowSize={5}
         />
       )}
       <EnquiryModal visible={isModalVisible} onClose={() => setModalVisible(false)} product={selectedProduct} />
@@ -416,5 +398,4 @@ const HorizontalProductList = ({ isScrolling }: { isScrolling?: SharedValue<bool
   );
 };
 
-// 🏎️ NEW: Completely freezes the carousel from unnecessary homepage re-renders
 export default React.memo(HorizontalProductList);

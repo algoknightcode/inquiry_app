@@ -3,9 +3,11 @@ import { globalSellerId } from "@/utils/roleCache";
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useIsFocused } from "@react-navigation/native";
+import { router } from "expo-router";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
+  BackHandler,
   FlatList,
   InteractionManager,
   RefreshControl,
@@ -87,6 +89,23 @@ const Dashboard = () => {
 
   const isFocused = useIsFocused();
   const hasLoadedInitialData = useRef(false);
+
+  useEffect(() => {
+    const backAction = () => {
+      if (!router.canGoBack()) {
+        router.replace("/(tabs)");
+        return true;
+      }
+      return false;
+    };
+
+    const backHandler = BackHandler.addEventListener(
+      "hardwareBackPress",
+      backAction
+    );
+
+    return () => backHandler.remove();
+  }, []);
 
   useEffect(() => {
     if (!isFocused) return;
