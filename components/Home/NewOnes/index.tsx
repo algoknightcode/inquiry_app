@@ -55,6 +55,33 @@ type Product = {
   supplier?: Supplier;
 };
 
+// Helper function to process array items with a concurrency limit
+async function batchRequests<T, R>(
+  items: T[], 
+  limit: number, 
+  requestFn: (item: T) => Promise<R>
+): Promise<R[]> {
+  const results: R[] = [];
+  
+  const runWorker = async (iterator: IterableIterator<[number, T]>) => {
+    for (const [index, item] of iterator) {
+      try {
+        results[index] = await requestFn(item);
+      } catch (error) {
+        console.error(`Failed at index ${index}:`, error);
+      }
+    }
+  };
+
+  const iterator = items.entries();
+  const workers = Array(Math.min(items.length, limit))
+    .fill(null)
+    .map(() => runWorker(iterator));
+
+  await Promise.all(workers);
+  return results.filter(Boolean);
+}
+
 // ── Cache Loader ───────────────────────────────────────────────────────────
 function getInitialCachedProducts(): { products: Product[]; categoryId: string | null } {
   try {
@@ -242,18 +269,21 @@ const NewOnes = ({ isScrolling }: { isScrolling?: SharedValue<boolean> }) => {
             if (categoryObj) {
               if (active) setCategoryObjId(categoryObj._id);
               if (categoryObj.subCategories) {
-                const productRequests = categoryObj.subCategories.map(async (sub: any) => {
-                  try {
-                    const resJson = await fetchWithCache(`https://backend.inquirybazaar.com/api/categories/sub/${sub.slug}/Delhi`);
-                    if (resJson.success && resJson.data && resJson.data.products) {
-                      return resJson.data.products;
+                const allProductsArrays = await batchRequests(
+                  categoryObj.subCategories,
+                  3, // Maximum 3 concurrent requests
+                  async (sub: any) => {
+                    try {
+                      const resJson = await fetchWithCache(`https://backend.inquirybazaar.com/api/categories/sub/${sub.slug}/Delhi`);
+                      if (resJson.success && resJson.data && resJson.data.products) {
+                        return resJson.data.products;
+                      }
+                    } catch (e) {
+                      // Fail gracefully
                     }
-                  } catch (e) {
-                    // Fail gracefully
+                    return [];
                   }
-                  return [];
-                });
-                const allProductsArrays = await Promise.all(productRequests);
+                );
                 const flattened = allProductsArrays.flat().slice(0, 10);
                 if (active) {
                   setProductsList((prev) => {

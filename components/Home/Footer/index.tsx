@@ -118,19 +118,19 @@ export default function CustomTabBar(props: BottomTabBarProps) {
     if (tabId === "home") {
       router.navigate("/(tabs)");
     } else if (tabId === "request-quote") {
-      router.replace("/PostRequirenmentForm");
+      router.push("/PostRequirenmentForm");
     } else if (tabId === "account") {
       if (userRole === "seller" && globalSellerId) {
-        router.replace("/Seller/Profile");
+        router.push("/Seller/Profile");
       } else if (userRole === "buyer" && globalBuyerId) {
-        router.replace("/Buyer/profile");
+        router.push("/Buyer/profile");
       } else {
-        router.replace("/(auth)/choose-role");
+        router.push("/(auth)/choose-role");
       }
     } else if (tabId === "wishlist") {
-      router.replace("/Wishlist");
+      router.push("/Wishlist");
     } else if (tabId === "categories") {
-      router.replace("/Industries");
+      router.push("/Industries");
     }
   }, [userRole, globalSellerId, globalBuyerId, activeTab]);
 

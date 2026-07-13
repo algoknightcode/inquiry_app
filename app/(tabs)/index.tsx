@@ -21,7 +21,8 @@ import VideoSection from '@/components/Home/Video_component';
 import WeConnectBuyerSeller from '@/components/Home/WeConnect_BuyerSeller';
 import React, { useCallback, useMemo, useRef, useState } from 'react';
 
-import { FlatList, InteractionManager, Platform, SafeAreaView, StyleSheet } from 'react-native';
+import { FlatList, InteractionManager, Platform, StyleSheet } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 // Added Reanimated imports
 import Animated, { runOnJS, useAnimatedScrollHandler, useSharedValue } from 'react-native-reanimated';
 
@@ -185,7 +186,7 @@ export default function HomeScreen() {
   });
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView edges={['left', 'right']} style={styles.container}>
       {/* 3. Pass the Reanimated SharedValue safely to the Navbar */}
       <Navbar scrollY={scrollY} />
 
@@ -200,8 +201,8 @@ export default function HomeScreen() {
   removeClippedSubviews={Platform.OS === 'android'} 
   windowSize={11}              
   maxToRenderPerBatch={8}      
-  initialNumToRender={6}       
-  updateCellsBatchingPeriod={30} 
+  initialNumToRender={5}       
+  updateCellsBatchingPeriod={90} 
   // ──────────────────────────────────────────────────────────────
   
   onScroll={scrollHandler}

@@ -76,7 +76,7 @@ const TRUSTED_URL = "https://backend.inquirybazaar.com/api/categories/sub/titani
 function getInitialCachedTrustedProducts(): Product[] {
   try {
     const json = getCacheSync(TRUSTED_URL);
-    if (json.success && json.data?.products) {
+    if (json?.success && json.data?.products) {
       const sliced = json.data.products.slice(0, 10);
       
       const urlsToPrefetch = sliced

@@ -234,6 +234,15 @@ const Sidebar = ({ visible, onClose, currentRole }: SidebarProps) => {
             showsVerticalScrollIndicator={false}
             bounces={false}
           >
+            {isActuallySeller && (
+              <View className="mx-8 mb-2 px-3 py-2 bg-emerald-50 border border-emerald-100 rounded-xl flex-row items-center">
+                <View className="w-2.5 h-2.5 rounded-full bg-emerald-500 mr-2" />
+                <Text className="text-[12px] font-jakarta-bold text-emerald-600 uppercase tracking-wide">
+                  Standard Plan Active
+                </Text>
+              </View>
+            )}
+            
             {isActuallySeller && <SellerHeader onNavigate={handleNavigation} />}
             
             <View>

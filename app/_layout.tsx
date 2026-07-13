@@ -9,9 +9,14 @@ import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
 import { Text, TouchableOpacity, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
-import 'react-native-reanimated';
+import { configureReanimatedLogger, ReanimatedLogLevel } from 'react-native-reanimated';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import "../global.css";
+
+configureReanimatedLogger({
+  level: ReanimatedLogLevel.warn,
+  strict: false, // Disables warnings from third-party libraries reading shared values during render
+});
 
 const CustomBackButton = () => {
   return (
