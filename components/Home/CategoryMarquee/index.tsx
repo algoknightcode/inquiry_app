@@ -1,7 +1,7 @@
 import { fetchWithCache, getCacheSync } from "@/utils/apiCache";
 import { useRouter } from "expo-router";
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { ActivityIndicator, Pressable, StyleSheet, Text, View, useWindowDimensions } from "react-native";
+import { ActivityIndicator, Pressable, StyleSheet, Text, useWindowDimensions, View } from "react-native";
 import Animated, { FadeInDown, runOnJS, SharedValue, useAnimatedReaction } from "react-native-reanimated";
 import Carousel, { ICarouselInstance } from "react-native-reanimated-carousel";
 
@@ -65,13 +65,14 @@ export default function CategoryMarquee({ isScrolling }: { isScrolling?: SharedV
   const chunkedIndustries = useMemo(() => {
     if (!industries || industries.length === 0) return [];
 
-    let safeIndustries = [...industries];
+    let k = 1;
+    while ((k * industries.length) % columns !== 0) {
+      k++;
+    }
 
-    // THE FIX: While the total number of items is NOT perfectly divisible by our columns,
-    // duplicate the entire sequence. This completely eliminates blank spaces 
-    // and guarantees the infinite loop never stutters or repeats items weirdly.
-    while (safeIndustries.length % columns !== 0) {
-      safeIndustries = [...safeIndustries, ...industries];
+    const safeIndustries = [];
+    for (let i = 0; i < k; i++) {
+      safeIndustries.push(...industries);
     }
 
     const chunks = [];

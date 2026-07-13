@@ -18,7 +18,7 @@ const CategoryCard = React.memo(
   ({ item, onPress }: { item: Category; onPress: (id: string) => void }) => (
     <Pressable
       style={catStyles.card}
-      activeOpacity={0.75}
+     
       onPress={() => onPress(item._id)}
     >
       <View style={catStyles.imageWrapper}>
@@ -112,7 +112,7 @@ const Main_Category = () => {
         <Text style={catStyles.heading}>Top Categories</Text>
         <Pressable
           hitSlop={8}
-          activeOpacity={0.75}
+       
           onPress={handleViewAll}
           style={catStyles.viewAllBtn}
         >

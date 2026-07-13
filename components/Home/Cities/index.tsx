@@ -101,8 +101,10 @@ export default function SellersByCityGrid() {
           <Pressable
             key={city.id}
             onPress={() => handleCityPress(city.name)}
-            style={[cityStyles.gridItem, { width: exactItemWidth }]}
-            activeOpacity={0.75}
+            style={({ pressed }) => [
+              cityStyles.gridItem,
+              { width: exactItemWidth, opacity: pressed ? 0.75 : 1 },
+            ]}
           >
             <View
               style={[cityStyles.circle, circleStyle]}

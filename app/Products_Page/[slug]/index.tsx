@@ -155,34 +155,28 @@ export default function ProductDetailPage() {
         }
       }
 
-      const urls = [
-        `https://backend.inquirybazaar.com/api/products/${productId}`,
-        `https://backend.inquirybazaar.com/api/products/single/${productId}`,
-        `https://backend.inquirybazaar.com/api/product/${productId}`,
-        `https://backend.inquirybazaar.com/api/products/slug/${slug}`,
-      ].filter(url => !url.includes("undefined"));
-
-      const fetchWrapper = (url: string) =>
-        fetch(url)
-          .then((res) => {
-            if (!res.ok) throw new Error(`${res.status}`);
-            return res.json();
-          })
-          .then((json) => {
-            if (json.success && json.data) return json.data;
-            throw new Error("No data matches");
-          });
+      const fetchWrapper = async (url: string) => {
+        const res = await fetch(url);
+        if (!res.ok) throw new Error(`${res.status}`);
+        const json = await res.json();
+        if (json.success && json.data) return json.data;
+        throw new Error("No data matches");
+      };
 
       try {
         let result: any = null;
-        
-        if (typeof Promise.any === "function") {
-          result = await Promise.any(urls.map(fetchWrapper));
-        } else {
-          const settledResults = await Promise.allSettled(urls.map(fetchWrapper));
-          const firstSuccess = settledResults.find(r => r.status === "fulfilled");
-          if (firstSuccess) {
-            result = (firstSuccess as any).value;
+
+        if (slug) {
+          result = await fetchWrapper(`https://backend.inquirybazaar.com/api/products/slug/${slug}`);
+        } else if (productId) {
+          try {
+            result = await fetchWrapper(`https://backend.inquirybazaar.com/api/products/${productId}`);
+          } catch (err) {
+            try {
+              result = await fetchWrapper(`https://backend.inquirybazaar.com/api/products/single/${productId}`);
+            } catch (err2) {
+              result = await fetchWrapper(`https://backend.inquirybazaar.com/api/product/${productId}`);
+            }
           }
         }
 

@@ -232,12 +232,6 @@ const HorizontalProductList = ({ isScrolling }: { isScrolling?: SharedValue<bool
         const json = await fetchWithCache(API_URL);
         if (json.success && json.data?.products) {
           const newProducts: Product[] = json.data.products.slice(0, 10);
-          
-          const urlsToPrefetch = newProducts
-            .map((item: Product) => (item.media && item.media.length > 0 ? (item.media.find((m) => m.isPrimary) || item.media[0]).url : null))
-            .filter(Boolean) as string[]; 
-
-          if (urlsToPrefetch.length > 0) Image.prefetch(urlsToPrefetch).catch(() => {});
 
           setProducts(prev => {
             if (prev.length > 0 && prev[0]._id === newProducts[0]._id) return prev;
