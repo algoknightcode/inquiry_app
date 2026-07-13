@@ -19,6 +19,7 @@ import HorizontalProductList from '@/components/Home/Trending';
 import TrustedBy from '@/components/Home/Trusted';
 import VideoSection from '@/components/Home/Video_component';
 import WeConnectBuyerSeller from '@/components/Home/WeConnect_BuyerSeller';
+import { useRole } from '@/contexts/RoleContext';
 import React, { useCallback, useMemo, useRef, useState } from 'react';
 
 import { FlatList, InteractionManager, Platform, StyleSheet } from 'react-native';
@@ -49,6 +50,7 @@ const MemoizedVideoSection = React.memo(VideoSection);
 const MemoizedWeConnectBuyerSeller = React.memo(WeConnectBuyerSeller);
 
 export default function HomeScreen() {
+  const { userRole } = useRole();
   const [renderBelowFold, setRenderBelowFold] = useState(false);
   const flatListRef = useRef<FlatList>(null);
   
@@ -187,8 +189,8 @@ export default function HomeScreen() {
 
   return (
     <SafeAreaView edges={['left', 'right']} style={styles.container}>
-      {/* 3. Pass the Reanimated SharedValue safely to the Navbar */}
-      <Navbar scrollY={scrollY} />
+      {/* 3. Pass the Reanimated SharedValue and userRole safely to the Navbar */}
+      <Navbar scrollY={scrollY} userRole={userRole} />
 
     <Animated.FlatList
       ref={flatListRef as any}
@@ -202,7 +204,7 @@ export default function HomeScreen() {
   windowSize={11}              
   maxToRenderPerBatch={8}      
   initialNumToRender={5}       
-  updateCellsBatchingPeriod={90} 
+  updateCellsBatchingPeriod={80} 
   // ──────────────────────────────────────────────────────────────
   
   onScroll={scrollHandler}

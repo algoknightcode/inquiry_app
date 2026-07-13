@@ -21,8 +21,17 @@ import EnquiryModal from "../../EnquiryModal";
 import Animated, {
   SharedValue,
   runOnJS,
-  useAnimatedReaction
+  runOnUI,
+  useAnimatedReaction,
+  useAnimatedRef,
+  useSharedValue,
+  cancelAnimation,
+  scrollTo,
+  withRepeat,
+  withTiming,
+  withDelay,
 } from "react-native-reanimated";
+
 
 // ── Types ──────────────────────────────────────────────────────────────────
 type Media = {
@@ -234,10 +243,11 @@ const NewOnes = ({ isScrolling }: { isScrolling?: SharedValue<boolean> }) => {
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
 
-  // 3. Auto-scroll Refs
-  const flatListRef = useRef<Animated.FlatList<Product>>(null);
-  const activeIndexRef = useRef(0);
-  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  // Reanimated UI-thread variables
+  const flatListRef = useAnimatedRef<Animated.FlatList<Product>>();
+  const scrollIndex = useSharedValue(0);
+  const isAutoPlaying = useSharedValue(false);
+  const autoplayPulse = useSharedValue(0);
 
   // Fetch Data
   useEffect(() => {
@@ -321,43 +331,48 @@ const NewOnes = ({ isScrolling }: { isScrolling?: SharedValue<boolean> }) => {
     return middle - (middle % productsList.length);
   }, [replicatedData.length, productsList.length]);
 
-  // 5. Auto-Play using JS setInterval
-  const startAutoPlay = useCallback(() => {
-    if (!isFocused || replicatedData.length <= 1 || isModalVisible) return;
-    stopAutoPlay();
-    
-    timerRef.current = setInterval(() => {
-      let nextIndex = activeIndexRef.current + 1;
-      
-      if (nextIndex >= replicatedData.length - 2) {
-        const remainder = nextIndex % productsList.length;
-        const safeMiddleIndex = baseMiddleIndex + remainder;
-        if (flatListRef.current) {
-          flatListRef.current.scrollToIndex({ index: safeMiddleIndex, animated: false });
-        }
-        activeIndexRef.current = safeMiddleIndex;
-      } else {
-        activeIndexRef.current = nextIndex;
-        if (flatListRef.current) {
-          flatListRef.current.scrollToIndex({ index: nextIndex, animated: true });
-        }
-      }
-    }, 5000);
-  }, [isFocused, replicatedData.length, productsList.length, baseMiddleIndex, isModalVisible]);
+  // Autoplay timer ref
+  const autoplayTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const stopAutoPlay = useCallback(() => {
-    if (timerRef.current) clearInterval(timerRef.current);
+    if (autoplayTimerRef.current) {
+      clearInterval(autoplayTimerRef.current);
+      autoplayTimerRef.current = null;
+    }
   }, []);
 
-  useEffect(() => {
-    if (isFocused && replicatedData.length > 0 && !isModalVisible) {
-      activeIndexRef.current = baseMiddleIndex;
-      startAutoPlay();
-      return stopAutoPlay;
-    } else {
-      stopAutoPlay();
-    }
-  }, [isFocused, replicatedData, baseMiddleIndex, startAutoPlay, stopAutoPlay, isModalVisible]);
+  const startAutoPlay = useCallback(() => {
+    stopAutoPlay();
+    if (productsList.length <= 0) return;
+
+    autoplayTimerRef.current = setInterval(() => {
+      if (!isFocused || isModalVisible || (isScrolling && isScrolling.value)) {
+        return;
+      }
+
+      scrollIndex.value = scrollIndex.value + 1;
+      
+      // Scroll to the next index smoothly
+      flatListRef.current?.scrollToIndex({
+        index: scrollIndex.value,
+        animated: true,
+      });
+
+      // Handle wrapping at the bounds
+      if (scrollIndex.value >= replicatedData.length - 2) {
+        const remainder = scrollIndex.value % productsList.length;
+        const safeIndex = baseMiddleIndex + remainder;
+        scrollIndex.value = safeIndex;
+        // Wait for the slide animation to finish before snapping back to the middle
+        setTimeout(() => {
+          flatListRef.current?.scrollToIndex({
+            index: safeIndex,
+            animated: false,
+          });
+        }, 500);
+      }
+    }, 4000);
+  }, [isFocused, isModalVisible, productsList.length, replicatedData.length, baseMiddleIndex, isScrolling, stopAutoPlay]);
 
   useAnimatedReaction(
     () => isScrolling?.value ?? false,
@@ -368,27 +383,44 @@ const NewOnes = ({ isScrolling }: { isScrolling?: SharedValue<boolean> }) => {
         runOnJS(startAutoPlay)();
       }
     },
-    [isScrolling, startAutoPlay, stopAutoPlay]
+    [startAutoPlay, stopAutoPlay]
   );
+
+  useEffect(() => {
+    if (replicatedData.length > 0 && productsList.length > 0) {
+      if (isFocused && !isModalVisible) {
+        scrollIndex.value = baseMiddleIndex;
+        const initTimer = setTimeout(() => {
+          flatListRef.current?.scrollToIndex({ index: baseMiddleIndex, animated: false });
+          startAutoPlay();
+        }, 500);
+
+        return () => {
+          clearTimeout(initTimer);
+          stopAutoPlay();
+        };
+      } else {
+        stopAutoPlay();
+      }
+    }
+  }, [isFocused, replicatedData, baseMiddleIndex, productsList.length, isModalVisible, startAutoPlay, stopAutoPlay]);
 
   // ── Manual Scroll Handling ──
   const handleScrollBegin = useCallback(() => {
     stopAutoPlay();
   }, [stopAutoPlay]);
 
-  const handleMomentumScrollEnd = useCallback((event: NativeSyntheticEvent<NativeScrollEvent>) => {
+  const handleMomentumScrollEnd = useCallback((event: any) => {
     const scrollOffset = event.nativeEvent.contentOffset.x;
     let currentIndex = Math.round(scrollOffset / ITEM_SIZE);
 
-    if (currentIndex < 5 || currentIndex > replicatedData.length - 5) {
+    if (currentIndex < 2 || currentIndex > replicatedData.length - 3) {
       const remainder = currentIndex % productsList.length;
       currentIndex = baseMiddleIndex + remainder;
-      if (flatListRef.current) {
-        flatListRef.current.scrollToIndex({ index: currentIndex, animated: false });
-      }
+      flatListRef.current?.scrollToIndex({ index: currentIndex, animated: false });
     }
 
-    activeIndexRef.current = currentIndex;
+    scrollIndex.value = currentIndex;
     startAutoPlay();
   }, [ITEM_SIZE, replicatedData.length, productsList.length, baseMiddleIndex, startAutoPlay]);
 
@@ -396,7 +428,7 @@ const NewOnes = ({ isScrolling }: { isScrolling?: SharedValue<boolean> }) => {
     setTimeout(() => {
       flatListRef.current?.scrollToIndex({ index: info.index, animated: true });
     }, 500);
-  }, [flatListRef]);
+  }, []);
 
   // ── Actions ──
   const handleCardPress = useCallback((item: Product) => {

@@ -21,7 +21,15 @@ import Animated, {
     useSharedValue,
     useAnimatedReaction,
     runOnJS,
+    useAnimatedRef,
+    cancelAnimation,
+    runOnUI,
+    scrollTo,
+    withRepeat,
+    withTiming,
+    withDelay,
 } from "react-native-reanimated";
+
 
 const { width: screenWidth } = Dimensions.get("window");
 
@@ -164,10 +172,11 @@ export default function IndustryTreeCarousel({
   const [error, setError] = useState<string | null>(null);
   
   const isFocused = useIsFocused();
-  const flatRef = useRef<Animated.FlatList<Industry>>(null);
+  const flatRef = useAnimatedRef<Animated.FlatList<Industry>>();
   const scrollX = useSharedValue(0);
-  const activeIndexRef = useRef(0);
-  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const scrollIndex = useSharedValue(0);
+  const isAutoPlaying = useSharedValue(false);
+  const autoplayPulse = useSharedValue(0);
 
   useEffect(() => {
     if (!hasBeenVisible) return;
@@ -189,32 +198,33 @@ export default function IndustryTreeCarousel({
     })();
   }, [hasBeenVisible]);
 
-  const startAutoPlay = useCallback(() => {
-    if (!isFocused || data.length <= 1) return;
-    stopAutoPlay();
-    
-    timerRef.current = setInterval(() => {
-      const nextIndex = (activeIndexRef.current + 1) % data.length;
-      activeIndexRef.current = nextIndex;
-      if (flatRef.current) {
-        flatRef.current.scrollToIndex({ index: nextIndex, animated: true });
-      }
-    }, 4000);
-  }, [isFocused, data.length]);
+  // Autoplay timer ref
+  const autoplayTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   const stopAutoPlay = useCallback(() => {
-    if (timerRef.current) clearInterval(timerRef.current);
+    if (autoplayTimerRef.current) {
+      clearInterval(autoplayTimerRef.current);
+      autoplayTimerRef.current = null;
+    }
   }, []);
 
-  useEffect(() => {
-    if (!hasBeenVisible) return;
-    if (isFocused && data.length > 1) {
-      startAutoPlay();
-    } else {
-      stopAutoPlay();
-    }
-    return stopAutoPlay;
-  }, [hasBeenVisible, isFocused, data.length, startAutoPlay, stopAutoPlay]);
+  const startAutoPlay = useCallback(() => {
+    stopAutoPlay();
+    if (data.length <= 1) return;
+
+    autoplayTimerRef.current = setInterval(() => {
+      if (!isFocused || !hasBeenVisible || (isScrolling && isScrolling.value)) {
+        return;
+      }
+
+      scrollIndex.value = (scrollIndex.value + 1) % data.length;
+      
+      flatRef.current?.scrollToIndex({
+        index: scrollIndex.value,
+        animated: true,
+      });
+    }, 4000);
+  }, [isFocused, hasBeenVisible, data.length, isScrolling, stopAutoPlay, screenWidth]);
 
   useAnimatedReaction(
     () => isScrolling?.value ?? false,
@@ -226,8 +236,27 @@ export default function IndustryTreeCarousel({
         runOnJS(startAutoPlay)();
       }
     },
-    [hasBeenVisible, startAutoPlay, stopAutoPlay, isScrolling]
+    [hasBeenVisible, startAutoPlay, stopAutoPlay]
   );
+
+  useEffect(() => {
+    if (!hasBeenVisible || data.length <= 1) return;
+
+    if (isFocused) {
+      scrollIndex.value = 0;
+      const initTimer = setTimeout(() => {
+        flatRef.current?.scrollToIndex({ index: 0, animated: false });
+        startAutoPlay();
+      }, 300);
+
+      return () => {
+        clearTimeout(initTimer);
+        stopAutoPlay();
+      };
+    } else {
+      stopAutoPlay();
+    }
+  }, [hasBeenVisible, isFocused, data.length, startAutoPlay, stopAutoPlay]);
 
   useAnimatedReaction(
     () => scrollY?.value ?? 0,
@@ -257,7 +286,7 @@ export default function IndustryTreeCarousel({
 
   const onMomentumEnd = (event: any) => {
     const newIndex = Math.round(event.nativeEvent.contentOffset.x / screenWidth);
-    activeIndexRef.current = newIndex;
+    scrollIndex.value = newIndex;
     startAutoPlay();
   };
 

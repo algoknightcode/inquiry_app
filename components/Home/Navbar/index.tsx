@@ -3,7 +3,8 @@ import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import React, { useState } from "react";
-import { Image, Platform, Pressable, View } from "react-native";
+import { Platform, Pressable, View } from "react-native";
+import { Image } from "expo-image";
 import Animated, {
     Extrapolation,
     interpolate,
@@ -21,14 +22,16 @@ interface NavbarProps {
   onMenuPress?: () => void;
   // Optional scrollY with default - works in both Home (with scroll) and Dashboard (without)
   scrollY?: SharedValue<number>; 
+  userRole?: string;
 }
 
-const Navbar = ({ onMenuPress, scrollY: externalScrollY }: NavbarProps) => {
+const Navbar = React.memo(({ onMenuPress, scrollY: externalScrollY, userRole: propUserRole }: NavbarProps) => {
   const internalScrollY = useSharedValue<number>(0);
   const scrollY = externalScrollY || internalScrollY;
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const { userRole } = useRole();
+  const { userRole: contextUserRole } = useRole();
+  const userRole = propUserRole || contextUserRole;
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [shouldRenderSidebar, setShouldRenderSidebar] = useState(false);
 
@@ -111,7 +114,7 @@ const Navbar = ({ onMenuPress, scrollY: externalScrollY }: NavbarProps) => {
           <Image
             source={Logo}
             style={{ width: "75%", height: "100%" }}
-            resizeMode="contain"
+            contentFit="contain"
           />
         </Animated.View>
 
@@ -152,5 +155,6 @@ const Navbar = ({ onMenuPress, scrollY: externalScrollY }: NavbarProps) => {
   );
 };
 
-// Note: NOT wrapped in React.memo — Navbar must re-render when userRole changes from context
+// Note: Wrapped in React.memo to prevent unnecessary re-renders during parent layout updates (e.g. scrolling).
+// userRole is accepted as a prop to allow clean parent updates.
 export default Navbar;

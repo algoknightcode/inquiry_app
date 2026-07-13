@@ -25,6 +25,7 @@ import Animated, {
   useAnimatedReaction,
   useAnimatedRef,
   useSharedValue,
+  withDelay,
   withRepeat,
   withTiming,
 } from "react-native-reanimated";
@@ -272,43 +273,59 @@ const HorizontalProductList = ({ isScrolling }: { isScrolling?: SharedValue<bool
     return middle - (middle % products.length);
   }, [replicatedData.length, products.length]);
 
-  const startAutoPlayUI = () => {
-    'worklet';
+  // Autoplay timer ref
+  const autoplayTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  const stopAutoPlay = useCallback(() => {
+    if (autoplayTimerRef.current) {
+      clearInterval(autoplayTimerRef.current);
+      autoplayTimerRef.current = null;
+    }
+  }, []);
+
+  const startAutoPlay = useCallback(() => {
+    stopAutoPlay();
     if (products.length <= 0) return;
-    autoplayPulse.value = 0;
-    autoplayPulse.value = withRepeat(
-      withTiming(1, { duration: 2500 }),
-      -1
-    );
-  };
 
-  const stopAutoPlayUI = () => {
-    'worklet';
-    cancelAnimation(autoplayPulse);
-  };
-
-  // Reanimated UI-thread auto-scroll reaction
-  useAnimatedReaction(
-    () => autoplayPulse.value,
-    (currentPulse, prevPulse) => {
-      if (!isFocused || (isScrolling && isScrolling.value)) {
+    autoplayTimerRef.current = setInterval(() => {
+      if (!isFocused || isModalVisible || (isScrolling && isScrolling.value)) {
         return;
       }
-      if (prevPulse !== null && currentPulse < prevPulse && prevPulse > 0.9 && currentPulse < 0.1) {
-        if (!isAutoPlaying.value) return;
 
-        scrollIndex.value = scrollIndex.value + 1;
-        scrollTo(flatListRef, scrollIndex.value * ITEM_SIZE, 0, true);
+      scrollIndex.value = scrollIndex.value + 1;
+      
+      // Scroll to the next index smoothly
+      flatListRef.current?.scrollToIndex({
+        index: scrollIndex.value,
+        animated: true,
+      });
 
-        if (scrollIndex.value >= replicatedData.length - 2) {
-          const remainder = scrollIndex.value % products.length;
-          const safeIndex = baseMiddleIndex + remainder;
-          scrollIndex.value = safeIndex;
-          scrollTo(flatListRef, safeIndex * ITEM_SIZE, 0, false);
-        }
+      // Handle wrapping at the bounds
+      if (scrollIndex.value >= replicatedData.length - 2) {
+        const remainder = scrollIndex.value % products.length;
+        const safeIndex = baseMiddleIndex + remainder;
+        scrollIndex.value = safeIndex;
+        // Wait for the slide animation to finish before snapping back to the middle
+        setTimeout(() => {
+          flatListRef.current?.scrollToIndex({
+            index: safeIndex,
+            animated: false,
+          });
+        }, 500);
+      }
+    }, 2500);
+  }, [isFocused, isModalVisible, products.length, replicatedData.length, baseMiddleIndex, isScrolling, stopAutoPlay]);
+
+  useAnimatedReaction(
+    () => isScrolling?.value ?? false,
+    (scrolling) => {
+      if (scrolling) {
+        runOnJS(stopAutoPlay)();
+      } else {
+        runOnJS(startAutoPlay)();
       }
     },
-    [isFocused, replicatedData, baseMiddleIndex, products.length, isScrolling, ITEM_SIZE]
+    [startAutoPlay, stopAutoPlay]
   );
 
   useEffect(() => {
@@ -317,32 +334,22 @@ const HorizontalProductList = ({ isScrolling }: { isScrolling?: SharedValue<bool
         scrollIndex.value = baseMiddleIndex;
         const initTimer = setTimeout(() => {
           flatListRef.current?.scrollToIndex({ index: baseMiddleIndex, animated: false });
-          runOnUI(() => {
-            'worklet';
-            isAutoPlaying.value = true;
-            startAutoPlayUI();
-          })();
+          startAutoPlay();
         }, 500);
 
         return () => {
           clearTimeout(initTimer);
-          runOnUI(stopAutoPlayUI)();
-          isAutoPlaying.value = false;
+          stopAutoPlay();
         };
       } else {
-        runOnUI(stopAutoPlayUI)();
-        isAutoPlaying.value = false;
+        stopAutoPlay();
       }
     }
-  }, [isFocused, replicatedData, baseMiddleIndex, products.length, isModalVisible]);
+  }, [isFocused, replicatedData, baseMiddleIndex, products.length, isModalVisible, startAutoPlay, stopAutoPlay]);
 
   const handleScrollBegin = useCallback(() => {
-    runOnUI(() => {
-      'worklet';
-      isAutoPlaying.value = false;
-      stopAutoPlayUI();
-    })();
-  }, []);
+    stopAutoPlay();
+  }, [stopAutoPlay]);
 
   const handleMomentumScrollEnd = useCallback((event: any) => {
     const scrollOffset = event.nativeEvent.contentOffset.x;
@@ -355,12 +362,8 @@ const HorizontalProductList = ({ isScrolling }: { isScrolling?: SharedValue<bool
     }
 
     scrollIndex.value = currentIndex;
-    runOnUI(() => {
-      'worklet';
-      isAutoPlaying.value = true;
-      startAutoPlayUI();
-    })();
-  }, [ITEM_SIZE, replicatedData.length, products.length, baseMiddleIndex]);
+    startAutoPlay();
+  }, [ITEM_SIZE, replicatedData.length, products.length, baseMiddleIndex, startAutoPlay]);
 
   const handleScrollToIndexFailed = useCallback((info: { index: number }) => {
     setTimeout(() => flatListRef.current?.scrollToIndex({ index: info.index, animated: true }), 500);

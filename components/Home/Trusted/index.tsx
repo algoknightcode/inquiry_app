@@ -5,7 +5,7 @@ import { setProductCache } from "@/utils/productCache";
 import { useIsFocused } from "@react-navigation/native";
 import { Image } from "expo-image";
 import { useRouter } from "expo-router";
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   NativeScrollEvent,
   NativeSyntheticEvent,
@@ -22,11 +22,13 @@ import {
 import Animated, {
   cancelAnimation,
   runOnUI,
+  runOnJS,
   scrollTo,
   SharedValue,
   useAnimatedReaction,
   useAnimatedRef,
   useSharedValue,
+  withDelay,
   withRepeat,
   withTiming,
 } from "react-native-reanimated";
@@ -397,49 +399,59 @@ const IBTrusted = ({ isScrolling }: { isScrolling?: SharedValue<boolean> }) => {
     return middle - (middle % products.length);
   }, [replicatedData.length, products.length]);
 
-  // ── 4. Reanimated UI-Thread Autoplay Loop ──
-  const autoplayPulse = useSharedValue(0);
+  // Autoplay timer ref
+  const autoplayTimerRef = useRef<NodeJS.Timeout | null>(null);
 
-  const startAutoPlayUI = () => {
-    'worklet';
+  const stopAutoPlay = useCallback(() => {
+    if (autoplayTimerRef.current) {
+      clearInterval(autoplayTimerRef.current);
+      autoplayTimerRef.current = null;
+    }
+  }, []);
+
+  const startAutoPlay = useCallback(() => {
+    stopAutoPlay();
     if (products.length <= 0) return;
-    autoplayPulse.value = 0;
-    autoplayPulse.value = withRepeat(
-      withTiming(1, { duration: 5000 }),
-      -1
-    );
-  };
 
-  const stopAutoPlayUI = () => {
-    'worklet';
-    cancelAnimation(autoplayPulse);
-  };
-
-  // Listen to autoplay pulse and scroll
-  useAnimatedReaction(
-    () => autoplayPulse.value,
-    (currentPulse, prevPulse) => {
-      if (!isFocused || (isScrolling && isScrolling.value)) {
+    autoplayTimerRef.current = setInterval(() => {
+      if (!isFocused || isModalVisible || (isScrolling && isScrolling.value)) {
         return;
       }
-      if (prevPulse !== null && currentPulse < prevPulse && prevPulse > 0.9 && currentPulse < 0.1) {
-        if (!isAutoPlaying.value) {
-          return; // Don't scroll if user is dragging
-        }
-        
-        scrollIndex.value = scrollIndex.value + 1;
-        scrollTo(flatListRef, scrollIndex.value * layout.ITEM_SIZE, 0, true);
-        
-        // Infinite loop: reset when reaching end
-        if (scrollIndex.value >= replicatedData.length - 2) {
-          const remainder = scrollIndex.value % products.length;
-          const safeIndex = baseMiddleIndex + remainder;
-          scrollIndex.value = safeIndex;
-          scrollTo(flatListRef, safeIndex * layout.ITEM_SIZE, 0, false);
-        }
+
+      scrollIndex.value = scrollIndex.value + 1;
+      
+      // Scroll to the next index smoothly
+      flatListRef.current?.scrollToIndex({
+        index: scrollIndex.value,
+        animated: true,
+      });
+
+      // Handle wrapping at the bounds
+      if (scrollIndex.value >= replicatedData.length - 2) {
+        const remainder = scrollIndex.value % products.length;
+        const safeIndex = baseMiddleIndex + remainder;
+        scrollIndex.value = safeIndex;
+        // Wait for the slide animation to finish before snapping back to the middle
+        setTimeout(() => {
+          flatListRef.current?.scrollToIndex({
+            index: safeIndex,
+            animated: false,
+          });
+        }, 500);
+      }
+    }, 5000);
+  }, [isFocused, isModalVisible, products.length, replicatedData.length, baseMiddleIndex, isScrolling, stopAutoPlay, layout.ITEM_SIZE]);
+
+  useAnimatedReaction(
+    () => isScrolling?.value ?? false,
+    (scrolling) => {
+      if (scrolling) {
+        runOnJS(stopAutoPlay)();
+      } else {
+        runOnJS(startAutoPlay)();
       }
     },
-    [isFocused, isScrolling]
+    [startAutoPlay, stopAutoPlay]
   );
 
   useEffect(() => {
@@ -449,35 +461,23 @@ const IBTrusted = ({ isScrolling }: { isScrolling?: SharedValue<boolean> }) => {
         scrollIndex.value = baseMiddleIndex;
         const initTimer = setTimeout(() => {
           flatListRef.current?.scrollToIndex({ index: baseMiddleIndex, animated: false });
-          
-          // Start UI Thread Loop
-          runOnUI(() => {
-            'worklet';
-            isAutoPlaying.value = true;
-            startAutoPlayUI();
-          })();
+          startAutoPlay();
         }, 500);
 
         return () => {
           clearTimeout(initTimer);
-          runOnUI(stopAutoPlayUI)();
-          isAutoPlaying.value = false;
+          stopAutoPlay();
         };
       } else {
-        runOnUI(stopAutoPlayUI)();
-        isAutoPlaying.value = false;
+        stopAutoPlay();
       }
     }
-  }, [isFocused, replicatedData, baseMiddleIndex, products.length, isModalVisible]);
+  }, [isFocused, replicatedData, baseMiddleIndex, products.length, isModalVisible, startAutoPlay, stopAutoPlay]);
 
   // ── Manual Scroll Handling ──
   const handleScrollBegin = useCallback(() => {
-    runOnUI(() => {
-      'worklet';
-      isAutoPlaying.value = false;
-      stopAutoPlayUI();
-    })();
-  }, [isAutoPlaying]);
+    stopAutoPlay();
+  }, [stopAutoPlay]);
 
   const handleMomentumScrollEnd = useCallback((event: NativeSyntheticEvent<NativeScrollEvent>) => {
     const scrollOffset = event.nativeEvent.contentOffset.x;
@@ -491,14 +491,8 @@ const IBTrusted = ({ isScrolling }: { isScrolling?: SharedValue<boolean> }) => {
     }
 
     scrollIndex.value = currentIndex;
-    
-    // Restart Autoplay
-    runOnUI(() => {
-      'worklet';
-      isAutoPlaying.value = true;
-      startAutoPlayUI();
-    })();
-  }, [layout.ITEM_SIZE, replicatedData.length, products.length, baseMiddleIndex, scrollIndex, flatListRef, isAutoPlaying]);
+    startAutoPlay();
+  }, [layout.ITEM_SIZE, replicatedData.length, products.length, baseMiddleIndex, startAutoPlay]);
 
   const handleScrollToIndexFailed = useCallback((info: { index: number }) => {
     setTimeout(() => {

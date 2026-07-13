@@ -4,7 +4,18 @@ import { Image } from "expo-image";
 import { Href, useRouter } from "expo-router";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { FlatList, Linking, Pressable, Text, useWindowDimensions, View } from "react-native";
-import { SharedValue } from "react-native-reanimated";
+import Animated, {
+  cancelAnimation,
+  runOnJS,
+  runOnUI,
+  scrollTo,
+  SharedValue,
+  useAnimatedReaction,
+  useAnimatedRef,
+  useSharedValue,
+  withRepeat,
+  withTiming,
+} from "react-native-reanimated";
 
 type ValueAddCard = {
   id: string;
@@ -48,10 +59,14 @@ const cardsData: ValueAddCard[] = [
 export default function MoreValueAdds({ isScrolling }: { isScrolling?: SharedValue<boolean> }) {
   const isFocused = useIsFocused();
   const { width: screenWidth } = useWindowDimensions();
-  const flatListRef = useRef<FlatList>(null);
-  const [currentIndex, setCurrentIndex] = useState(0);
-  const currentIndexRef = useRef(0); // Ref so interval doesn't need currentIndex in deps
   const router = useRouter();
+
+  // Reanimated UI-thread variables
+  const flatListRef = useAnimatedRef<Animated.FlatList<ValueAddCard>>();
+  const scrollIndex = useSharedValue(0);
+  const isAutoPlaying = useSharedValue(false);
+  const autoplayPulse = useSharedValue(0);
+  const [currentIndex, setCurrentIndex] = useState(0);
 
   const containerPadding = 16;
   const cardGap = 16;
@@ -66,30 +81,102 @@ export default function MoreValueAdds({ isScrolling }: { isScrolling?: SharedVal
 
   const maxScrollIndex = cardsData.length - 2;
 
+  const startAutoPlayUI = () => {
+    'worklet';
+    if (maxScrollIndex <= 0) return;
+    autoplayPulse.value = 0;
+    autoplayPulse.value = withRepeat(
+      withTiming(1, { duration: 4500 }),
+      -1
+    );
+  };
+
+  const stopAutoPlayUI = () => {
+    'worklet';
+    cancelAnimation(autoplayPulse);
+  };
+
+  // Reanimated UI-thread auto-scroll reaction
+  useAnimatedReaction(
+    () => autoplayPulse.value,
+    (currentPulse, prevPulse) => {
+      if (!isFocused || (isScrolling && isScrolling.value)) {
+        return;
+      }
+      if (prevPulse !== null && currentPulse < prevPulse && prevPulse > 0.9 && currentPulse < 0.1) {
+        if (!isAutoPlaying.value) return;
+
+        let nextIndex = scrollIndex.value + 1;
+        if (nextIndex > maxScrollIndex) nextIndex = 0;
+
+        scrollIndex.value = nextIndex;
+        scrollTo(flatListRef, nextIndex * (cardWidth + cardGap), 0, true);
+        runOnJS(setCurrentIndex)(nextIndex);
+      }
+    },
+    [isFocused, maxScrollIndex, isScrolling, cardWidth, cardGap]
+  );
+
   useEffect(() => {
-    if (!isFocused) {
-      return;
+    if (isFocused) {
+      scrollIndex.value = 0;
+      setCurrentIndex(0);
+      const initTimer = setTimeout(() => {
+        flatListRef.current?.scrollToIndex({ index: 0, animated: false });
+        runOnUI(() => {
+          'worklet';
+          isAutoPlaying.value = true;
+          startAutoPlayUI();
+        })();
+      }, 500);
+
+      return () => {
+        clearTimeout(initTimer);
+        runOnUI(stopAutoPlayUI)();
+        isAutoPlaying.value = false;
+      };
+    } else {
+      runOnUI(stopAutoPlayUI)();
+      isAutoPlaying.value = false;
     }
+  }, [isFocused]);
 
-    const interval = setInterval(() => {
-      // Use ref so we never need currentIndex in the dependency array
-      let nextIndex = currentIndexRef.current + 1;
-      if (nextIndex > maxScrollIndex) nextIndex = 0;
-      flatListRef.current?.scrollToIndex({ index: nextIndex, animated: true });
-      currentIndexRef.current = nextIndex;
-      setCurrentIndex(nextIndex);
-    }, 4500);
+  useAnimatedReaction(
+    () => isScrolling?.value ?? false,
+    (scrolling) => {
+      if (scrolling) {
+        isAutoPlaying.value = false;
+        stopAutoPlayUI();
+      } else {
+        isAutoPlaying.value = true;
+        startAutoPlayUI();
+      }
+    },
+    []
+  );
 
-    return () => clearInterval(interval);
-  }, [isFocused, maxScrollIndex]);
+  // ── Manual Scroll Handling ──
+  const handleScrollBegin = useCallback(() => {
+    runOnUI(() => {
+      'worklet';
+      isAutoPlaying.value = false;
+      stopAutoPlayUI();
+    })();
+  }, []);
 
-  const handleScroll = useCallback((event: any) => {
-    const scrollPosition = event.nativeEvent.contentOffset.x;
-    const index = Math.round(scrollPosition / (cardWidth + cardGap));
-    if (index !== currentIndexRef.current && index <= maxScrollIndex) {
-      currentIndexRef.current = index;
-      setCurrentIndex(index);
-    }
+  const handleMomentumScrollEnd = useCallback((event: any) => {
+    const scrollOffset = event.nativeEvent.contentOffset.x;
+    const index = Math.round(scrollOffset / (cardWidth + cardGap));
+    const safeIndex = Math.min(Math.max(0, index), maxScrollIndex);
+
+    scrollIndex.value = safeIndex;
+    setCurrentIndex(safeIndex);
+
+    runOnUI(() => {
+      'worklet';
+      isAutoPlaying.value = true;
+      startAutoPlayUI();
+    })();
   }, [cardWidth, cardGap, maxScrollIndex]);
 
   const handlePress = useCallback((route: string) => {
@@ -168,7 +255,7 @@ export default function MoreValueAdds({ isScrolling }: { isScrolling?: SharedVal
       </View>
 
       {/* Two-Card Widget Carousel */}
-      <FlatList
+      <Animated.FlatList
         ref={flatListRef}
         data={cardsData}
         keyExtractor={(item) => item.id}
@@ -177,7 +264,8 @@ export default function MoreValueAdds({ isScrolling }: { isScrolling?: SharedVal
         showsHorizontalScrollIndicator={false}
         snapToInterval={cardWidth + cardGap}
         contentContainerStyle={{ paddingHorizontal: containerPadding, paddingBottom: 10 }}
-        onScroll={handleScroll}
+        onScrollBeginDrag={handleScrollBegin}
+        onMomentumScrollEnd={handleMomentumScrollEnd}
         scrollEventThrottle={16}
         getItemLayout={(_, index) => ({
           length: cardWidth + cardGap,
