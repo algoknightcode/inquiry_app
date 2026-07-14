@@ -1,20 +1,8 @@
+import { Image } from 'expo-image';
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import React, { useState } from "react";
-import {
-    ActivityIndicator,
-    Alert,
-    Image,
-    KeyboardAvoidingView,
-    Platform,
-    Pressable,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
-} from "react-native";
+import { ActivityIndicator, Alert, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { moderateScale, scale, verticalScale } from "react-native-size-matters";
 import Logo from "../../../assets/images/logoo-Photoroom.png";
@@ -133,7 +121,7 @@ const BuyerSignUp = () => {
             
             {/* Brand Header */}
             <View style={s.brandWrapper}>
-              <Image source={Logo} style={s.logo} resizeMode="contain" />
+              <Image source={Logo} style={s.logo} contentFit="contain" />
               <Text style={s.title}>
                 Buyer Registration
               </Text>

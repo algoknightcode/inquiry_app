@@ -337,6 +337,7 @@ const NewOnes = ({ isScrolling }: { isScrolling?: SharedValue<boolean> } = {}) =
     stopAutoPlay();
     if (productsList.length <= 0) return;
 
+    return; // Autoplay safely disabled
     autoplayTimerRef.current = setInterval(() => {
       if (!isFocused || isModalVisible) {
         return;

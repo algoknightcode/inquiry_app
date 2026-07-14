@@ -153,6 +153,7 @@ export default function TestimonialCarousel({ isScrolling }: { isScrolling?: Sha
     stopAutoPlay();
     if (replicatedData.length <= 1) return;
 
+    return; // Autoplay safely disabled
     autoplayTimerRef.current = setInterval(() => {
       if (!isFocused) {
         return;

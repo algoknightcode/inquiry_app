@@ -1,3 +1,4 @@
+import { Image } from 'expo-image';
 import { useRole } from "@/contexts/RoleContext";
 import { setSessionSkipRole } from "@/utils/sessionCache";
 import { Ionicons } from "@expo/vector-icons";
@@ -5,15 +6,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import React, { useState } from "react";
-import {
-  Image,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-} from "react-native";
+import { Pressable, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from "react-native-safe-area-context";
 import { moderateScale, scale, verticalScale } from "react-native-size-matters";
 import Logo from "../../assets/images/logoo-Photoroom.png";
@@ -58,7 +51,7 @@ const ChooseRole = () => {
           
           {/* Header Area */}
           <View style={styles.header}>
-            <Image source={Logo} style={styles.logo} resizeMode="contain" />
+            <Image source={Logo} style={styles.logo} contentFit="contain" />
             <Text style={styles.eyebrow}>Welcome to InquiryBazaar</Text>
             <Text style={styles.title}>Choose Your Role</Text>
             <View style={styles.accentLine} />

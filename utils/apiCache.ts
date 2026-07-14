@@ -8,18 +8,7 @@ const FETCH_TIMEOUT_MS = 12000;
 const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes expiration
 const MAX_CACHE_ENTRIES = 40; // Hard memory cap
 
-// Active Background Garbage Collection: Setup/Reset stale cache entries interval
-if ((global as any).__apiCacheInterval) {
-  clearInterval((global as any).__apiCacheInterval);
-}
-(global as any).__apiCacheInterval = setInterval(() => {
-  const now = Date.now();
-  for (const [url, entry] of cache.entries()) {
-    if (now - entry.ts >= CACHE_TTL_MS) {
-      cache.delete(url);
-    }
-  }
-}, 2 * 60 * 1000);
+// No background polling interval - we rely on O(1) lazy eviction in fetchWithCache
 
 /**
  * Fetches a URL with deduplication, auto-cleaning memory (TTL=5min), and an O(1) max limit cap.

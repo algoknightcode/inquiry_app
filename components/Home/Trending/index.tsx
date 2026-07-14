@@ -271,6 +271,7 @@ const HorizontalProductList = ({ isScrolling }: { isScrolling?: SharedValue<bool
     stopAutoPlay();
     if (products.length <= 0) return;
 
+    return; // Autoplay safely disabled
     autoplayTimerRef.current = setInterval(() => {
       if (!isFocused || isModalVisible) {
         return;

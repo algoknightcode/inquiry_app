@@ -1,26 +1,11 @@
+import { Image } from 'expo-image';
 import Navbar from "@/components/Home/Navbar";
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { router, Stack } from "expo-router";
 import React, { useEffect, useState, useRef } from "react";
 import { setGlobalRole, setGlobalBuyerId, setSellerSignedIn, setGlobalSellerId } from "@/utils/roleCache";
-import {
-    ActivityIndicator,
-    Alert,
-    FlatList,
-    Image,
-    KeyboardAvoidingView,
-    Modal,
-    Platform,
-    Pressable,
-    RefreshControl,
-    ScrollView,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
-    Dimensions,
-} from "react-native";
+import { ActivityIndicator, Alert, FlatList, KeyboardAvoidingView, Modal, Platform, Pressable, RefreshControl, ScrollView, Text, TextInput, TouchableOpacity, View, Dimensions } from 'react-native';
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { scale, verticalScale, moderateScale } from "react-native-size-matters";
 import { employeNumber } from "../../Seller/data/data";
@@ -93,7 +78,7 @@ const DropdownField = ({ label, icon, placeholder, value, options, onSelect }: a
             source={{ uri: selectedOption.image }} 
             style={{ width: scale(26), height: scale(26), borderRadius: moderateScale(6), marginRight: scale(8) }}
             className="bg-slate-100" 
-            resizeMode="cover"
+            contentFit="cover"
           />
         )}
         <Text 
@@ -138,7 +123,7 @@ const DropdownField = ({ label, icon, placeholder, value, options, onSelect }: a
                           source={{ uri: item.image }} 
                           style={{ width: 40, height: 35 }}
                           className="rounded-lg mr-3 bg-slate-100" 
-                          resizeMode="cover"
+                          contentFit="cover"
                         />
                       )}
                       <Text className={isSelected ? "text-[16px] font-jakarta-semibold text-blue-900" : "text-[16px] font-jakarta-semibold text-slate-700"}>

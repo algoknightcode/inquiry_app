@@ -62,6 +62,7 @@ export default function HomeScreen() {
   // for JS/UI thread time.
   const isScrolling = useSharedValue(false);
   const scrollEndTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const searchBarTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const handleScrollActivity = useCallback(() => {
     if (scrollEndTimerRef.current) clearTimeout(scrollEndTimerRef.current);
@@ -79,10 +80,20 @@ export default function HomeScreen() {
     return () => task.cancel();
   }, []);
 
+  // Cleanup timers on component unmount
+  React.useEffect(() => {
+    return () => {
+      if (scrollEndTimerRef.current) clearTimeout(scrollEndTimerRef.current);
+      if (searchBarTimerRef.current) clearTimeout(searchBarTimerRef.current);
+    };
+  }, []);
+
   // Handler for Search Bar focus
   const handleSearchBarFocus = useCallback(() => {
     const scrollOffset = Platform.OS === 'ios' ? 120 : 60;
-    setTimeout(() => {
+    if (searchBarTimerRef.current) clearTimeout(searchBarTimerRef.current);
+    
+    searchBarTimerRef.current = setTimeout(() => {
       flatListRef.current?.scrollToOffset({ offset: scrollOffset, animated: true });
     }, 150);
   }, []);
@@ -177,11 +188,18 @@ export default function HomeScreen() {
 
   // 3. Map standard scroll events directly to the UI thread using Reanimated
   const scrollHandler = useAnimatedScrollHandler({
+    onBeginDrag: () => {
+      isScrolling.value = true;
+    },
     onScroll: (event) => {
       scrollY.value = event.contentOffset.y;
-      isScrolling.value = true;
+    },
+    onEndDrag: () => {
       runOnJS(handleScrollActivity)();
     },
+    onMomentumEnd: () => {
+      runOnJS(handleScrollActivity)();
+    }
   });
 
   return (
@@ -205,6 +223,7 @@ export default function HomeScreen() {
   // ──────────────────────────────────────────────────────────────
   
   onScroll={scrollHandler}
+  onMomentumScrollEnd={() => {}}
   scrollEventThrottle={16}
   showsVerticalScrollIndicator={false}
   keyboardShouldPersistTaps="always"

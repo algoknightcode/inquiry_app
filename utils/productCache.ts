@@ -6,21 +6,7 @@ const productCache: Map<string, CacheEntry> =
 const PRODUCT_CACHE_TTL_MS = 30 * 60 * 1000; // 30 minutes expiration
 const MAX_PRODUCT_CACHE_ENTRIES = 50; // Hard memory cap
 
-// Active Garbage Collection: Setup/Reset stale cache entries interval
-if ((global as any).__productCacheInterval) {
-  clearInterval((global as any).__productCacheInterval);
-}
-(global as any).__productCacheInterval = setInterval(
-  () => {
-    const now = Date.now();
-    for (const [id, entry] of productCache.entries()) {
-      if (now - entry.ts >= PRODUCT_CACHE_TTL_MS) {
-        productCache.delete(id);
-      }
-    }
-  },
-  5 * 60 * 1000,
-); // Check every 5 minutes
+// No background polling interval - lazy eviction on get/set
 
 export const setProductCache = (id: string, data: any) => {
   if (!id) return;

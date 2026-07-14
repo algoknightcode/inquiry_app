@@ -28,30 +28,39 @@ const Dashboard = () => {
   const [isLoading, setIsLoading] = useState(true);
 
   const isMounted = useRef(true);
+  const abortControllerRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
     isMounted.current = true;
     return () => {
       isMounted.current = false;
+      if (abortControllerRef.current) abortControllerRef.current.abort();
     };
   }, []);
 
   const fetchDashboardData = useCallback(async (showLoader = false) => {
     if (showLoader) setIsLoading(true);
+    
+    // Cancel any older requests before firing a new batch
+    if (abortControllerRef.current) abortControllerRef.current.abort();
+    abortControllerRef.current = new AbortController();
+    const { signal } = abortControllerRef.current;
+
     try {
       const supplierId = globalSellerId || await AsyncStorage.getItem("supplierId");
 
       if (supplierId) {
         // 🔥 FIX 1: allSettled prevents one broken API from crashing the whole dashboard
         const results = await Promise.allSettled([
-          fetch(`https://seller.inquirybazaar.com/api/product?supplierId=${supplierId}`),
-          fetch(`https://brandbnalo.com/api/form/get-forms/${supplierId}?filter=today`),
+          fetch(`https://seller.inquirybazaar.com/api/product?supplierId=${supplierId}`, { signal }),
+          fetch(`https://brandbnalo.com/api/form/get-forms/${supplierId}?filter=today`, { signal }),
           fetch("https://seller.inquirybazaar.com/api/profile/business", {
             method: "GET",
             headers: {
               "Content-Type": "application/json",
               "x-user-id": supplierId,
             },
+            signal,
           }),
         ]);
 
@@ -90,8 +99,10 @@ const Dashboard = () => {
           setBusinessProfile(bData);
         }
       }
-    } catch (error) {
-      console.error("Error fetching dashboard data:", error);
+    } catch (error: any) {
+      if (error?.name !== 'AbortError') {
+        console.error("Error fetching dashboard data:", error);
+      }
     } finally {
       if (isMounted.current) {
         setIsLoading(false);

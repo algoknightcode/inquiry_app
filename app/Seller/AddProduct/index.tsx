@@ -1,3 +1,4 @@
+import { Image } from 'expo-image';
 import { globalSellerId } from "@/utils/roleCache";
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -6,21 +7,7 @@ import * as ImageManipulator from "expo-image-manipulator";
 import * as ImagePicker from "expo-image-picker";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useEffect, useRef, useState } from "react";
-import {
-  ActivityIndicator,
-  Alert,
-  FlatList,
-  Image,
-  KeyboardAvoidingView,
-  Modal,
-  Platform,
-  Pressable,
-  ScrollView,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
-} from "react-native";
+import { ActivityIndicator, Alert, FlatList, KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets, SafeAreaView } from "react-native-safe-area-context";
 import { scale, verticalScale, moderateScale } from "react-native-size-matters";
 
@@ -718,7 +705,7 @@ const AddProduct = () => {
             {productImage || compressionProgress !== null ? (
               <>
                 {productImage && (
-                  <Image source={{ uri: productImage }} className="w-full h-full absolute" resizeMode="cover" />
+                  <Image source={{ uri: productImage }} className="w-full h-full absolute" contentFit="cover" />
                 )}
                 
                 {compressionProgress !== null && !productImage && (

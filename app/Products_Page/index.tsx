@@ -252,7 +252,7 @@ export default function ProductListingPage() {
     return () => {
       controller.abort();
     };
-  }, [subCategorySlug, location]);
+  }, [subCategorySlug, location, isMounted]);
 
   // ── Primary image helper ─────────────────────────────────────────────────
   const getPrimaryImage = (media: Media[]) => {

@@ -1,27 +1,11 @@
+import { Image } from 'expo-image';
 import Navbar from "@/components/Home/Navbar";
 import { useRole } from "@/contexts/RoleContext";
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { router } from "expo-router";
 import React, { useEffect, useRef, useState } from "react";
-import {
-    ActivityIndicator,
-    Alert,
-    BackHandler,
-    FlatList,
-    Image,
-    InteractionManager,
-    KeyboardAvoidingView,
-    Modal,
-    Platform,
-    Pressable,
-    RefreshControl,
-    ScrollView,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
-} from "react-native";
+import { ActivityIndicator, Alert, BackHandler, FlatList, InteractionManager, KeyboardAvoidingView, Modal, Platform, Pressable, RefreshControl, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { moderateScale, scale, verticalScale } from "react-native-size-matters";
 import { employeNumber, locations } from "../data/data";
@@ -94,7 +78,7 @@ const DropdownField = ({ label, icon, placeholder, value, options, onSelect }: a
             source={{ uri: selectedOption.image }} 
             style={{ width: scale(26), height: scale(26), borderRadius: moderateScale(6), marginRight: scale(8) }}
             className="bg-slate-100" 
-            resizeMode="cover"
+            contentFit="cover"
           />
         )}
         <Text 
@@ -139,7 +123,7 @@ const DropdownField = ({ label, icon, placeholder, value, options, onSelect }: a
                           source={{ uri: item.image }} 
                           style={{ width: 40, height: 35 }}
                           className="rounded-lg mr-3 bg-slate-100" 
-                          resizeMode="cover"
+                          contentFit="cover"
                         />
                       )}
                       <Text className={isSelected ? "text-[16px] font-jakarta-semibold text-blue-900" : "text-[16px] font-jakarta-semibold text-slate-700"}>

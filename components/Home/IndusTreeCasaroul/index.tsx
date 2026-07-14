@@ -208,6 +208,7 @@ export default function IndustryTreeCarousel({
     stopAutoPlay();
     if (data.length <= 1) return;
 
+    return; // Autoplay safely disabled
     autoplayTimerRef.current = setInterval(() => {
       if (!isFocused || !hasBeenVisible) {
         return;

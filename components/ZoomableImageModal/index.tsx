@@ -109,7 +109,6 @@ const ZoomableImageModal = ({ visible, onClose, imageUri }: ZoomableModalProps) 
 
   return (
     <Modal visible={visible} transparent={true} animationType="fade" onRequestClose={handleClose}>
-      <GestureHandlerRootView style={{ flex: 1 }}>
         <View style={{ flex: 1, backgroundColor: "rgba(0, 0, 0, 0.95)", justifyContent: "center", alignItems: "center" }}>
           <TouchableOpacity
             onPress={handleClose}
@@ -152,7 +151,6 @@ const ZoomableImageModal = ({ visible, onClose, imageUri }: ZoomableModalProps) 
             </Animated.View>
           </PanGestureHandler>
         </View>
-      </GestureHandlerRootView>
     </Modal>
   );
 };

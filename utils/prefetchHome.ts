@@ -1,4 +1,4 @@
-import { Image } from "react-native";
+import { Image } from "expo-image";
 import { fetchWithCache } from "./apiCache";
 
 const BASE = "https://backend.inquirybazaar.com/api";

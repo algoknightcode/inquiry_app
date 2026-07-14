@@ -1,14 +1,7 @@
+import { Image } from 'expo-image';
 import { useRouter } from "expo-router";
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import {
-  Animated,
-  Image,
-  StatusBar,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View
- } from "react-native";
+import { Animated, StatusBar, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { moderateScale, scale, verticalScale } from "react-native-size-matters";
 import Logo from "../assets/images/logoo-Photoroom.png";
 import { prefetchHomeData } from "../utils/prefetchHome";
@@ -90,7 +83,7 @@ export default function Welcome() {
       <View style={s.content}>
         <Animated.View style={[s.logoContainer, { transform: [{ scale: logoScale }], opacity: logoOpacity }]}>
           <View style={s.logoShadowContainer}>
-            <Image source={Logo} style={s.logo} resizeMode="contain" />
+            <Image source={Logo} style={s.logo} contentFit="contain" />
           </View>
         </Animated.View>
 

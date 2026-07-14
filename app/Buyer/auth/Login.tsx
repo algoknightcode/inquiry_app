@@ -1,3 +1,4 @@
+import { Image } from 'expo-image';
 import { useRole } from "@/contexts/RoleContext";
 import { addNotification } from "@/utils/notificationService";
 import { prefetchHomeData } from "@/utils/prefetchHome";
@@ -5,21 +6,7 @@ import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useRouter } from "expo-router";
 import React, { useState } from "react";
-import {
-    ActivityIndicator,
-    Alert,
-    Image,
-    KeyboardAvoidingView,
-    Modal,
-    Platform,
-    Pressable,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
-} from "react-native";
+import { ActivityIndicator, Alert, KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { moderateScale, scale, verticalScale } from "react-native-size-matters";
 import Logo from "../../../assets/images/logoo-Photoroom.png";
@@ -168,7 +155,7 @@ const BuyerLogin = () => {
           <View style={s.mainCard}>
             {/* Brand Logo & Context Headers */}
             <View style={s.logoWrapper}>
-              <Image source={Logo} style={s.logo} resizeMode="contain" />
+              <Image source={Logo} style={s.logo} contentFit="contain" />
               <Text style={s.title}>
                 Buyer Login
               </Text>

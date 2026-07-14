@@ -88,6 +88,7 @@ export default function MoreValueAdds({ isScrolling }: { isScrolling?: SharedVal
     stopAutoPlay();
     if (maxScrollIndex <= 0) return;
 
+    return; // Autoplay safely disabled
     autoplayTimerRef.current = setInterval(() => {
       if (!isFocused) {
         return;

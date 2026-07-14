@@ -1,20 +1,10 @@
+import { Image } from 'expo-image';
 import { setProductCache } from "@/utils/productCache";
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useFocusEffect, useRouter } from "expo-router";
 import React, { useCallback, useState } from "react";
-import {
-    ActivityIndicator,
-    FlatList,
-    Image,
-    Linking,
-    SafeAreaView,
-    StatusBar,
-    Text,
-    TouchableOpacity,
-    Vibration,
-    View
-} from "react-native";
+import { ActivityIndicator, FlatList, Linking, SafeAreaView, StatusBar, Text, TouchableOpacity, Vibration, View } from 'react-native';
 
 import EnquiryModal from "@/components/EnquiryModal";
 import Navbar from "@/components/Home/Navbar";
@@ -107,7 +97,7 @@ export default function B2BWishlist() {
             <Image 
               source={{ uri: primaryImage }} 
               className="w-28 h-28 rounded-xl bg-slate-50 border border-slate-100"
-              resizeMode="cover"
+              contentFit="cover"
             />
 
             {/* Product Details */}

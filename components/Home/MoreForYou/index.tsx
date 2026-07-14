@@ -190,6 +190,7 @@ export default function MoreForYou({ isScrolling }: { isScrolling?: SharedValue<
     stopAutoPlay();
     if (replicatedData.length <= 1) return;
 
+    return; // Autoplay safely disabled
     autoplayTimerRef.current = setInterval(() => {
       if (!isFocused) {
         return;
