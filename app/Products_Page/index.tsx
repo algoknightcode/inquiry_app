@@ -388,10 +388,10 @@ export default function ProductListingPage() {
         <View className="flex-row justify-between mt-2">
           <TouchableOpacity
             onPress={() => phone && Linking.openURL(`tel:${phone}`)}
-            className="flex-1 flex-row justify-center items-center py-3 rounded-xl border border-slate-200 active:bg-slate-50 mr-2"
+            className="flex-1 flex-row justify-center items-center py-3 rounded-xl border-[2px] border-[#1e3a8a] bg-white active:bg-slate-50 mr-2"
           >
-            <Ionicons name="call-outline" size={15} color="#475569" />
-            <Text className="text-slate-700 font-jakarta-bold text-[12px] ml-1">Call</Text>
+            <Ionicons name="call" size={15} color="#1e3a8a" />
+            <Text className="text-[#1e3a8a] font-jakarta-bold text-[12px] ml-1">Call</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -405,10 +405,11 @@ export default function ProductListingPage() {
                 Linking.openURL(`https://wa.me/${formattedPhone}?text=${encodeURIComponent(message)}`);
               });
             }}
-            className="flex-1 flex-row justify-center items-center py-3 rounded-xl border border-emerald-200 bg-emerald-50 active:bg-emerald-100 mr-2"
+            style={{ shadowColor: "#25D366", shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 6, elevation: 4 }}
+            className="flex-1 flex-row justify-center items-center py-3 rounded-xl bg-[#25D366] active:opacity-80 mr-2"
           >
-            <Ionicons name="logo-whatsapp" size={15} color="#16a34a" />
-            <Text className="text-emerald-700 font-jakarta-bold text-[12px] ml-1">WhatsApp</Text>
+            <Ionicons name="logo-whatsapp" size={16} color="#fff" />
+            <Text className="text-white font-jakarta-bold text-[12px] ml-1">WhatsApp</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -417,9 +418,9 @@ export default function ProductListingPage() {
               setInqMessage(`Hi, I am interested in your product: ${item.name}. Please share pricing and details.`);
               setInquiryModalVisible(true);
             }}
-            className="flex-[1.5] flex-row justify-center items-center py-3 rounded-xl bg-indigo-600 active:opacity-90 shadow-sm shadow-indigo-600/30"
+            className="flex-[1.5] flex-row justify-center items-center py-3 rounded-xl bg-[#1e3a8a] active:opacity-90"
           >
-            <Ionicons name="mail-outline" size={15} color="white" />
+            <Ionicons name="paper-plane-outline" size={15} color="white" />
             <Text className="text-white font-jakarta-bold text-[12px] ml-1">Inquiry</Text>
           </TouchableOpacity>
         </View>

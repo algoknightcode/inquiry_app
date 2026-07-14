@@ -197,6 +197,7 @@ const AddProduct = () => {
   const hasNextTab = currentTabIndex < tabs.length - 1;
 
   const [isSaving, setIsSaving] = useState(false); 
+  const [isRemovingBg, setIsRemovingBg] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false); 
   const [validationError, setValidationError] = useState<string | null>(null); 
 
@@ -206,6 +207,7 @@ const AddProduct = () => {
 
   // --- SOURCE OF TRUTH STATES ---
   const [productImage, setProductImage] = useState<string | null>(null);
+  const [originalImageUri, setOriginalImageUri] = useState<string | null>(null);
   const [imagesStateData, setImagesStateData] = useState<any[]>([]); 
   const [isLocalImageAdded, setIsLocalImageAdded] = useState(false); 
 
@@ -385,6 +387,7 @@ const AddProduct = () => {
 
     if (!result.canceled) {
       const originalUri = result.assets[0].uri;
+      setOriginalImageUri(originalUri);
       setOriginalSize(null);
       setCompressedSize(null);
       setCompressionProgress(10);
@@ -429,6 +432,77 @@ const AddProduct = () => {
         setCompressionProgress(null);
         console.error("Error compressing image:", error);
       }
+    }
+  };
+
+  const handleRemoveBackground = async () => {
+    const targetUri = originalImageUri || productImage;
+    if (!targetUri) return;
+    try {
+      setIsRemovingBg(true);
+      
+      // Ensure the image is converted to JPEG format before sending,
+      // and RESIZE it so it doesn't crash the low-RAM VPS!
+      const jpegResult = await ImageManipulator.manipulateAsync(
+        targetUri,
+        [{ resize: { width: 800 } }], // Resize to 800px width
+        { format: ImageManipulator.SaveFormat.JPEG, compress: 0.7 } // Compress it slightly
+      );
+
+      // Read local image file as Base64 string
+      const base64ImageInput = await FileSystem.readAsStringAsync(jpegResult.uri, {
+        encoding: FileSystem.EncodingType.Base64,
+      });
+
+      console.log("[BG Isolation] Uploading base64 image string...");
+
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 60000); // 60s timeout
+
+      const response = await fetch("http://76.13.242.16:6789/api/remove-bg", {
+        method: "POST",
+        headers: { 
+          "Accept": "application/json",
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ image: base64ImageInput }),
+        signal: controller.signal,
+      });
+      clearTimeout(timeoutId);
+
+      console.log("[BG Isolation] Response status:", response.status);
+      const result = await response.json();
+      console.log("[BG Isolation] Response body:", result);
+
+      if (result.success && result.base64) {
+        const cleanLocalUri = `${FileSystem.cacheDirectory}nobg_${Date.now()}.png`;
+        await FileSystem.writeAsStringAsync(cleanLocalUri, result.base64, {
+          encoding: FileSystem.EncodingType.Base64,
+        });
+
+        const manipResult = await ImageManipulator.manipulateAsync(
+          cleanLocalUri,
+          [{ resize: { width: 800 } }],
+          { compress: 0.5, format: ImageManipulator.SaveFormat.WEBP }
+        );
+        const compFileInfo = await FileSystem.getInfoAsync(manipResult.uri);
+        if (compFileInfo.exists && compFileInfo.size) {
+          setCompressedSize(`${(compFileInfo.size / 1024).toFixed(1)} KB`);
+        }
+
+        setProductImage(manipResult.uri);
+        setIsLocalImageAdded(true);
+        setImagesStateData([{ mediaId: null, url: null, isPrimary: true, isOld: false, type: "image" }]);
+        
+        Alert.alert("Success", "Background removed successfully!");
+      } else {
+        Alert.alert("Error", result.error || "Failed to remove background.");
+      }
+    } catch (error: any) {
+      console.error("BG isolation error:", error);
+      Alert.alert("Error", `BG isolation error: ${error.message || error}`);
+    } finally {
+      setIsRemovingBg(false);
     }
   };
 
@@ -612,6 +686,17 @@ const AddProduct = () => {
               </TouchableOpacity>
             </View>
           </View>
+         </Modal>
+
+        {/* Loading Overlay for Background Removal */}
+        <Modal visible={isRemovingBg} transparent animationType="fade">
+          <View style={{ flex: 1, backgroundColor: 'rgba(15, 23, 42, 0.6)', justifyContent: 'center', alignItems: 'center' }}>
+            <View className="bg-white rounded-[32px] p-8 items-center w-[80%] max-w-[340px]">
+              <ActivityIndicator size="large" color="#7C3AED" className="mb-4" />
+              <Text className="text-[18px] font-jakarta-bold text-slate-900 mb-1">Isolating Subject</Text>
+              <Text className="text-[13px] font-jakarta-medium text-slate-500 text-center">Removing background via AI...</Text>
+            </View>
+          </View>
         </Modal>
 
         <View className="bg-white px-4 pb-4 pt-4 shadow-sm shadow-slate-100 flex-row items-center z-20">
@@ -685,6 +770,16 @@ const AddProduct = () => {
               <Ionicons name={productImage ? "pencil" : "add"} size={24} color="#FFFFFF" />
             </View>
           </TouchableOpacity>
+          {/* ONLY SHOW REMOVE BG OPTION IF AN IMAGE IS PRESENT AND COMPRESSION IS FINISHED */}
+          {productImage && compressionProgress === null && !isRemovingBg && (
+            <TouchableOpacity
+              onPress={handleRemoveBackground}
+              className="mt-4 bg-purple-600 py-3 rounded-2xl flex-row items-center justify-center active:scale-[0.98] shadow-md shadow-purple-200"
+            >
+              <Ionicons name="sparkles-outline" size={18} color="#FFFFFF" style={{ marginRight: 8 }} />
+              <Text className="text-white font-jakarta-bold text-[14px]">Remove Background</Text>
+            </TouchableOpacity>
+          )}
         </View>
 
         <View className="mb-6">

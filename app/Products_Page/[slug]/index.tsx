@@ -17,7 +17,7 @@ import {
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import ZoomableImageModal from "@/components/ZoomableImageModal";
+let LazyZoomableImageModal: any = null;
 
 export default function ProductDetailPage() {
   const router = useRouter();
@@ -445,15 +445,15 @@ export default function ProductDetailPage() {
             <View style={{ flexDirection: "row", gap: 12 }}>
               <TouchableOpacity
                 onPress={() => phone && Linking.openURL(`tel:${phone}`)}
-                style={{ flex: 1, flexDirection: "row", justifyContent: "center", alignItems: "center", paddingVertical: 12, borderRadius: 12, borderWidth: 1.5, borderColor: "#bfdbfe", backgroundColor: "#fff" }}
+                style={{ flex: 1, flexDirection: "row", justifyContent: "center", alignItems: "center", paddingVertical: 12, borderRadius: 12, borderWidth: 1.5, borderColor: "#1e3a8a", backgroundColor: "#fff" }}
               >
-                <Ionicons name="call" size={18} color="#2563eb" />
-                <Text style={{ color: "#2563eb", fontWeight: "700", fontSize: 14, marginLeft: 8 }}>Call</Text>
+                <Ionicons name="call" size={18} color="#1e3a8a" />
+                <Text style={{ color: "#1e3a8a", fontWeight: "700", fontSize: 14, marginLeft: 8 }}>Call</Text>
               </TouchableOpacity>
 
               <TouchableOpacity
                 onPress={() => setModalVisible(true)}
-                style={{ flex: 2, flexDirection: "row", justifyContent: "center", alignItems: "center", paddingVertical: 12, borderRadius: 12, backgroundColor: "#2563eb" }}
+                style={{ flex: 2, flexDirection: "row", justifyContent: "center", alignItems: "center", paddingVertical: 12, borderRadius: 12, backgroundColor: "#1e3a8a" }}
               >
                 <Ionicons name="paper-plane-outline" size={18} color="white" />
                 <Text style={{ color: "#fff", fontWeight: "700", fontSize: 14, marginLeft: 8 }}>Inquiry</Text>
@@ -465,13 +465,35 @@ export default function ProductDetailPage() {
 
       {/* Fixed Bottom Bar Actions */}
       <View style={{ position: "absolute", bottom: 0, left: 0, right: 0, backgroundColor: "#fff", borderTopWidth: 1, borderTopColor: "#f1f5f9", paddingHorizontal: 20, paddingTop: 10, paddingBottom: Math.max(insets.bottom, 10) }}>
-        <View style={{ flexDirection: "row", gap: 12 }}>
-          <TouchableOpacity onPress={() => phone && Linking.openURL(`tel:${phone}`)} style={{ flex: 1, flexDirection: "row", justifyContent: "center", alignItems: "center", paddingVertical: 12, borderRadius: 12, borderWidth: 2, borderColor: "#e2e8f0", backgroundColor: "#fff" }}>
-            <Ionicons name="call" size={18} color="#475569" />
-            <Text style={{ color: "#475569", fontWeight: "700", fontSize: 15, marginLeft: 8 }}>Call</Text>
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+          <TouchableOpacity onPress={() => phone && Linking.openURL(`tel:${phone}`)} style={{ flex: 1, height: 48, flexDirection: "row", justifyContent: "center", alignItems: "center", borderRadius: 12, borderWidth: 2, borderColor: "#1e3a8a", backgroundColor: "#fff" }}>
+            <Ionicons name="call" size={18} color="#1e3a8a" />
+            <Text style={{ color: "#1e3a8a", fontWeight: "700", fontSize: 15, marginLeft: 8 }}>Call</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity onPress={() => setModalVisible(true)} style={{ flex: 2, flexDirection: "row", justifyContent: "center", alignItems: "center", paddingVertical: 12, borderRadius: 12, backgroundColor: "#4f46e5" }}>
+          {phone ? (
+            <TouchableOpacity 
+              onPress={openWhatsApp} 
+              activeOpacity={0.8}
+              style={{ 
+                width: 48, 
+                height: 48, 
+                borderRadius: 12, 
+                backgroundColor: "#25D366", 
+                justifyContent: "center", 
+                alignItems: "center",
+                shadowColor: "#25D366",
+                shadowOffset: { width: 0, height: 4 },
+                shadowOpacity: 0.3,
+                shadowRadius: 6,
+                elevation: 4
+              }}
+            >
+              <FontAwesome name="whatsapp" size={26} color="#FFF" />
+            </TouchableOpacity>
+          ) : null}
+
+          <TouchableOpacity onPress={() => setModalVisible(true)} style={{ flex: 1.8, height: 48, flexDirection: "row", justifyContent: "center", alignItems: "center", borderRadius: 12, backgroundColor: "#1e3a8a" }}>
             <Ionicons name="paper-plane-outline" size={18} color="white" />
             <Text style={{ color: "#fff", fontWeight: "700", fontSize: 15, marginLeft: 8 }}>Send Inquiry</Text>
           </TouchableOpacity>
@@ -484,13 +506,18 @@ export default function ProductDetailPage() {
         product={product}
       />
 
-      {imageUri && (
-        <ZoomableImageModal
-          visible={isImageModalOpen}
-          onClose={() => setIsImageModalOpen(false)}
-          imageUri={imageUri}
-        />
-      )}
+      {imageUri && isImageModalOpen && (() => {
+        if (!LazyZoomableImageModal) {
+          LazyZoomableImageModal = require("@/components/ZoomableImageModal").default;
+        }
+        return (
+          <LazyZoomableImageModal
+            visible={isImageModalOpen}
+            onClose={() => setIsImageModalOpen(false)}
+            imageUri={imageUri}
+          />
+        );
+      })()}
     </View>
   );
 }
