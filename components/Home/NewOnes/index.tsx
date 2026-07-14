@@ -387,7 +387,7 @@ const NewOnes = ({ isScrolling }: { isScrolling?: SharedValue<boolean> } = {}) =
         const initTimer = setTimeout(() => {
           flatListRef.current?.scrollToIndex({ index: baseMiddleIndex, animated: false });
           startAutoPlay();
-        }, 500);
+        }, 1500);
 
         return () => {
           clearTimeout(initTimer);

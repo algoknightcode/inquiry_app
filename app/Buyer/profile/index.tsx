@@ -2,7 +2,7 @@ import Navbar from "@/components/Home/Navbar";
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { router, Stack } from "expo-router";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { setGlobalRole, setGlobalBuyerId, setSellerSignedIn, setGlobalSellerId } from "@/utils/roleCache";
 import {
     ActivityIndicator,

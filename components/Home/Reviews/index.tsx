@@ -179,7 +179,7 @@ export default function TestimonialCarousel({ isScrolling }: { isScrolling?: Sha
       const initTimer = setTimeout(() => {
         flatListRef.current?.scrollToIndex({ index: baseMiddleIndex, animated: false });
         startAutoPlay();
-      }, 300);
+      }, 3500);
 
       return () => {
         clearTimeout(initTimer);

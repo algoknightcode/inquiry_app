@@ -17,6 +17,7 @@ import {
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import ZoomableImageModal from "@/components/ZoomableImageModal";
 
 export default function ProductDetailPage() {
   const router = useRouter();
@@ -37,6 +38,7 @@ export default function ProductDetailPage() {
 
   // --- INQUIRY MODAL STATES ---
   const [isModalVisible, setModalVisible] = useState(false);
+  const [isImageModalOpen, setIsImageModalOpen] = useState(false);
 
   // ── LIFECYCLE CLEANUP ──────────────────────────────────────────────
   useEffect(() => {
@@ -289,7 +291,11 @@ export default function ProductDetailPage() {
 
       <ScrollView style={{ flex: 1, backgroundColor: "#f8fafc" }} contentContainerStyle={{ paddingBottom: insets.bottom + 70 }} showsVerticalScrollIndicator={false}>
         {/* Hero Image */}
-        <View style={{ width: "100%", height: 280, backgroundColor: "#e2e8f0" }}>
+        <TouchableOpacity
+          activeOpacity={0.9}
+          onPress={() => setIsImageModalOpen(true)}
+          style={{ width: "100%", height: 280, backgroundColor: "#e2e8f0" }}
+        >
           {imageUri ? (
             <Image source={{ uri: imageUri }} style={{ width: "100%", height: "100%" }} contentFit="cover" transition={300} />
           ) : (
@@ -297,7 +303,7 @@ export default function ProductDetailPage() {
               <Ionicons name="image-outline" size={64} color="#cbd5e1" />
             </View>
           )}
-        </View>
+        </TouchableOpacity>
 
         {/* Content Card */}
         <View style={{ marginTop: -24, backgroundColor: "#fff", borderTopLeftRadius: 32, borderTopRightRadius: 32, paddingTop: 32, paddingHorizontal: 24, paddingBottom: 24 }}>
@@ -477,6 +483,14 @@ export default function ProductDetailPage() {
         onClose={() => setModalVisible(false)}
         product={product}
       />
+
+      {imageUri && (
+        <ZoomableImageModal
+          visible={isImageModalOpen}
+          onClose={() => setIsImageModalOpen(false)}
+          imageUri={imageUri}
+        />
+      )}
     </View>
   );
 }

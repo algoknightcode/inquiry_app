@@ -433,7 +433,7 @@ const IBTrusted = ({ isScrolling }: { isScrolling?: SharedValue<boolean> } = {})
           });
         }, 500);
       }
-    }, 5000);
+    }, 4000);
   }, [isFocused, isModalVisible, products.length, replicatedData.length, baseMiddleIndex, stopAutoPlay, layout.ITEM_SIZE]);
 
   // Pause autoplay while the main home feed is being scrolled, resume once it settles
@@ -458,7 +458,7 @@ const IBTrusted = ({ isScrolling }: { isScrolling?: SharedValue<boolean> } = {})
         const initTimer = setTimeout(() => {
           flatListRef.current?.scrollToIndex({ index: baseMiddleIndex, animated: false });
           startAutoPlay();
-        }, 500);
+        }, 3000);
 
         return () => {
           clearTimeout(initTimer);

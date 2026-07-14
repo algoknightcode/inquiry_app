@@ -4,6 +4,7 @@ import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import React, { useCallback, useEffect, useState } from "react";
 import { ActivityIndicator, FlatList, Pressable, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { CategoryImage } from "../../assets/images";
 
 // Type for the Left Sidebar (Main Categories)
 type MainCategory = {
@@ -43,34 +44,36 @@ const SubCateGory = () => {
         const response = await fetch("https://backend.inquirybazaar.com/api/industries/tree");
         const json = await response.json();
 
-        if (json.success && json.data) {
+        if (json.success && Array.isArray(json.data)) {
           // Find the active industry matching the passed industryId
-          let activeIndustry = json.data.find((ind: any) => ind._id === industryId);
+          let activeIndustry = json.data.find((ind: any) => ind?._id === industryId);
           
           // Fallback: search the tree to find which industry contains this categoryId
           if (!activeIndustry && categoryId) {
             activeIndustry = json.data.find((ind: any) =>
-              ind.categories?.some((cat: any) => cat._id === categoryId)
+              Array.isArray(ind?.categories) && ind.categories.some((cat: any) => cat?._id === categoryId)
             );
           }
 
           if (activeIndustry) {
             // Set Left Sidebar Data (Main Categories of this industry)
-            const categoriesData = activeIndustry.categories || [];
+            const categoriesData = Array.isArray(activeIndustry.categories) ? activeIndustry.categories : [];
             setMainCategories(categoriesData);
 
             // Extract and flatten right grid data (All subcategories inside this industry)
             const allSubs: SubCategory[] = [];
             categoriesData.forEach((cat: any) => {
-              if (cat.subCategories) {
+              if (cat && Array.isArray(cat.subCategories)) {
                 cat.subCategories.forEach((sub: any) => {
-                  allSubs.push({
-                    _id: sub._id,
-                    name: sub.name,
-                    slug: sub.slug || "",
-                    imageUrl: sub.imageUrl,
-                    parentCategoryId: { _id: cat._id }
-                  });
+                  if (sub) {
+                    allSubs.push({
+                      _id: sub._id,
+                      name: sub.name,
+                      slug: sub.slug || "",
+                      imageUrl: sub.imageUrl,
+                      parentCategoryId: { _id: cat._id }
+                    });
+                  }
                 });
               }
             });
@@ -100,6 +103,59 @@ const SubCateGory = () => {
   );
 
   const activeMainCategory = mainCategories.find(c => c._id === selectedMainId);
+
+  const renderMainCategoryItem = useCallback(({ item }: { item: MainCategory }) => {
+    const isActive = item._id === selectedMainId;
+    return (
+      <Pressable
+        onPress={() => setSelectedMainId(item._id)}
+        className={`${styles.sidebarItem} ${isActive ? styles.sidebarItemActive : ""}`}
+      >
+        <View className={`${styles.sidebarImageWrapper} ${isActive ? styles.sidebarImageWrapperActive : "border-transparent"}`}>
+          <Image
+            source={item.imageUrl ? { uri: item.imageUrl } : CategoryImage}
+            style={styles.sidebarImage}
+            contentFit="contain"
+            transition={200}
+          />
+        </View>
+        <Text 
+          className={`${styles.sidebarText} ${isActive ? "text-orange-600 font-jakarta-bold" : "text-slate-600 font-jakarta-medium"}`}
+          numberOfLines={2}
+        >
+          {item.name}
+        </Text>
+      </Pressable>
+    );
+  }, [selectedMainId]);
+
+  const renderSubCategoryItem = useCallback(({ item }: { item: SubCategory }) => (
+    <Pressable
+      className={styles.subCategoryCard}
+      android_ripple={{ color: "#e2e8f0" }}
+      onPress={() =>
+        router.push({
+          pathname: "/Products_Page",
+          params: {
+            subCategoryId: item._id,
+            subCategoryName: item.name,
+            subCategorySlug: item.slug,
+            location
+          },
+        })
+      }
+    >
+      <Image
+        source={item.imageUrl ? { uri: item.imageUrl } : CategoryImage}
+        style={styles.subCategoryImage}
+        contentFit="contain"
+        transition={200}
+      />
+      <Text className={styles.subCategoryText} numberOfLines={2}>
+        {item.name}
+      </Text>
+    </Pressable>
+  ), [location]);
 
   if (loading) {
     return (
@@ -143,30 +199,7 @@ const SubCateGory = () => {
             keyExtractor={(item) => item._id}
             showsVerticalScrollIndicator={false}
             contentContainerStyle={{ paddingVertical: 12, paddingBottom: 120 }}
-            renderItem={useCallback(({ item }) => {
-              const isActive = item._id === selectedMainId;
-              return (
-                <Pressable
-                  onPress={() => setSelectedMainId(item._id)}
-                  className={`${styles.sidebarItem} ${isActive ? styles.sidebarItemActive : ""}`}
-                >
-                  <View className={`${styles.sidebarImageWrapper} ${isActive ? styles.sidebarImageWrapperActive : "border-transparent"}`}>
-                    <Image
-                      source={{ uri: item.imageUrl }}
-                      style={styles.sidebarImage}
-                      contentFit="contain"
-                      transition={200}
-                    />
-                  </View>
-                  <Text 
-                    className={`${styles.sidebarText} ${isActive ? "text-orange-600 font-jakarta-bold" : "text-slate-600 font-jakarta-medium"}`}
-                    numberOfLines={2}
-                  >
-                    {item.name}
-                  </Text>
-                </Pressable>
-              );
-            }, [selectedMainId])}
+            renderItem={renderMainCategoryItem}
           />
         </View>
  
@@ -184,33 +217,7 @@ const SubCateGory = () => {
                 No subcategories found.
               </Text>
             }
-            renderItem={useCallback(({ item }) => (
-              <Pressable
-                className={styles.subCategoryCard}
-                android_ripple={{ color: "#e2e8f0" }}
-                onPress={() =>
-                  router.push({
-                    pathname: "/Products_Page",
-                    params: {
-                      subCategoryId: item._id,
-                      subCategoryName: item.name,
-                      subCategorySlug: item.slug,
-                      location
-                    },
-                  })
-                }
-              >
-                <Image
-                  source={{ uri: item.imageUrl }}
-                  style={styles.subCategoryImage}
-                  contentFit="contain"
-                  transition={200}
-                />
-                <Text className={styles.subCategoryText} numberOfLines={2}>
-                  {item.name}
-                </Text>
-              </Pressable>
-            ), [location])}
+            renderItem={renderSubCategoryItem}
           />
         </View>
 

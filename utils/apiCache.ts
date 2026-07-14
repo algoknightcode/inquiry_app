@@ -2,7 +2,7 @@
 const cache: Map<string, { data: any; ts: number }> =
   (global as any).__apiCache || ((global as any).__apiCache = new Map());
 
-const pending: Record<string, Promise<any>> = {};
+const pending: Record<string, Promise<any> | undefined> = {};
 
 const FETCH_TIMEOUT_MS = 12000; 
 const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes expiration

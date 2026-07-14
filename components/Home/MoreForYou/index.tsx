@@ -212,7 +212,7 @@ export default function MoreForYou({ isScrolling }: { isScrolling?: SharedValue<
           animated: true,
         });
       }
-    }, 5000);
+    }, 4000);
   }, [isFocused, replicatedData.length, stopAutoPlay]);
 
   // Autoplay control on focus
@@ -222,7 +222,7 @@ export default function MoreForYou({ isScrolling }: { isScrolling?: SharedValue<
       const initTimer = setTimeout(() => {
         flatListRef.current?.scrollToIndex({ index: BASE_MIDDLE, animated: false });
         startAutoPlay();
-      }, 300);
+      }, 2500);
 
       return () => {
         clearTimeout(initTimer);

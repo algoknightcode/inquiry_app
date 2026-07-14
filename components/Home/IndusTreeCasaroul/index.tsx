@@ -244,7 +244,7 @@ export default function IndustryTreeCarousel({
       const initTimer = setTimeout(() => {
         flatRef.current?.scrollToIndex({ index: 0, animated: false });
         startAutoPlay();
-      }, 300);
+      }, 4000);
 
       return () => {
         clearTimeout(initTimer);

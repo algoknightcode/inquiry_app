@@ -102,7 +102,7 @@ export default function MoreValueAdds({ isScrolling }: { isScrolling?: SharedVal
         index: nextIndex,
         animated: true,
       });
-    }, 4500);
+    }, 4000);
   }, [isFocused, maxScrollIndex, stopAutoPlay]);
 
   // Autoplay control on focus
@@ -114,7 +114,7 @@ export default function MoreValueAdds({ isScrolling }: { isScrolling?: SharedVal
       const initTimer = setTimeout(() => {
         flatListRef.current?.scrollToIndex({ index: 0, animated: false });
         startAutoPlay();
-      }, 500);
+      }, 2000);
 
       return () => {
         clearTimeout(initTimer);

@@ -260,19 +260,6 @@ export default function ProductListingPage() {
     return (media.find((m) => m.isPrimary) || media[0]).url;
   };
 
-  // ── Loading state ────────────────────────────────────────────────────────
-  if (loading) {
-    return (
-      <SafeAreaView className="flex-1 bg-slate-50 items-center justify-center">
-        <Stack.Screen options={{ headerShown: false }} />
-        <Spinner size="large" color="#4f46e5" />
-        <Text className="mt-4 text-slate-500 font-jakarta-medium text-[14px]">
-          Finding suppliers…
-        </Text>
-      </SafeAreaView>
-    );
-  }
-
   // ── Product card ─────────────────────────────────────────────────────────
   // Memoize renderProduct so FlatList doesn't re-render item cells unnecessarily
   const renderProduct = useCallback(({ item }: { item: Product }) => {
@@ -326,7 +313,7 @@ export default function ProductListingPage() {
         </View>
 
         {/* Product name */}
-        <Text className="text-[16px] font-jakarta-bold text-slate-900/10 leading-snug mb-3">
+        <Text className="text-[16px] font-jakarta-bold text-slate-900 leading-snug mb-3">
           {item.name}
         </Text>
 
@@ -439,6 +426,19 @@ export default function ProductListingPage() {
       </View>
     );
   }, []);
+
+  // ── Loading state ────────────────────────────────────────────────────────
+  if (loading) {
+    return (
+      <SafeAreaView className="flex-1 bg-slate-50 items-center justify-center">
+        <Stack.Screen options={{ headerShown: false }} />
+        <Spinner size="large" color="#4f46e5" />
+        <Text className="mt-4 text-slate-500 font-jakarta-medium text-[14px]">
+          Finding suppliers…
+        </Text>
+      </SafeAreaView>
+    );
+  }
 
   // ── Main render ──────────────────────────────────────────────────────────
   return (

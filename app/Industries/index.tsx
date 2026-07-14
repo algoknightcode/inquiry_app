@@ -85,7 +85,7 @@ const IndustriesList = () => {
     const fetchIndustries = async () => {
       try {
         const json = await fetchWithCache("https://backend.inquirybazaar.com/api/industries");
-        if (json.success && json.data) {
+        if (json.success && Array.isArray(json.data)) {
           setIndustriesList(json.data);
         }
       } catch (error) {

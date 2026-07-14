@@ -297,7 +297,7 @@ const HorizontalProductList = ({ isScrolling }: { isScrolling?: SharedValue<bool
           });
         }, 500);
       }
-    }, 2500);
+    }, 4000);
   }, [isFocused, isModalVisible, products.length, replicatedData.length, baseMiddleIndex, stopAutoPlay]);
 
   // Pause autoplay while the main home feed is being scrolled, resume once it settles
@@ -321,7 +321,7 @@ const HorizontalProductList = ({ isScrolling }: { isScrolling?: SharedValue<bool
         const initTimer = setTimeout(() => {
           flatListRef.current?.scrollToIndex({ index: baseMiddleIndex, animated: false });
           startAutoPlay();
-        }, 500);
+        }, 1000);
 
         return () => {
           clearTimeout(initTimer);
