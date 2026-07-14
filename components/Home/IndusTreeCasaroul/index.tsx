@@ -1,33 +1,26 @@
 import { fetchWithCache, getCacheSync } from "@/utils/apiCache";
+import { useIsFocused } from "@react-navigation/native";
 import { Image } from "expo-image";
 import { useRouter } from "expo-router";
-import { useIsFocused } from "@react-navigation/native";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
     ActivityIndicator,
     Dimensions,
-    Platform,
     Pressable,
     StyleSheet,
     Text,
-    View,
     useWindowDimensions,
+    View
 } from "react-native";
 import Animated, {
     Extrapolation,
     interpolate,
-    SharedValue,
-    useAnimatedStyle,
-    useSharedValue,
-    useAnimatedReaction,
     runOnJS,
+    SharedValue,
+    useAnimatedReaction,
     useAnimatedRef,
-    cancelAnimation,
-    runOnUI,
-    scrollTo,
-    withRepeat,
-    withTiming,
-    withDelay,
+    useAnimatedStyle,
+    useSharedValue
 } from "react-native-reanimated";
 
 
@@ -97,18 +90,20 @@ const IndustrySlide = React.memo(({
             </View>
             <View style={s.divider} />
             <View style={s.subList}>
-              {renderIndices.map((i) => {
+              {[0, 1, 2].map((i) => {
                 const sub = cat.subCategories?.[i];
+                if (!sub) {
+                  return <View key={i} style={{ height: 17 }} />;
+                }
                 return (
                   <Pressable 
-                    key={i} 
+                    key={sub._id} 
                     style={s.subRow}
-                    disabled={!sub}
-                    onPress={() => sub && onSubCategoryPress(sub)}
+                    onPress={() => onSubCategoryPress(sub)}
                   >
                     <View style={s.dot} />
-                    <Text style={sub ? s.subName : s.subEmpty} numberOfLines={1} ellipsizeMode="tail">
-                      {sub?.name ?? ""}
+                    <Text style={s.subName} numberOfLines={1} ellipsizeMode="tail">
+                      {sub.name}
                     </Text>
                   </Pressable>
                 );
@@ -153,15 +148,16 @@ function getInitialData(): Industry[] {
 // Main Component
 // ------------------------------------------------------------------
 export default function IndustryTreeCarousel({ 
-  isScrolling, 
-  scrollY 
+  scrollY,
+  isScrolling,
 }: { 
-  isScrolling?: SharedValue<boolean>;
   scrollY?: SharedValue<number>;
+  isScrolling?: SharedValue<boolean>;
 }) {
   const router = useRouter();
   
   const containerRef = useRef<View>(null);
+  const isMeasuredRef = useRef(false);
   const { height: screenHeight } = useWindowDimensions();
   const [absoluteY, setAbsoluteY] = useState(0);
   const [hasBeenVisible, setHasBeenVisible] = useState(false);
@@ -199,7 +195,7 @@ export default function IndustryTreeCarousel({
   }, [hasBeenVisible]);
 
   // Autoplay timer ref
-  const autoplayTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const autoplayTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const stopAutoPlay = useCallback(() => {
     if (autoplayTimerRef.current) {
@@ -213,7 +209,7 @@ export default function IndustryTreeCarousel({
     if (data.length <= 1) return;
 
     autoplayTimerRef.current = setInterval(() => {
-      if (!isFocused || !hasBeenVisible || (isScrolling && isScrolling.value)) {
+      if (!isFocused || !hasBeenVisible) {
         return;
       }
 
@@ -224,19 +220,20 @@ export default function IndustryTreeCarousel({
         animated: true,
       });
     }, 4000);
-  }, [isFocused, hasBeenVisible, data.length, isScrolling, stopAutoPlay, screenWidth]);
+  }, [isFocused, hasBeenVisible, data.length, stopAutoPlay, screenWidth]);
 
+  // Pause autoplay while the main home feed is being scrolled, resume once it settles
   useAnimatedReaction(
     () => isScrolling?.value ?? false,
-    (scrolling) => {
-      if (!hasBeenVisible) return;
+    (scrolling, previousScrolling) => {
+      if (scrolling === previousScrolling) return;
       if (scrolling) {
         runOnJS(stopAutoPlay)();
       } else {
         runOnJS(startAutoPlay)();
       }
     },
-    [hasBeenVisible, startAutoPlay, stopAutoPlay]
+    [isScrolling]
   );
 
   useEffect(() => {
@@ -258,12 +255,20 @@ export default function IndustryTreeCarousel({
     }
   }, [hasBeenVisible, isFocused, data.length, startAutoPlay, stopAutoPlay]);
 
+  // Guarantee background timer clearance on unmount/screen change
+  useEffect(() => {
+    return () => stopAutoPlay();
+  }, [stopAutoPlay]);
+
   useAnimatedReaction(
-    () => scrollY?.value ?? 0,
-    (y) => {
-      if (hasBeenVisible || !absoluteY || !scrollY) return;
-      const isNearViewport = y + screenHeight * 1.5 > absoluteY;
-      if (isNearViewport) {
+    () => {
+      if (hasBeenVisible) return true;
+      if (!absoluteY || !scrollY) return false;
+      const y = scrollY.value;
+      return y + screenHeight * 1.5 > absoluteY;
+    },
+    (isNear, previousNear) => {
+      if (isNear && !previousNear && !hasBeenVisible) {
         runOnJS(setHasBeenVisible)(true);
       }
     },
@@ -271,6 +276,9 @@ export default function IndustryTreeCarousel({
   );
 
   const handleLayout = useCallback((event: any) => {
+    if (isMeasuredRef.current) return;
+    isMeasuredRef.current = true;
+    
     // Measure absolute Y position relative to page
     setTimeout(() => {
       containerRef.current?.measure((x, y, width, measuredHeight, pageX, pageY) => {
@@ -377,7 +385,7 @@ export default function IndustryTreeCarousel({
             maxToRenderPerBatch={1}
             windowSize={2}
             updateCellsBatchingPeriod={50}
-            removeClippedSubviews={false}
+            removeClippedSubviews={true}
           />
           
           <View style={s.dotsRow}>

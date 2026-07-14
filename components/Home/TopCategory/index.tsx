@@ -27,7 +27,7 @@ const CategoryCard = React.memo(
           style={catStyles.image}
           contentFit="cover"
           cachePolicy="memory-disk"
-          transition={100} // Reduced from 200 for less fade overhead
+          transition={0} // Changed from 100 to 0 for less fade overhead
         />
       </View>
       <Text style={catStyles.cardText} numberOfLines={1} ellipsizeMode="tail">

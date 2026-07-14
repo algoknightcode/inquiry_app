@@ -98,11 +98,11 @@ export const RoleProvider = ({ children }: { children: ReactNode }) => {
     setGlobalBuyerIdState(null);
     
     try {
-      await Promise.all([
-        AsyncStorage.removeItem('userRole'),
-        AsyncStorage.removeItem('isSellerSignedIn'),
-        AsyncStorage.removeItem('supplierId'),
-        AsyncStorage.removeItem('buyerId'),
+      await AsyncStorage.multiRemove([
+        'userRole',
+        'isSellerSignedIn',
+        'supplierId',
+        'buyerId'
       ]);
     } catch (error) {
       console.error('Error clearing role state from storage:', error);

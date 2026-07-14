@@ -7,29 +7,21 @@ import { Image } from "expo-image";
 import { useRouter } from "expo-router";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
-  NativeScrollEvent,
-  NativeSyntheticEvent,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View
+    Pressable,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View
 } from "react-native";
 import EnquiryModal from "../../EnquiryModal";
 // 1. Import Reanimated for UI-Thread animations
 import Animated, {
-  SharedValue,
-  runOnJS,
-  runOnUI,
-  useAnimatedReaction,
-  useAnimatedRef,
-  useSharedValue,
-  cancelAnimation,
-  scrollTo,
-  withRepeat,
-  withTiming,
-  withDelay,
+    runOnJS,
+    SharedValue,
+    useAnimatedReaction,
+    useAnimatedRef,
+    useSharedValue,
 } from "react-native-reanimated";
 
 
@@ -228,7 +220,7 @@ const SkeletonProductCard = () => (
   </View>
 );
 
-const NewOnes = ({ isScrolling }: { isScrolling?: SharedValue<boolean> }) => {
+const NewOnes = ({ isScrolling }: { isScrolling?: SharedValue<boolean> } = {}) => {
   const isFocused = useIsFocused();
   const router = useRouter();
   const { globalBuyerId, globalSellerId, userRole } = useRole();
@@ -346,7 +338,7 @@ const NewOnes = ({ isScrolling }: { isScrolling?: SharedValue<boolean> }) => {
     if (productsList.length <= 0) return;
 
     autoplayTimerRef.current = setInterval(() => {
-      if (!isFocused || isModalVisible || (isScrolling && isScrolling.value)) {
+      if (!isFocused || isModalVisible) {
         return;
       }
 
@@ -372,18 +364,20 @@ const NewOnes = ({ isScrolling }: { isScrolling?: SharedValue<boolean> }) => {
         }, 500);
       }
     }, 4000);
-  }, [isFocused, isModalVisible, productsList.length, replicatedData.length, baseMiddleIndex, isScrolling, stopAutoPlay]);
+  }, [isFocused, isModalVisible, productsList.length, replicatedData.length, baseMiddleIndex, stopAutoPlay]);
 
+  // Pause autoplay while the main home feed is being scrolled, resume once it settles
   useAnimatedReaction(
     () => isScrolling?.value ?? false,
-    (scrolling) => {
+    (scrolling, previousScrolling) => {
+      if (scrolling === previousScrolling) return;
       if (scrolling) {
         runOnJS(stopAutoPlay)();
       } else {
         runOnJS(startAutoPlay)();
       }
     },
-    [startAutoPlay, stopAutoPlay]
+    [isScrolling]
   );
 
   useEffect(() => {
@@ -404,6 +398,11 @@ const NewOnes = ({ isScrolling }: { isScrolling?: SharedValue<boolean> }) => {
       }
     }
   }, [isFocused, replicatedData, baseMiddleIndex, productsList.length, isModalVisible, startAutoPlay, stopAutoPlay]);
+
+  // Guarantee background timer clearance on unmount/screen change
+  useEffect(() => {
+    return () => stopAutoPlay();
+  }, [stopAutoPlay]);
 
   // ── Manual Scroll Handling ──
   const handleScrollBegin = useCallback(() => {
@@ -524,7 +523,7 @@ const NewOnes = ({ isScrolling }: { isScrolling?: SharedValue<boolean> }) => {
           initialScrollIndex={baseMiddleIndex}
           windowSize={11}
           updateCellsBatchingPeriod={40} // 6. Optimized React Native Batching
-          removeClippedSubviews={false}
+          removeClippedSubviews={true}
         />
       )}
 

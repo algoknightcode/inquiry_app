@@ -18,6 +18,7 @@ const VideoSection = ({ scrollY }: { scrollY?: SharedValue<number> }) => {
   const { height: screenHeight } = useWindowDimensions();
 
   const viewRef = React.useRef<View>(null);
+  const isMeasuredRef = React.useRef(false);
   const [absoluteY, setAbsoluteY] = useState(0);
   const [layoutHeight, setLayoutHeight] = useState(0);
 
@@ -45,11 +46,13 @@ const VideoSection = ({ scrollY }: { scrollY?: SharedValue<number> }) => {
 
   // Viewport/Scroll visibility changes
   useAnimatedReaction(
-    () => scrollY?.value ?? 0,
-    (y) => {
-      if (!layoutHeight || !scrollY || !absoluteY) return;
-      const isVisible = y + screenHeight > absoluteY && y < absoluteY + layoutHeight;
-      if (!isVisible) {
+    () => {
+      const y = scrollY?.value ?? 0;
+      if (!layoutHeight || !absoluteY) return true; // Assume visible if layout not measured yet
+      return y + screenHeight > absoluteY && y < absoluteY + layoutHeight;
+    },
+    (isVisible, previousVisible) => {
+      if (isVisible !== previousVisible && !isVisible) {
         runOnJS(pauseVideo)();
       }
     },
@@ -59,6 +62,9 @@ const VideoSection = ({ scrollY }: { scrollY?: SharedValue<number> }) => {
   const handleLayout = useCallback((event: any) => {
     const { height } = event.nativeEvent.layout;
     setLayoutHeight(height);
+    
+    if (isMeasuredRef.current) return;
+    isMeasuredRef.current = true;
     
     // Wait a brief tick to ensure layout positions are computed in screen coordinates
     setTimeout(() => {

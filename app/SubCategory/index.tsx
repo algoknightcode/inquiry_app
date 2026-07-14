@@ -1,7 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { ActivityIndicator, FlatList, Pressable, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -143,7 +143,7 @@ const SubCateGory = () => {
             keyExtractor={(item) => item._id}
             showsVerticalScrollIndicator={false}
             contentContainerStyle={{ paddingVertical: 12, paddingBottom: 120 }}
-            renderItem={({ item }) => {
+            renderItem={useCallback(({ item }) => {
               const isActive = item._id === selectedMainId;
               return (
                 <Pressable
@@ -166,7 +166,7 @@ const SubCateGory = () => {
                   </Text>
                 </Pressable>
               );
-            }}
+            }, [selectedMainId])}
           />
         </View>
  
@@ -184,7 +184,7 @@ const SubCateGory = () => {
                 No subcategories found.
               </Text>
             }
-            renderItem={({ item }) => (
+            renderItem={useCallback(({ item }) => (
               <Pressable
                 className={styles.subCategoryCard}
                 android_ripple={{ color: "#e2e8f0" }}
@@ -210,7 +210,7 @@ const SubCateGory = () => {
                   {item.name}
                 </Text>
               </Pressable>
-            )}
+            ), [location])}
           />
         </View>
 

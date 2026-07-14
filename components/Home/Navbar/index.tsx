@@ -35,12 +35,22 @@ const Navbar = React.memo(({ onMenuPress, scrollY: externalScrollY, userRole: pr
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [shouldRenderSidebar, setShouldRenderSidebar] = useState(false);
 
+  const isMounted = React.useRef(true);
+
+  React.useEffect(() => {
+    return () => {
+      isMounted.current = false;
+    };
+  }, []);
+
   React.useEffect(() => {
     if (isSidebarOpen) {
       setShouldRenderSidebar(true);
     } else if (shouldRenderSidebar) {
       const timer = setTimeout(() => {
-        setShouldRenderSidebar(false);
+        if (isMounted.current) {
+          setShouldRenderSidebar(false);
+        }
       }, 300); // 300ms allows the Sidebar 250ms close animation to finish gracefully
       return () => clearTimeout(timer);
     }
@@ -153,7 +163,7 @@ const Navbar = React.memo(({ onMenuPress, scrollY: externalScrollY, userRole: pr
       )}
     </View>
   );
-};
+});
 
 // Note: Wrapped in React.memo to prevent unnecessary re-renders during parent layout updates (e.g. scrolling).
 // userRole is accepted as a prop to allow clean parent updates.

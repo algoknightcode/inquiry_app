@@ -5,7 +5,7 @@ import * as FileSystem from "expo-file-system/legacy";
 import * as ImageManipulator from "expo-image-manipulator";
 import * as ImagePicker from "expo-image-picker";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -173,6 +173,15 @@ const generateUniqueId = () => `${Date.now()}-${Math.random().toString(36).subst
 const AddProduct = () => {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+
+  const isMounted = useRef(true);
+
+  useEffect(() => {
+    isMounted.current = true;
+    return () => {
+      isMounted.current = false;
+    };
+  }, []);
   
   const tabs = [
     { id: "Category", icon: "layers" },
@@ -223,7 +232,7 @@ const AddProduct = () => {
       try {
         const response = await fetch("https://backend.inquirybazaar.com/api/industries/tree");
         const json = await response.json();
-        if (json.success && json.data) {
+        if (json.success && json.data && isMounted.current) {
           const allCats: any[] = [];
           const allSubs: any[] = [];
           

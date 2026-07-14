@@ -2,7 +2,7 @@ import { globalSellerId } from "@/utils/roleCache";
 import { FontAwesome, Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useIsFocused } from "@react-navigation/native";
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
     ActivityIndicator,
     FlatList,
@@ -36,6 +36,15 @@ const LeadsScreen = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
+  const isMounted = useRef(true);
+
+  useEffect(() => {
+    isMounted.current = true;
+    return () => {
+      isMounted.current = false;
+    };
+  }, []);
+
   // ✅ WRAPPED IN useCallback: fetchLeads won't cause deps to spiral
   const fetchLeads = useCallback(async (showLoader = false) => {
     if (showLoader) setIsLoading(true);
@@ -47,7 +56,9 @@ const LeadsScreen = () => {
 
       if (!supplierId) {
         console.warn("[LeadsScreen] No supplier ID found");
-        setLeads([]);
+        if (isMounted.current) {
+          setLeads([]);
+        }
         return;
       }
 
@@ -55,17 +66,23 @@ const LeadsScreen = () => {
       const response = await fetch(url);
       const json = await response.json();
       
-      if (json.success && json.data) {
-        setLeads(json.data);
-      } else {
-        setLeads([]);
+      if (isMounted.current) {
+        if (json.success && json.data) {
+          setLeads(json.data);
+        } else {
+          setLeads([]);
+        }
       }
     } catch (error) {
       console.error("[LeadsScreen] Error fetching leads:", error);
-      setLeads([]);
+      if (isMounted.current) {
+        setLeads([]);
+      }
     } finally {
-      setIsLoading(false);
-      setRefreshing(false);
+      if (isMounted.current) {
+        setIsLoading(false);
+        setRefreshing(false);
+      }
     }
   }, [activeFilter]);
 

@@ -5,21 +5,21 @@ import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Image } from "expo-image";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
-    ActivityIndicator,
-    Alert,
-    FlatList,
-    KeyboardAvoidingView,
-    Linking,
-    Modal,
-    Platform,
-    Pressable,
-    ScrollView,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View
+  ActivityIndicator,
+  Alert,
+  FlatList,
+  KeyboardAvoidingView,
+  Linking,
+  Modal,
+  Platform,
+  Pressable,
+  ScrollView,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
@@ -92,6 +92,15 @@ export default function ProductListingPage() {
     location?: string;
     search?: string;
   }>();
+
+  const isMounted = useRef(true);
+
+  useEffect(() => {
+    isMounted.current = true;
+    return () => {
+      isMounted.current = false;
+    };
+  }, []);
 
   const subCategoryName = params.subCategoryName || "All Products";
   const subCategorySlug = params.subCategorySlug || "led-display-board";
@@ -196,38 +205,53 @@ export default function ProductListingPage() {
     }
   };
 
-  const filteredProducts = products.filter((product) => {
-    const query = searchQuery.toLowerCase().trim();
-    if (!query) return true;
-    const productName = product.name?.toLowerCase() || "";
-    const companyName = product.supplier?.business?.companyName?.toLowerCase() || "";
-    const supplierName = product.supplier?.name?.toLowerCase() || "";
-    return productName.includes(query) || companyName.includes(query) || supplierName.includes(query);
-  });
+  // Memoize filtered products to prevent re-filtering on every render
+  const filteredProducts = useMemo(() => {
+    return products.filter((product) => {
+      const query = searchQuery.toLowerCase().trim();
+      if (!query) return true;
+      const productName = product.name?.toLowerCase() || "";
+      const companyName = product.supplier?.business?.companyName?.toLowerCase() || "";
+      const supplierName = product.supplier?.name?.toLowerCase() || "";
+      return productName.includes(query) || companyName.includes(query) || supplierName.includes(query);
+    });
+  }, [products, searchQuery]);
 
   useEffect(() => {
     if (!subCategorySlug) {
       setLoading(false);
       return;
     }
+
+    const controller = new AbortController();
+    const { signal } = controller;
+
     const fetchProducts = async () => {
       try {
         const apiLocation = location === "All India" ? "India" : location;
         const url = `https://backend.inquirybazaar.com/api/categories/sub/${subCategorySlug}/${apiLocation}`;
-        const response = await fetch(url);
+        const response = await fetch(url, { signal });
         const json = await response.json();
-        if (json.success && json.data) {
+        if (json.success && json.data && isMounted.current) {
           setProducts(json.data.products || []);
           setTotalProducts(json.data.totalProducts || 0);
         }
-      } catch (err) {
-        console.error("Error fetching products:", err);
+      } catch (err: any) {
+        if (err.name !== 'AbortError') {
+          console.error("Error fetching products:", err);
+        }
       } finally {
-        setLoading(false);
+        if (isMounted.current) {
+          setLoading(false);
+        }
       }
     };
     
     fetchProducts();
+
+    return () => {
+      controller.abort();
+    };
   }, [subCategorySlug, location]);
 
   // ── Primary image helper ─────────────────────────────────────────────────
@@ -250,7 +274,8 @@ export default function ProductListingPage() {
   }
 
   // ── Product card ─────────────────────────────────────────────────────────
-  const renderProduct = ({ item }: { item: Product }) => {
+  // Memoize renderProduct so FlatList doesn't re-render item cells unnecessarily
+  const renderProduct = useCallback(({ item }: { item: Product }) => {
     const imageUri = getPrimaryImage(item.media);
     const company = item.supplier?.business?.companyName || item.supplier?.name || "Supplier";
     const city = item.supplier?.business?.city || "";
@@ -292,7 +317,7 @@ export default function ProductListingPage() {
           )}
           {/* Business type badge */}
           {businessType ? (
-            <View className="absolute top-3 left-3 bg-indigo-600/90 px-2.5 py-1 rounded-md">
+            <View className="absolute top-3 left-3 bg-blue-900 px-2.5 py-1 rounded-md">
               <Text className="text-white font-jakarta-bold text-[10px] tracking-widest uppercase">
                  VERIFIED
               </Text>
@@ -301,7 +326,7 @@ export default function ProductListingPage() {
         </View>
 
         {/* Product name */}
-        <Text className="text-[16px] font-jakarta-bold text-slate-900 leading-snug mb-3">
+        <Text className="text-[16px] font-jakarta-bold text-slate-900/10 leading-snug mb-3">
           {item.name}
         </Text>
 
@@ -413,7 +438,7 @@ export default function ProductListingPage() {
         </View>
       </View>
     );
-  };
+  }, []);
 
   // ── Main render ──────────────────────────────────────────────────────────
   return (
@@ -717,11 +742,10 @@ export default function ProductListingPage() {
               <View className="flex-row items-start border border-slate-200 rounded-2xl px-4 py-3 h-[120px] mb-6 bg-slate-50">
                 <Ionicons name="chatbubble-outline" size={18} color="#64748b" style={{ marginRight: 10, marginTop: 2 }} />
                 <TextInput
-                  style={{ flex: 1, height: '100%', color: '#0f172a', fontSize: 14 }}
+                  style={{ flex: 1, height: '100%', color: '#0f172a', fontSize: 14, textAlignVertical: 'top' }}
                   placeholder="Your Message *"
                   placeholderTextColor="#94a3b8"
                   multiline
-                  style={{ textAlignVertical: "top" }}
                   value={inqMessage}
                   onChangeText={setInqMessage}
                 />

@@ -1,8 +1,8 @@
 import { fetchWithCache, getCacheSync } from "@/utils/apiCache";
 import { useRouter } from "expo-router";
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import { ActivityIndicator, Pressable, StyleSheet, Text, useWindowDimensions, View } from "react-native";
-import Animated, { FadeInDown, runOnJS, SharedValue, useAnimatedReaction } from "react-native-reanimated";
+import { runOnJS, SharedValue, useAnimatedReaction } from "react-native-reanimated";
 import Carousel, { ICarouselInstance } from "react-native-reanimated-carousel";
 
 type Industry = {
@@ -24,23 +24,34 @@ function getInitialCachedIndustries(): Industry[] {
   return [];
 }
 
-export default function CategoryMarquee({ isScrolling }: { isScrolling?: SharedValue<boolean> }) {
+interface CategoryPillProps {
+  id: string;
+  name: string;
+  onPress: (id: string, name: string) => void;
+  width: number;
+}
+
+// Memoized sub-component to eliminate anonymous function allocations on every render
+const CategoryPill = React.memo(({ id, name, onPress, width }: CategoryPillProps) => {
+  const handlePress = useCallback(() => {
+    onPress(id, name);
+  }, [id, name, onPress]);
+
+  return (
+    <View style={[styles.pillContainer, { width }]}>
+      <Pressable style={styles.pill} onPress={handlePress}>
+        <Text style={styles.pillText} numberOfLines={1}>
+          {name}
+        </Text>
+      </Pressable>
+    </View>
+  );
+});
+
+export default function CategoryMarquee() {
   const router = useRouter();
   const { width: screenWidth } = useWindowDimensions();
   const carouselRef = useRef<ICarouselInstance>(null);
-
-  const [autoPlay, setAutoPlay] = useState(true);
-
-  // Pause carousel autoplay while parent list is scrolling to save JS resources
-  useAnimatedReaction(
-    () => isScrolling?.value ?? false,
-    (scrolling, previousValue) => {
-      if (scrolling !== previousValue) {
-        runOnJS(setAutoPlay)(!scrolling);
-      }
-    },
-    [isScrolling]
-  );
 
   const initialIndustries = getInitialCachedIndustries();
   const [industries, setIndustries] = useState<Industry[]>(initialIndustries);
@@ -82,6 +93,13 @@ export default function CategoryMarquee({ isScrolling }: { isScrolling?: SharedV
     return chunks;
   }, [industries, columns]);
 
+  const handlePillPress = useCallback((id: string, name: string) => {
+    router.push({
+      pathname: "/GrId_MainCategory",
+      params: { id, name },
+    });
+  }, [router]);
+
   if (loading) {
     return (
       <View style={styles.loader}>
@@ -96,56 +114,36 @@ export default function CategoryMarquee({ isScrolling }: { isScrolling?: SharedV
 
   return (
     <View style={styles.container}>
-      <Animated.View entering={FadeInDown.duration(600).springify()}>
-        <Carousel
-          ref={carouselRef}
-          loop={true}
-          autoPlay={autoPlay}
-          autoPlayInterval={2500}
-          scrollAnimationDuration={800}
-          data={chunkedIndustries}
-          width={screenWidth}
-          height={60}
-          windowSize={5}
-          onConfigurePanGesture={(gesture) => {
-            "worklet";
-            gesture.activeOffsetX([-10, 10]);
-          }}
+      <Carousel
+        ref={carouselRef}
+        loop={true}
+        autoPlay={true}
+        autoPlayInterval={2500}
+        scrollAnimationDuration={800}
+        data={chunkedIndustries}
+        width={screenWidth}
+        height={60}
+        windowSize={5}
+        onConfigurePanGesture={(gesture) => {
+          "worklet";
+          gesture.activeOffsetX([-10, 10]);
+        }}
 
-          // Added chunkIndex to generate completely unique React keys
-          renderItem={({ item: chunk, index: chunkIndex }) => (
-            <View style={styles.slideRow}>
-              {chunk.map((industry, itemIndex) => (
-                <View
-                  // Unique key ensures no React warnings since we might have duplicated the data
-                  key={`chunk-${chunkIndex}-item-${itemIndex}`}
-                  style={[styles.pillContainer, { width: exactItemWidth }]}
-                >
-                  <Pressable
-                    style={styles.pill}
-                    onPress={() =>
-                      router.push({
-                        pathname: "/GrId_MainCategory",
-                        params: {
-                          id: industry._id,
-                          name: industry.name,
-                        },
-                      })
-                    }
-                  >
-                    <Text
-                      style={styles.pillText}
-                      numberOfLines={1}
-                    >
-                      {industry.name}
-                    </Text>
-                  </Pressable>
-                </View>
-              ))}
-            </View>
-          )}
-        />
-      </Animated.View>
+        // Renders using the memoized CategoryPill component
+        renderItem={({ item: chunk, index: chunkIndex }) => (
+          <View style={styles.slideRow}>
+            {chunk.map((industry, itemIndex) => (
+              <CategoryPill
+                key={`chunk-${chunkIndex}-item-${itemIndex}`}
+                id={industry._id}
+                name={industry.name}
+                onPress={handlePillPress}
+                width={exactItemWidth}
+              />
+            ))}
+          </View>
+        )}
+      />
     </View>
   );
 }

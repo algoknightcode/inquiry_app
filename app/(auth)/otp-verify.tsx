@@ -1,17 +1,18 @@
+import { prefetchHomeData } from "@/utils/prefetchHome";
+import { useRouter } from "expo-router";
 import React, { useState } from "react";
 import {
-  Image,
-  TextInput,
-  View,
-  TouchableOpacity,
-  Text,
-  Alert,
-  StyleSheet,
-  SafeAreaView,
-  KeyboardAvoidingView,
-  Platform
+    Alert,
+    Image,
+    KeyboardAvoidingView,
+    Platform,
+    SafeAreaView,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View
 } from "react-native";
-import { useRouter } from "expo-router";
 import Logo from "../../assets/images/logoo-Photoroom.png";
 
 const OtpVerify = () => {
@@ -20,6 +21,7 @@ const OtpVerify = () => {
 
   const handleVerify = (code: string) => {
     if (code === "1234") {
+      prefetchHomeData().catch(() => {}); // Warm Home cache before navigating
       router.replace("/(tabs)");
     } else {
       Alert.alert("Invalid OTP", "Please enter the dummy OTP: 1234");

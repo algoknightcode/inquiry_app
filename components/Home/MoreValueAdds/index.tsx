@@ -3,18 +3,13 @@ import { useIsFocused } from "@react-navigation/native";
 import { Image } from "expo-image";
 import { Href, useRouter } from "expo-router";
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import { FlatList, Linking, Pressable, Text, useWindowDimensions, View } from "react-native";
+import { Linking, Pressable, Text, useWindowDimensions, View } from "react-native";
 import Animated, {
-  cancelAnimation,
-  runOnJS,
-  runOnUI,
-  scrollTo,
-  SharedValue,
-  useAnimatedReaction,
-  useAnimatedRef,
-  useSharedValue,
-  withRepeat,
-  withTiming,
+    runOnJS,
+    SharedValue,
+    useAnimatedReaction,
+    useAnimatedRef,
+    useSharedValue,
 } from "react-native-reanimated";
 
 type ValueAddCard = {
@@ -56,22 +51,20 @@ const cardsData: ValueAddCard[] = [
   },
 ];
 
-export default function MoreValueAdds({ isScrolling }: { isScrolling?: SharedValue<boolean> }) {
+export default function MoreValueAdds({ isScrolling }: { isScrolling?: SharedValue<boolean> } = {}) {
   const isFocused = useIsFocused();
   const { width: screenWidth } = useWindowDimensions();
   const router = useRouter();
 
-  // Reanimated UI-thread variables
+  // References and Scroll variables
   const flatListRef = useAnimatedRef<Animated.FlatList<ValueAddCard>>();
   const scrollIndex = useSharedValue(0);
-  const isAutoPlaying = useSharedValue(false);
-  const autoplayPulse = useSharedValue(0);
   const [currentIndex, setCurrentIndex] = useState(0);
 
   const containerPadding = 16;
   const cardGap = 16;
   const cardWidth = (screenWidth - containerPadding * 2 - cardGap) / 2;
-  const cardHeight = 164; // slightly taller for better image fit
+  const cardHeight = 164; 
 
   const scale = Math.max(0.85, Math.min(1.1, screenWidth / 375));
   const titleSize = 22 * scale;
@@ -81,88 +74,80 @@ export default function MoreValueAdds({ isScrolling }: { isScrolling?: SharedVal
 
   const maxScrollIndex = cardsData.length - 2;
 
-  const startAutoPlayUI = () => {
-    'worklet';
+  // JS Thread Autoplay
+  const autoplayTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const stopAutoPlay = useCallback(() => {
+    if (autoplayTimerRef.current) {
+      clearInterval(autoplayTimerRef.current);
+      autoplayTimerRef.current = null;
+    }
+  }, []);
+
+  const startAutoPlay = useCallback(() => {
+    stopAutoPlay();
     if (maxScrollIndex <= 0) return;
-    autoplayPulse.value = 0;
-    autoplayPulse.value = withRepeat(
-      withTiming(1, { duration: 4500 }),
-      -1
-    );
-  };
 
-  const stopAutoPlayUI = () => {
-    'worklet';
-    cancelAnimation(autoplayPulse);
-  };
-
-  // Reanimated UI-thread auto-scroll reaction
-  useAnimatedReaction(
-    () => autoplayPulse.value,
-    (currentPulse, prevPulse) => {
-      if (!isFocused || (isScrolling && isScrolling.value)) {
+    autoplayTimerRef.current = setInterval(() => {
+      if (!isFocused) {
         return;
       }
-      if (prevPulse !== null && currentPulse < prevPulse && prevPulse > 0.9 && currentPulse < 0.1) {
-        if (!isAutoPlaying.value) return;
+      let nextIndex = scrollIndex.value + 1;
+      if (nextIndex > maxScrollIndex) nextIndex = 0;
 
-        let nextIndex = scrollIndex.value + 1;
-        if (nextIndex > maxScrollIndex) nextIndex = 0;
+      scrollIndex.value = nextIndex;
+      setCurrentIndex(nextIndex);
 
-        scrollIndex.value = nextIndex;
-        scrollTo(flatListRef, nextIndex * (cardWidth + cardGap), 0, true);
-        runOnJS(setCurrentIndex)(nextIndex);
-      }
-    },
-    [isFocused, maxScrollIndex, isScrolling, cardWidth, cardGap]
-  );
+      flatListRef.current?.scrollToIndex({
+        index: nextIndex,
+        animated: true,
+      });
+    }, 4500);
+  }, [isFocused, maxScrollIndex, stopAutoPlay]);
 
+  // Autoplay control on focus
   useEffect(() => {
-    if (isFocused) {
+    if (isFocused && maxScrollIndex > 0) {
       scrollIndex.value = 0;
       setCurrentIndex(0);
+
       const initTimer = setTimeout(() => {
         flatListRef.current?.scrollToIndex({ index: 0, animated: false });
-        runOnUI(() => {
-          'worklet';
-          isAutoPlaying.value = true;
-          startAutoPlayUI();
-        })();
+        startAutoPlay();
       }, 500);
 
       return () => {
         clearTimeout(initTimer);
-        runOnUI(stopAutoPlayUI)();
-        isAutoPlaying.value = false;
+        stopAutoPlay();
       };
     } else {
-      runOnUI(stopAutoPlayUI)();
-      isAutoPlaying.value = false;
+      stopAutoPlay();
     }
-  }, [isFocused]);
+  }, [isFocused, maxScrollIndex, startAutoPlay, stopAutoPlay]);
 
+  // Guarantee background timer clearance on unmount/screen change
+  useEffect(() => {
+    return () => stopAutoPlay();
+  }, [stopAutoPlay]);
+
+  // Pause autoplay while the main home feed is being scrolled, resume once it settles
   useAnimatedReaction(
     () => isScrolling?.value ?? false,
-    (scrolling) => {
+    (scrolling, previousScrolling) => {
+      if (scrolling === previousScrolling) return;
       if (scrolling) {
-        isAutoPlaying.value = false;
-        stopAutoPlayUI();
+        runOnJS(stopAutoPlay)();
       } else {
-        isAutoPlaying.value = true;
-        startAutoPlayUI();
+        runOnJS(startAutoPlay)();
       }
     },
-    []
+    [isScrolling]
   );
 
-  // ── Manual Scroll Handling ──
+  // Manual Scroll Handling
   const handleScrollBegin = useCallback(() => {
-    runOnUI(() => {
-      'worklet';
-      isAutoPlaying.value = false;
-      stopAutoPlayUI();
-    })();
-  }, []);
+    stopAutoPlay();
+  }, [stopAutoPlay]);
 
   const handleMomentumScrollEnd = useCallback((event: any) => {
     const scrollOffset = event.nativeEvent.contentOffset.x;
@@ -171,13 +156,8 @@ export default function MoreValueAdds({ isScrolling }: { isScrolling?: SharedVal
 
     scrollIndex.value = safeIndex;
     setCurrentIndex(safeIndex);
-
-    runOnUI(() => {
-      'worklet';
-      isAutoPlaying.value = true;
-      startAutoPlayUI();
-    })();
-  }, [cardWidth, cardGap, maxScrollIndex]);
+    startAutoPlay();
+  }, [cardWidth, cardGap, maxScrollIndex, startAutoPlay]);
 
   const handlePress = useCallback((route: string) => {
     if (route.startsWith("http://") || route.startsWith("https://")) {
@@ -240,7 +220,7 @@ export default function MoreValueAdds({ isScrolling }: { isScrolling?: SharedVal
         </View>
       </Pressable>
     );
-  }, [cardWidth, cardHeight, cardGap, handlePress]);
+  }, [cardWidth, cardHeight, cardGap, handlePress, badgeSize, cardTitleSize, actionTextSize]);
 
   return (
     <View className="mt-8 mb-2">

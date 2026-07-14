@@ -2,7 +2,7 @@ import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useRouter } from "expo-router";
 import { useIsFocused } from "@react-navigation/native";
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
     ActivityIndicator,
     FlatList,
@@ -27,6 +27,15 @@ const ManageProducts = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
+  const isMounted = useRef(true);
+
+  useEffect(() => {
+    isMounted.current = true;
+    return () => {
+      isMounted.current = false;
+    };
+  }, []);
+
   const fetchProducts = useCallback(async (showGlobalLoader = true) => {
     if (showGlobalLoader) setIsLoading(true);
     try {
@@ -36,13 +45,17 @@ const ManageProducts = () => {
       const response = await fetch(`https://seller.inquirybazaar.com/api/product?supplierId=${supplierId}`);
       const json = await response.json();
       
-      const productsArray = json.data || json.products || json || [];
-      setProducts(productsArray);
+      if (isMounted.current) {
+        const productsArray = json.data || json.products || json || [];
+        setProducts(productsArray);
+      }
       
     } catch (error) {
       console.error("Error fetching products:", error);
     } finally {
-      if (showGlobalLoader) setIsLoading(false);
+      if (showGlobalLoader && isMounted.current) {
+        setIsLoading(false);
+      }
     }
   }, []);
 
@@ -272,7 +285,7 @@ const s = StyleSheet.create({
   },
   headerTopRow: {
     flexDirection: "row",
-    alignItems: "start",
+    alignItems: "flex-start",
     justifyContent: "space-between",
     marginBottom: verticalScale(14),
   },

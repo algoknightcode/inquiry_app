@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { ScrollView, StyleSheet, Text, View, Pressable, ActivityIndicator, Platform } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { Stack, useRouter } from 'expo-router';
 import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
 import * as FileSystem from 'expo-file-system/legacy';
@@ -62,6 +63,8 @@ const investment1YearData = [
 ];
 
 export default function PricingTable() {
+  const insets = useSafeAreaInsets();
+  const router = useRouter();
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
 
   const generatePDF = async () => {
@@ -312,7 +315,27 @@ export default function PricingTable() {
   };
 
   return (
-    <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
+    <View style={[styles.container, { paddingTop: insets.top }]}>
+      <Stack.Screen options={{ headerShown: false }} />
+      
+      {/* --- CUSTOM HEADER --- */}
+      <View style={styles.customHeader}>
+        <Pressable 
+          style={{ padding: 8 }}
+          hitSlop={12}
+          onPress={() => router.back()}
+        >
+          <Ionicons name="arrow-back" size={24} color="#334155" />
+        </Pressable>
+        
+        <Text style={styles.customHeaderTitle} numberOfLines={1}>
+          Membership Plans
+        </Text>
+        
+        {/* Placeholder to balance the layout */}
+        <View style={{ width: 40 }} />
+      </View>
+
       <ScrollView style={styles.verticalScroll} showsVerticalScrollIndicator={false}>
         
         {/* Main Title Section */}
@@ -506,12 +529,12 @@ export default function PricingTable() {
           </View>
         </ScrollView>
 
-        <Text style={[styles.footerNote, { marginTop: 10, marginBottom: 50 }]}>
+        <Text style={[styles.footerNote, { marginTop: 10, marginBottom: 15 }]}>
           * Annual plan subscribers receive: Priority onboarding within 48 hours + 1 month extended validity (13 months for price of 12).
         </Text>
 
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 }
 
@@ -521,6 +544,25 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#F8F9FA',
+  },
+  customHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingTop: 10,
+    paddingBottom: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E2E8F0',
+    backgroundColor: '#FFFFFF',
+  },
+  customHeaderTitle: {
+    flex: 1,
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#0f172a',
+    textAlign: 'center',
+    marginHorizontal: 16,
   },
   verticalScroll: {
     padding: 10,
@@ -649,7 +691,7 @@ const styles = StyleSheet.create({
     color: '#718096',
     fontStyle: 'italic',
     paddingHorizontal: 5,
-    marginBottom: 40,
+    marginBottom: 10,
   },
   
   // FIXED WIDTHS FOR HORIZONTAL SCROLLING

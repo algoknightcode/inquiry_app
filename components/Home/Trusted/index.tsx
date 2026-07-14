@@ -7,30 +7,24 @@ import { Image } from "expo-image";
 import { useRouter } from "expo-router";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
-  NativeScrollEvent,
-  NativeSyntheticEvent,
-  Platform,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  useWindowDimensions,
-  View
+    NativeScrollEvent,
+    NativeSyntheticEvent,
+    Platform,
+    Pressable,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    useWindowDimensions,
+    View
 } from "react-native";
 // 1. Reanimated hooks for UI-thread animation
 import Animated, {
-  cancelAnimation,
-  runOnUI,
-  runOnJS,
-  scrollTo,
-  SharedValue,
-  useAnimatedReaction,
-  useAnimatedRef,
-  useSharedValue,
-  withDelay,
-  withRepeat,
-  withTiming,
+    runOnJS,
+    SharedValue,
+    useAnimatedReaction,
+    useAnimatedRef,
+    useSharedValue,
 } from "react-native-reanimated";
 import EnquiryModal from "../../EnquiryModal";
 
@@ -320,7 +314,7 @@ const SkeletonProductCard = ({ layout }: { layout?: DynamicLayout }) => {
   );
 };
 
-const IBTrusted = ({ isScrolling }: { isScrolling?: SharedValue<boolean> }) => {
+const IBTrusted = ({ isScrolling }: { isScrolling?: SharedValue<boolean> } = {}) => {
   const isFocused = useIsFocused();
   const router = useRouter();
   const { globalBuyerId, globalSellerId, userRole } = useRole();
@@ -400,7 +394,7 @@ const IBTrusted = ({ isScrolling }: { isScrolling?: SharedValue<boolean> }) => {
   }, [replicatedData.length, products.length]);
 
   // Autoplay timer ref
-  const autoplayTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const autoplayTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const stopAutoPlay = useCallback(() => {
     if (autoplayTimerRef.current) {
@@ -414,7 +408,7 @@ const IBTrusted = ({ isScrolling }: { isScrolling?: SharedValue<boolean> }) => {
     if (products.length <= 0) return;
 
     autoplayTimerRef.current = setInterval(() => {
-      if (!isFocused || isModalVisible || (isScrolling && isScrolling.value)) {
+      if (!isFocused || isModalVisible) {
         return;
       }
 
@@ -440,18 +434,20 @@ const IBTrusted = ({ isScrolling }: { isScrolling?: SharedValue<boolean> }) => {
         }, 500);
       }
     }, 5000);
-  }, [isFocused, isModalVisible, products.length, replicatedData.length, baseMiddleIndex, isScrolling, stopAutoPlay, layout.ITEM_SIZE]);
+  }, [isFocused, isModalVisible, products.length, replicatedData.length, baseMiddleIndex, stopAutoPlay, layout.ITEM_SIZE]);
 
+  // Pause autoplay while the main home feed is being scrolled, resume once it settles
   useAnimatedReaction(
     () => isScrolling?.value ?? false,
-    (scrolling) => {
+    (scrolling, previousScrolling) => {
+      if (scrolling === previousScrolling) return;
       if (scrolling) {
         runOnJS(stopAutoPlay)();
       } else {
         runOnJS(startAutoPlay)();
       }
     },
-    [startAutoPlay, stopAutoPlay]
+    [isScrolling]
   );
 
   useEffect(() => {
@@ -473,6 +469,11 @@ const IBTrusted = ({ isScrolling }: { isScrolling?: SharedValue<boolean> }) => {
       }
     }
   }, [isFocused, replicatedData, baseMiddleIndex, products.length, isModalVisible, startAutoPlay, stopAutoPlay]);
+
+  // Guarantee background timer clearance on unmount/screen change
+  useEffect(() => {
+    return () => stopAutoPlay();
+  }, [stopAutoPlay]);
 
   // ── Manual Scroll Handling ──
   const handleScrollBegin = useCallback(() => {

@@ -164,7 +164,17 @@ const BuyerProfileSettings = () => {
   const [activeTab, setActiveTab] = useState("Business");
   const [buyerId, setBuyerId] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [initialLoading, setInitialLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+
+  const isMounted = useRef(true);
+
+  useEffect(() => {
+    isMounted.current = true;
+    return () => {
+      isMounted.current = false;
+    };
+  }, []);
 
   const [logoutConfirmVisible, setLogoutConfirmVisible] = useState(false);
 
@@ -175,10 +185,7 @@ const BuyerProfileSettings = () => {
     setGlobalSellerId(null);
     setGlobalBuyerId(null);
     try {
-      await AsyncStorage.removeItem("buyerId");
-      await AsyncStorage.removeItem("supplierId");
-      await AsyncStorage.removeItem("phone");
-      await AsyncStorage.removeItem("phoneNumber");
+      await AsyncStorage.multiRemove(["buyerId", "supplierId", "phone", "phoneNumber"]);
     } catch (e) {
       console.log("Error clearing storage:", e);
     }
@@ -251,11 +258,15 @@ const BuyerProfileSettings = () => {
           };
         }).filter((opt: any) => opt.name);
 
-        setIndustryOptions(formattedOptions);
+        if (isMounted.current) {
+          setIndustryOptions(formattedOptions);
+        }
       } catch (error) {
         console.error("Error fetching industries:", error);
       } finally {
-        setIsLoading(false);
+        if (isMounted.current) {
+          setIsLoading(false);
+        }
       }
     };
 
@@ -264,7 +275,10 @@ const BuyerProfileSettings = () => {
 
   // Fetch Business, Bank, and Social Profiles from backend
   const fetchProfileData = async (showGlobalLoader = true) => {
-    if (showGlobalLoader) setLoading(true);
+    if (showGlobalLoader) {
+      setLoading(true);
+      setInitialLoading(true);
+    }
     try {
       const storedId = await AsyncStorage.getItem("buyerId");
       if (storedId) {
@@ -337,42 +351,47 @@ const BuyerProfileSettings = () => {
         const activeSocial = socialData.social || socialData || {};
         const fallbackSocial = businessData.social || businessData.socialLinks || businessData.social_links || {};
 
-        setProfileData({
-          companyName: businessData.companyName || businessData.company_name || "",
-          ceoName: businessData.ceoName || businessData.ceo_name || "",
-          gstNumber: businessData.gstNumber || businessData.gst_number || "",
-          establishedDate: businessData.establishedDate || businessData.established_date || "",
-          ownershipType: businessData.ownershipType || businessData.ownership_type || "",
-          businessField: businessData.businessField || businessData.business_field || "",
-          businessType: businessData.businessType || "",
-          employeeCount: businessData.employeeCount || businessData.employee_count || businessData.numberOfEmployees || businessData.number_of_employees || "",
-          annualTurnover: businessData.annualTurnover || businessData.annual_turnover || "",
-          stateName: businessData.stateName || businessData.state || businessData.state_name || "",
-          cityName: businessData.cityName || businessData.city || businessData.city_name || "",
-          businessAddress: businessData.businessAddress || businessData.address || businessData.business_address || "",
-          
-          accountNumber: bankData.accountNumber || bankData.account_number || "",
-          accountHolderName: bankData.accountHolderName || bankData.account_holder_name || "",
-          bankName: bankData.bankName || bankData.bank_name || "",
-          branchName: bankData.branchName || bankData.branch_name || "",
-          ifsc: bankData.ifsc || "",
+        if (isMounted.current) {
+          setProfileData({
+            companyName: businessData.companyName || businessData.company_name || "",
+            ceoName: businessData.ceoName || businessData.ceo_name || "",
+            gstNumber: businessData.gstNumber || businessData.gst_number || "",
+            establishedDate: businessData.establishedDate || businessData.established_date || "",
+            ownershipType: businessData.ownershipType || businessData.ownership_type || "",
+            businessField: businessData.businessField || businessData.business_field || "",
+            businessType: businessData.businessType || "",
+            employeeCount: businessData.employeeCount || businessData.employee_count || businessData.numberOfEmployees || businessData.number_of_employees || "",
+            annualTurnover: businessData.annualTurnover || businessData.annual_turnover || "",
+            stateName: businessData.stateName || businessData.state || businessData.state_name || "",
+            cityName: businessData.cityName || businessData.city || businessData.city_name || "",
+            businessAddress: businessData.businessAddress || businessData.address || businessData.business_address || "",
+            
+            accountNumber: bankData.accountNumber || bankData.account_number || "",
+            accountHolderName: bankData.accountHolderName || bankData.account_holder_name || "",
+            bankName: bankData.bankName || bankData.bank_name || "",
+            branchName: bankData.branchName || bankData.branch_name || "",
+            ifsc: bankData.ifsc || "",
 
-          panNumber: additionalData.panNumber || businessData.panNumber || businessData.pan_number || "",
-          aadhaarNumber: additionalData.aadhaarNumber || businessData.aadhaarNumber || businessData.aadhaar_number || "",
-          tanNumber: additionalData.tanNumber || businessData.tanNumber || businessData.tan_number || "",
-          whatsApp: activeSocial.whatsApp || activeSocial.whatsapp || fallbackSocial.whatsApp || fallbackSocial.whatsapp || "",
-          linkedIn: activeSocial.linkedIn || activeSocial.linkedin || fallbackSocial.linkedIn || fallbackSocial.linkedin || "",
-          instagram: activeSocial.instagram || fallbackSocial.instagram || "",
-          facebook: activeSocial.facebook || fallbackSocial.facebook || "",
-          telegram: activeSocial.telegram || fallbackSocial.telegram || "",
-          youtube: activeSocial.youtube || fallbackSocial.youtube || "",
-          twitter: activeSocial.twitter || activeSocial.x || fallbackSocial.twitter || fallbackSocial.x || "",
-        });
+            panNumber: additionalData.panNumber || businessData.panNumber || businessData.pan_number || "",
+            aadhaarNumber: additionalData.aadhaarNumber || businessData.aadhaarNumber || businessData.aadhaar_number || "",
+            tanNumber: additionalData.tanNumber || businessData.tanNumber || businessData.tan_number || "",
+            whatsApp: activeSocial.whatsApp || activeSocial.whatsapp || fallbackSocial.whatsApp || fallbackSocial.whatsapp || "",
+            linkedIn: activeSocial.linkedIn || activeSocial.linkedin || fallbackSocial.linkedIn || fallbackSocial.linkedin || "",
+            instagram: activeSocial.instagram || fallbackSocial.instagram || "",
+            facebook: activeSocial.facebook || fallbackSocial.facebook || "",
+            telegram: activeSocial.telegram || fallbackSocial.telegram || "",
+            youtube: activeSocial.youtube || fallbackSocial.youtube || "",
+            twitter: activeSocial.twitter || activeSocial.x || fallbackSocial.twitter || fallbackSocial.x || "",
+          });
+        }
       }
     } catch (error) {
       console.error("Error fetching profile details:", error);
     } finally {
-      if (showGlobalLoader) setLoading(false);
+      if (showGlobalLoader && isMounted.current) {
+        setLoading(false);
+        setInitialLoading(false);
+      }
     }
   };
 
@@ -706,110 +725,119 @@ const BuyerProfileSettings = () => {
         <View className="px-5">
           <View className="bg-white rounded-[32px] p-6 shadow-xl shadow-slate-200/40 border border-slate-100">
 
-            {activeTab === "Business" && (
-              <View>
-                <InputField label="Company Name" icon="briefcase-outline" placeholder="Your Company Name" value={profileData.companyName} onChangeText={(val: string) => handleChange("companyName", val)} />
-                <InputField label="CEO Name" icon="person-outline" placeholder="CEO / Owner Name" value={profileData.ceoName} onChangeText={(val: string) => handleChange("ceoName", val)} />
-                <InputField label="GST Number" icon="receipt-outline" placeholder="GST Identification Number" value={profileData.gstNumber} onChangeText={(val: string) => handleChange("gstNumber", val)} />
-                <InputField label="Established Date" icon="calendar-outline" placeholder="dd/mm/yyyy" value={profileData.establishedDate} onChangeText={(val: string) => handleChange("establishedDate", val)} />
-
-                <DropdownField
-                  label="Ownership Type"
-                  icon="people-outline"
-                  placeholder="Proprietorship"
-                  value={profileData.ownershipType}
-                  onSelect={(val: string) => handleChange("ownershipType", val)}
-                  options={["Proprietorship", "Partnership", "Private Limited", "Public Limited", "LLP", "Other"]}
-                />
-                <DropdownField
-                  label="Business Field"
-                  icon="layers-outline"
-                  placeholder={isLoading ? "Loading industries..." : "Select an industry"}
-                  value={profileData.businessField}
-                  onSelect={(val: string) => handleChange("businessField", val)}
-                  options={industryOptions}
-                />
-                <DropdownField
-                  label="Business Type"
-                  icon="storefront-outline"
-                  placeholder="Wholesaler"
-                  value={profileData.businessType}
-                  onSelect={(val: string) => handleChange("businessType", val)}
-                  options={["Wholesaler", "Manufacturer", "Retailer", "Distributor", "Service Provider", "Trader", "Other"]}
-                />
-                <DropdownField
-                  label="Number of Employees"
-                  icon="people-circle-outline"
-                  placeholder="Select Employees"
-                  value={profileData.employeeCount}
-                  onSelect={(val: string) => handleChange("employeeCount", val)}
-                  options={employeNumber}
-                />
-
-                <InputField label="Annual Turnover" icon="cash-outline" placeholder="e.g. 5 - 25 Cr" value={profileData.annualTurnover} onChangeText={(val: string) => handleChange("annualTurnover", val)} />
-
-                <InputField label="Business Address" icon="location-outline" placeholder="Enter Business Address" value={profileData.businessAddress} onChangeText={(val: string) => handleChange("businessAddress", val)} />
+            {initialLoading ? (
+              <View style={{ py: 48, minHeight: 250, justifyContent: 'center', alignItems: 'center' }}>
+                <ActivityIndicator size="large" color="#1E3A8A" />
+                <Text style={{ marginTop: 16 }} className="text-slate-500 font-jakarta-medium text-center">Loading details...</Text>
               </View>
+            ) : (
+              <>
+                {activeTab === "Business" && (
+                  <View>
+                    <InputField label="Company Name" icon="briefcase-outline" placeholder="Your Company Name" value={profileData.companyName} onChangeText={(val: string) => handleChange("companyName", val)} />
+                    <InputField label="CEO Name" icon="person-outline" placeholder="CEO / Owner Name" value={profileData.ceoName} onChangeText={(val: string) => handleChange("ceoName", val)} />
+                    <InputField label="GST Number" icon="receipt-outline" placeholder="GST Identification Number" value={profileData.gstNumber} onChangeText={(val: string) => handleChange("gstNumber", val)} />
+                    <InputField label="Established Date" icon="calendar-outline" placeholder="dd/mm/yyyy" value={profileData.establishedDate} onChangeText={(val: string) => handleChange("establishedDate", val)} />
+
+                    <DropdownField
+                      label="Ownership Type"
+                      icon="people-outline"
+                      placeholder="Proprietorship"
+                      value={profileData.ownershipType}
+                      onSelect={(val: string) => handleChange("ownershipType", val)}
+                      options={["Proprietorship", "Partnership", "Private Limited", "Public Limited", "LLP", "Other"]}
+                    />
+                    <DropdownField
+                      label="Business Field"
+                      icon="layers-outline"
+                      placeholder={isLoading ? "Loading industries..." : "Select an industry"}
+                      value={profileData.businessField}
+                      onSelect={(val: string) => handleChange("businessField", val)}
+                      options={industryOptions}
+                    />
+                    <DropdownField
+                      label="Business Type"
+                      icon="storefront-outline"
+                      placeholder="Wholesaler"
+                      value={profileData.businessType}
+                      onSelect={(val: string) => handleChange("businessType", val)}
+                      options={["Wholesaler", "Manufacturer", "Retailer", "Distributor", "Service Provider", "Trader", "Other"]}
+                    />
+                    <DropdownField
+                      label="Number of Employees"
+                      icon="people-circle-outline"
+                      placeholder="Select Employees"
+                      value={profileData.employeeCount}
+                      onSelect={(val: string) => handleChange("employeeCount", val)}
+                      options={employeNumber}
+                    />
+
+                    <InputField label="Annual Turnover" icon="cash-outline" placeholder="e.g. 5 - 25 Cr" value={profileData.annualTurnover} onChangeText={(val: string) => handleChange("annualTurnover", val)} />
+
+                    <InputField label="Business Address" icon="location-outline" placeholder="Enter Business Address" value={profileData.businessAddress} onChangeText={(val: string) => handleChange("businessAddress", val)} />
+                  </View>
+                )}
+
+                {activeTab === "Bank" && (
+                  <View>
+                    <InputField label="Account Number" icon="keypad-outline" placeholder="Account Number" keyboardType="number-pad" value={profileData.accountNumber} onChangeText={(val: string) => handleChange("accountNumber", val)} />
+                    <InputField label="Account Holder Name" icon="person-outline" placeholder="Account Holder Name" value={profileData.accountHolderName} onChangeText={(val: string) => handleChange("accountHolderName", val)} />
+                    <InputField label="Bank Name" icon="business-outline" placeholder="Bank Name" value={profileData.bankName} onChangeText={(val: string) => handleChange("bankName", val)} />
+                    <InputField label="Branch Name" icon="git-branch-outline" placeholder="Branch Name" value={profileData.branchName} onChangeText={(val: string) => handleChange("branchName", val)} />
+                    <InputField label="IFSC" icon="barcode-outline" placeholder="IFSC Code" value={profileData.ifsc} onChangeText={(val: string) => handleChange("ifsc", val)} />
+                  </View>
+                )}
+
+                {activeTab === "Additional Info" && (
+                  <View>
+                    <InputField label="PAN Number" icon="card-outline" placeholder="PAN Number" value={profileData.panNumber} onChangeText={(val: string) => handleChange("panNumber", val)} />
+                    <InputField label="Aadhaar Number" icon="finger-print-outline" placeholder="Aadhaar Number" keyboardType="number-pad" value={profileData.aadhaarNumber} onChangeText={(val: string) => handleChange("aadhaarNumber", val)} />
+                    <InputField label="TAN Number" icon="document-text-outline" placeholder="TAN Number" value={profileData.tanNumber} onChangeText={(val: string) => handleChange("tanNumber", val)} />
+                  </View>
+                )}
+
+                {activeTab === "Social" && (
+                  <View>
+                    <InputField label="WhatsApp" icon="logo-whatsapp" placeholder="https://wa.me/..." value={profileData.whatsApp} onChangeText={(val: string) => handleChange("whatsApp", val)} />
+                    <InputField label="LinkedIn" icon="logo-linkedin" placeholder="LinkedIn" value={profileData.linkedIn} onChangeText={(val: string) => handleChange("linkedIn", val)} />
+                    <InputField label="Instagram" icon="logo-instagram" placeholder="Instagram" value={profileData.instagram} onChangeText={(val: string) => handleChange("instagram", val)} />
+                    <InputField label="Facebook" icon="logo-facebook" placeholder="Facebook" value={profileData.facebook} onChangeText={(val: string) => handleChange("facebook", val)} />
+                    <InputField label="Telegram" icon="paper-plane-outline" placeholder="Telegram" value={profileData.telegram} onChangeText={(val: string) => handleChange("telegram", val)} />
+                    <InputField label="YouTube" icon="logo-youtube" placeholder="YouTube" value={profileData.youtube} onChangeText={(val: string) => handleChange("youtube", val)} />
+                    <InputField label="X (Twitter)" icon="logo-twitter" placeholder="X (Twitter)" value={profileData.twitter} onChangeText={(val: string) => handleChange("twitter", val)} />
+                  </View>
+                )}
+
+                {/* Placeholder for the other tabs shown in UI */}
+                {(activeTab === "Reviews" || activeTab === "Performance" || activeTab === "Docs") && (
+                  <View className="py-10 items-center justify-center">
+                    <Ionicons name="construct-outline" size={48} color="#CBD5E1" className="mb-4" />
+                    <Text className="text-slate-500 font-jakarta-medium text-center">
+                      {activeTab} module is coming soon.
+                    </Text>
+                  </View>
+                )}
+
+                {loading && (
+                  <ActivityIndicator size="small" color="#1E3A8A" style={{ marginVertical: 10 }} />
+                )}
+
+                <TouchableOpacity
+                  onPress={handleSaveProfile}
+                  className="bg-blue-900 rounded-2xl h-14 items-center justify-center mt-4 shadow-lg shadow-blue-900/30 active:opacity-90"
+                >
+                  <Text className="text-white text-[16px] font-jakarta-bold">Save</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  onPress={() => setLogoutConfirmVisible(true)}
+                  className="flex-row border border-rose-200 bg-rose-50/50 rounded-2xl h-14 items-center justify-center mt-4 active:bg-rose-100/50"
+                >
+                  <Ionicons name="log-out-outline" size={20} color="#E11D48" style={{ marginRight: 8 }} />
+                  <Text className="text-rose-600 text-[16px] font-jakarta-bold">Log Out</Text>
+                </TouchableOpacity>
+              </>
             )}
-
-            {activeTab === "Bank" && (
-              <View>
-                <InputField label="Account Number" icon="keypad-outline" placeholder="Account Number" keyboardType="number-pad" value={profileData.accountNumber} onChangeText={(val: string) => handleChange("accountNumber", val)} />
-                <InputField label="Account Holder Name" icon="person-outline" placeholder="Account Holder Name" value={profileData.accountHolderName} onChangeText={(val: string) => handleChange("accountHolderName", val)} />
-                <InputField label="Bank Name" icon="business-outline" placeholder="Bank Name" value={profileData.bankName} onChangeText={(val: string) => handleChange("bankName", val)} />
-                <InputField label="Branch Name" icon="git-branch-outline" placeholder="Branch Name" value={profileData.branchName} onChangeText={(val: string) => handleChange("branchName", val)} />
-                <InputField label="IFSC" icon="barcode-outline" placeholder="IFSC Code" value={profileData.ifsc} onChangeText={(val: string) => handleChange("ifsc", val)} />
-              </View>
-            )}
-
-            {activeTab === "Additional Info" && (
-              <View>
-                <InputField label="PAN Number" icon="card-outline" placeholder="PAN Number" value={profileData.panNumber} onChangeText={(val: string) => handleChange("panNumber", val)} />
-                <InputField label="Aadhaar Number" icon="finger-print-outline" placeholder="Aadhaar Number" keyboardType="number-pad" value={profileData.aadhaarNumber} onChangeText={(val: string) => handleChange("aadhaarNumber", val)} />
-                <InputField label="TAN Number" icon="document-text-outline" placeholder="TAN Number" value={profileData.tanNumber} onChangeText={(val: string) => handleChange("tanNumber", val)} />
-              </View>
-            )}
-
-            {activeTab === "Social" && (
-              <View>
-                <InputField label="WhatsApp" icon="logo-whatsapp" placeholder="https://wa.me/..." value={profileData.whatsApp} onChangeText={(val: string) => handleChange("whatsApp", val)} />
-                <InputField label="LinkedIn" icon="logo-linkedin" placeholder="LinkedIn" value={profileData.linkedIn} onChangeText={(val: string) => handleChange("linkedIn", val)} />
-                <InputField label="Instagram" icon="logo-instagram" placeholder="Instagram" value={profileData.instagram} onChangeText={(val: string) => handleChange("instagram", val)} />
-                <InputField label="Facebook" icon="logo-facebook" placeholder="Facebook" value={profileData.facebook} onChangeText={(val: string) => handleChange("facebook", val)} />
-                <InputField label="Telegram" icon="paper-plane-outline" placeholder="Telegram" value={profileData.telegram} onChangeText={(val: string) => handleChange("telegram", val)} />
-                <InputField label="YouTube" icon="logo-youtube" placeholder="YouTube" value={profileData.youtube} onChangeText={(val: string) => handleChange("youtube", val)} />
-                <InputField label="X (Twitter)" icon="logo-twitter" placeholder="X (Twitter)" value={profileData.twitter} onChangeText={(val: string) => handleChange("twitter", val)} />
-              </View>
-            )}
-
-            {/* Placeholder for the other tabs shown in UI */}
-            {(activeTab === "Reviews" || activeTab === "Performance" || activeTab === "Docs") && (
-              <View className="py-10 items-center justify-center">
-                <Ionicons name="construct-outline" size={48} color="#CBD5E1" className="mb-4" />
-                <Text className="text-slate-500 font-jakarta-medium text-center">
-                  {activeTab} module is coming soon.
-                </Text>
-              </View>
-            )}
-
-            {loading && (
-              <ActivityIndicator size="small" color="#1E3A8A" style={{ marginVertical: 10 }} />
-            )}
-
-            <TouchableOpacity
-              onPress={handleSaveProfile}
-              className="bg-blue-900 rounded-2xl h-14 items-center justify-center mt-4 shadow-lg shadow-blue-900/30 active:opacity-90"
-            >
-              <Text className="text-white text-[16px] font-jakarta-bold">Save</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              onPress={() => setLogoutConfirmVisible(true)}
-              className="flex-row border border-rose-200 bg-rose-50/50 rounded-2xl h-14 items-center justify-center mt-4 active:bg-rose-100/50"
-            >
-              <Ionicons name="log-out-outline" size={20} color="#E11D48" style={{ marginRight: 8 }} />
-              <Text className="text-rose-600 text-[16px] font-jakarta-bold">Log Out</Text>
-            </TouchableOpacity>
 
           </View>
         </View>

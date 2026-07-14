@@ -8,28 +8,21 @@ import { Image } from "expo-image";
 import { useRouter } from "expo-router";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
-  Linking,
-  Platform,
-  ScrollView,
-  Text,
-  TouchableOpacity,
-  useWindowDimensions,
-  View,
+    Linking,
+    Platform,
+    ScrollView,
+    Text,
+    TouchableOpacity,
+    useWindowDimensions,
+    View,
 } from "react-native";
 import Animated, {
-  cancelAnimation,
-  runOnJS,
-  runOnUI,
-  scrollTo,
-  SharedValue,
-  useAnimatedReaction,
-  useAnimatedRef,
-  useSharedValue,
-  withDelay,
-  withRepeat,
-  withTiming,
+    runOnJS,
+    SharedValue,
+    useAnimatedReaction,
+    useAnimatedRef,
+    useSharedValue,
 } from "react-native-reanimated";
-import Carousel from "react-native-reanimated-carousel";
 
 type Media = {
   _id: string;
@@ -210,7 +203,7 @@ const SkeletonProductCard = ({ cardWidth }: { cardWidth: number }) => (
   </View>
 );
 
-const HorizontalProductList = ({ isScrolling }: { isScrolling?: SharedValue<boolean> }) => {
+const HorizontalProductList = ({ isScrolling }: { isScrolling?: SharedValue<boolean> } = {}) => {
   const isFocused = useIsFocused();
   const router = useRouter();
   const { width: screenWidth } = useWindowDimensions();
@@ -223,7 +216,7 @@ const HorizontalProductList = ({ isScrolling }: { isScrolling?: SharedValue<bool
 
   const initialProducts = getInitialCachedProducts();
   const [products, setProducts] = useState<Product[]>(initialProducts);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(initialProducts.length === 0);
 
   // Reanimated UI-Thread autoplay variables
   const flatListRef = useAnimatedRef<Animated.FlatList<Product>>();
@@ -232,11 +225,6 @@ const HorizontalProductList = ({ isScrolling }: { isScrolling?: SharedValue<bool
   const autoplayPulse = useSharedValue(0);
 
   useEffect(() => {
-    // JS Thread protection
-    const mountTimer = setTimeout(() => {
-      setIsLoading(false);
-    }, 250);
-
     const fetchTrendingProducts = async () => {
       try {
         const json = await fetchWithCache(API_URL);
@@ -256,15 +244,11 @@ const HorizontalProductList = ({ isScrolling }: { isScrolling?: SharedValue<bool
     };
 
     fetchTrendingProducts();
-
-    return () => {
-      clearTimeout(mountTimer);
-    };
   }, []);
 
   const replicatedData = useMemo(() => {
     if (!products || products.length === 0) return [];
-    return Array(5).fill(products).flat();
+    return Array(3).fill(products).flat();
   }, [products]);
 
   const baseMiddleIndex = useMemo(() => {
@@ -274,7 +258,7 @@ const HorizontalProductList = ({ isScrolling }: { isScrolling?: SharedValue<bool
   }, [replicatedData.length, products.length]);
 
   // Autoplay timer ref
-  const autoplayTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const autoplayTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const stopAutoPlay = useCallback(() => {
     if (autoplayTimerRef.current) {
@@ -288,7 +272,7 @@ const HorizontalProductList = ({ isScrolling }: { isScrolling?: SharedValue<bool
     if (products.length <= 0) return;
 
     autoplayTimerRef.current = setInterval(() => {
-      if (!isFocused || isModalVisible || (isScrolling && isScrolling.value)) {
+      if (!isFocused || isModalVisible) {
         return;
       }
 
@@ -314,18 +298,20 @@ const HorizontalProductList = ({ isScrolling }: { isScrolling?: SharedValue<bool
         }, 500);
       }
     }, 2500);
-  }, [isFocused, isModalVisible, products.length, replicatedData.length, baseMiddleIndex, isScrolling, stopAutoPlay]);
+  }, [isFocused, isModalVisible, products.length, replicatedData.length, baseMiddleIndex, stopAutoPlay]);
 
+  // Pause autoplay while the main home feed is being scrolled, resume once it settles
   useAnimatedReaction(
     () => isScrolling?.value ?? false,
-    (scrolling) => {
+    (scrolling, previousScrolling) => {
+      if (scrolling === previousScrolling) return;
       if (scrolling) {
         runOnJS(stopAutoPlay)();
       } else {
         runOnJS(startAutoPlay)();
       }
     },
-    [startAutoPlay, stopAutoPlay]
+    [isScrolling]
   );
 
   useEffect(() => {
@@ -346,6 +332,11 @@ const HorizontalProductList = ({ isScrolling }: { isScrolling?: SharedValue<bool
       }
     }
   }, [isFocused, replicatedData, baseMiddleIndex, products.length, isModalVisible, startAutoPlay, stopAutoPlay]);
+
+  // Guarantee background timer clearance on unmount/screen change
+  useEffect(() => {
+    return () => stopAutoPlay();
+  }, [stopAutoPlay]);
 
   const handleScrollBegin = useCallback(() => {
     stopAutoPlay();

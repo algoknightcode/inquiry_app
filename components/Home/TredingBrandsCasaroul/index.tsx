@@ -7,7 +7,7 @@ import {
   useWindowDimensions,
   View,
 } from "react-native";
-import Animated, {
+import {
   runOnJS,
   SharedValue,
   useAnimatedReaction,
@@ -27,26 +27,56 @@ const mockBrands: Brand[] = [
   { id: "2", name: "Vands Engineering", category: "Engineering Solutions", initials: "VA", colors: ["#4FACFE", "#00F2FE"] },
   { id: "3", name: "Ai Solutions", category: "IT & Technology", initials: "Ai", colors: ["#B185FC", "#8A4CFC"] },
   { id: "4", name: "BSM Enterprises", category: "Manufacturing", initials: "BS", colors: ["#38EF7D", "#11998E"] },
-  { id: "5", name: "Shree Shakti Infra", category: "Building & Construction", initials: "SR", colors: ["#FAD961", "#F76B1C"] },
   { id: "6", name: "Eco Corp", category: "Sustainability", initials: "EC", colors: ["#10B981", "#059669"] },
 ];
 
-const BrandCard = React.memo(({ brand, dynamicStyles }: { brand: Brand; dynamicStyles: any }) => {
+interface BrandCardProps {
+  brand: Brand;
+  itemWidth: number;
+  scale: number;
+  marqueeHeight: number;
+}
+
+const BrandCard = React.memo(({ brand, itemWidth, scale, marqueeHeight }: BrandCardProps) => {
+  const avatarSize = useMemo(() => 52 * scale, [scale]);
+  const avatarStyle = useMemo(() => ({
+    width: avatarSize,
+    height: avatarSize,
+    borderRadius: avatarSize * 0.32,
+    backgroundColor: brand.colors[0],
+  }), [avatarSize, brand.colors]);
+
+  const avatarTextStyle = useMemo(() => ({
+    fontSize: 18 * scale,
+  }), [scale]);
+
+  const brandNameStyle = useMemo(() => ({
+    fontSize: 15.5 * scale,
+  }), [scale]);
+
+  const categoryStyle = useMemo(() => ({
+    fontSize: 12.5 * scale,
+  }), [scale]);
+
   return (
     <View
       style={{ 
-        width: dynamicStyles.itemWidth, 
-        height: dynamicStyles.marqueeHeight,
+        width: itemWidth, 
+        height: marqueeHeight,
+        overflow: 'hidden',
       }}
-      className="flex-row items-center justify-between pr-1.5"
+      className="flex-row items-center justify-between pr-1"
     >
-      <Pressable className="flex-row items-center flex-1 active:opacity-70 transition-opacity">
+      <Pressable 
+        style={{ width: '92%', flexDirection: 'row', alignItems: 'center' }}
+        className="active:opacity-70 transition-opacity"
+      >
         <View
-          style={[dynamicStyles.avatar, { backgroundColor: brand.colors[0] }]}
-          className="items-center justify-center"
+          style={avatarStyle}
+          className="items-center justify-center shrink-0"
         >
           <Text
-            style={dynamicStyles.avatarText}
+            style={avatarTextStyle}
             className="font-jakarta-bold text-white tracking-wide"
             numberOfLines={1}
             adjustsFontSizeToFit 
@@ -55,9 +85,9 @@ const BrandCard = React.memo(({ brand, dynamicStyles }: { brand: Brand; dynamicS
           </Text>
         </View>
 
-        <View style={dynamicStyles.infoWrapper} className="ml-3 justify-center shrink">
+        <View style={{ flex: 1, minWidth: 0 }} className="ml-3 justify-center">
           <Text
-            style={dynamicStyles.brandName}
+            style={brandNameStyle}
             className="text-slate-800 font-jakarta-bold tracking-tight"
             numberOfLines={1} 
             ellipsizeMode="tail"
@@ -65,7 +95,7 @@ const BrandCard = React.memo(({ brand, dynamicStyles }: { brand: Brand; dynamicS
             {brand.name}
           </Text>
           <Text
-            style={dynamicStyles.category}
+            style={categoryStyle}
             className="text-slate-400 font-jakarta mt-0.5"
             numberOfLines={1} 
             ellipsizeMode="tail"
@@ -74,38 +104,21 @@ const BrandCard = React.memo(({ brand, dynamicStyles }: { brand: Brand; dynamicS
           </Text>
         </View>
       </Pressable>
-      <View style={{ height: dynamicStyles.dividerHeight }} className="w-[1px] bg-slate-200/50" />
+      <View style={{ height: "55%" }} className="w-[1px] bg-slate-200/50" />
     </View>
   );
 });
 
-function TrendingBrandsCarousel({ isScrolling }: { isScrolling?: SharedValue<boolean> }) {
+function TrendingBrandsCarousel() {
   const isFocused = useIsFocused();
   const router = useRouter();
   const { width: screenWidth } = useWindowDimensions();
 
-  const [autoPlay, setAutoPlay] = useState(true);
-
-  // Pause carousel autoplay while parent list is scrolling to save JS resources
-  useAnimatedReaction(
-    () => isScrolling?.value ?? false,
-    (scrolling, previousValue) => {
-      if (scrolling !== previousValue) {
-        runOnJS(setAutoPlay)(!scrolling);
-      }
-    },
-    [isScrolling]
-  );
-
-  const scale = useMemo(() => {
+  const { scale, paddingHorizontal, itemWidth, marqueeHeight } = useMemo(() => {
     const isTablet = screenWidth >= 768;
-    return isTablet ? 1.25 : Math.max(0.85, Math.min(1.15, screenWidth / 375));
-  }, [screenWidth]);
-
-  const dynamicStyles = useMemo(() => {
-    const avatarSize = 52 * scale;
-    const paddingHorizontal = 16 * scale;
-    const carouselWidth = screenWidth - paddingHorizontal * 2;
+    const computedScale = isTablet ? 1.25 : Math.max(0.85, Math.min(1.15, screenWidth / 375));
+    const padHorizontal = 16 * computedScale;
+    const carouselWidth = screenWidth - padHorizontal * 2;
 
     let itemsPerView = 2;
     if (screenWidth >= 1024) itemsPerView = 4;
@@ -113,29 +126,13 @@ function TrendingBrandsCarousel({ isScrolling }: { isScrolling?: SharedValue<boo
     else if (screenWidth >= 480) itemsPerView = 2.5;
     else if (screenWidth < 350) itemsPerView = 1.7;
 
-    const brandNameSize = 15.5 * scale;
-    const brandNameLineHeight = brandNameSize * 1.3;
-    const categorySize = 12.5 * scale;
-    const categoryLineHeight = categorySize * 1.3;
-    const infoWrapperHeight = brandNameLineHeight + categoryLineHeight + (4 * scale);
-
     return {
-      paddingHorizontal,
-      cardPaddingTop: 22 * scale,
-      cardPaddingBottom: 20 * scale,
-      marqueeHeight: 64 * scale,
-      dividerHeight: 36 * scale,
-      titleSize: 22 * scale,
-      subtitleSize: 13 * scale,
-      bottomTextSize: 13.5 * scale,
+      scale: computedScale,
+      paddingHorizontal: padHorizontal,
       itemWidth: carouselWidth / itemsPerView,
-      avatarText: { fontSize: 18 * scale },
-      brandName: { fontSize: brandNameSize, lineHeight: brandNameLineHeight },
-      category: { fontSize: categorySize, lineHeight: categoryLineHeight },
-      infoWrapper: { minWidth: 90 * scale, height: infoWrapperHeight, justifyContent: 'center' },
-      avatar: { width: avatarSize, height: avatarSize, borderRadius: avatarSize * 0.32 },
+      marqueeHeight: 64 * computedScale,
     };
-  }, [scale, screenWidth]);
+  }, [screenWidth]);
 
   const handleFreeListingPress = useCallback(() => {
     router.push("/Seller/auth/Signup");
@@ -143,14 +140,14 @@ function TrendingBrandsCarousel({ isScrolling }: { isScrolling?: SharedValue<boo
 
   return (
     <View
-      style={{ paddingHorizontal: dynamicStyles.paddingHorizontal }}
+      style={{ paddingHorizontal }}
       className="mt-1 mb-4"
     >
       <View className="flex-row justify-between items-end mb-3.5 px-1">
         <View className="flex-1">
           <View className="flex-row items-center">
             <Text
-              style={{ fontSize: dynamicStyles.titleSize }}
+              style={{ fontSize: 22 * scale }}
               className="text-slate-900 font-jakarta-bold tracking-tight mr-1.5"
             >
               Trending Brands
@@ -162,7 +159,7 @@ function TrendingBrandsCarousel({ isScrolling }: { isScrolling?: SharedValue<boo
             </View>
           </View>
           <Text
-            style={{ fontSize: dynamicStyles.subtitleSize }}
+            style={{ fontSize: 13 * scale }}
             className="text-slate-400 font-jakarta mt-0.5"
           >
             Discover top-performing partners active on InquiryBazaar
@@ -172,25 +169,30 @@ function TrendingBrandsCarousel({ isScrolling }: { isScrolling?: SharedValue<boo
 
       <View
         style={{
-          paddingTop: dynamicStyles.cardPaddingTop,
-          paddingBottom: dynamicStyles.cardPaddingBottom,
-          paddingHorizontal: dynamicStyles.paddingHorizontal,
+          paddingTop: 22 * scale,
+          paddingBottom: 20 * scale,
+          paddingHorizontal,
         }}
         className="bg-white border border-slate-200 rounded-[28px]"
       >
-        <View style={{ height: dynamicStyles.marqueeHeight, width: "100%", justifyContent: 'center' }}>
+        <View style={{ height: marqueeHeight, width: "100%", justifyContent: 'center' }}>
           {isFocused && (
             <Carousel
               loop={true}
-              autoPlay={autoPlay}
+              autoPlay={true}
               autoPlayInterval={2500}
               scrollAnimationDuration={800}
               data={mockBrands}
-              width={dynamicStyles.itemWidth}
-              height={dynamicStyles.marqueeHeight}
-              style={{ width: screenWidth - dynamicStyles.paddingHorizontal * 2 }}
+              width={itemWidth}
+              height={marqueeHeight}
+              style={{ width: screenWidth - paddingHorizontal * 2 }}
               renderItem={({ item }) => (
-                <BrandCard brand={item} dynamicStyles={dynamicStyles} />
+                <BrandCard
+                  brand={item}
+                  itemWidth={itemWidth}
+                  scale={scale}
+                  marqueeHeight={marqueeHeight}
+                />
               )}
               onConfigurePanGesture={(gesture) => {
                 "worklet";
@@ -206,7 +208,7 @@ function TrendingBrandsCarousel({ isScrolling }: { isScrolling?: SharedValue<boo
           <View className="flex-row items-center py-1 px-2.5 bg-emerald-50/60 border border-emerald-100/40 rounded-full">
             <View className="w-1.5 h-1.5 rounded-full bg-emerald-500 mr-1.5" />
             <Text
-              style={{ fontSize: dynamicStyles.bottomTextSize * 0.85 }}
+              style={{ fontSize: 13.5 * scale * 0.85 }}
               className="text-emerald-700 font-jakarta-semibold"
             >
               100+ verified brands 
@@ -218,7 +220,7 @@ function TrendingBrandsCarousel({ isScrolling }: { isScrolling?: SharedValue<boo
             className="active:opacity-70 flex-row items-center py-1 px-2.5 bg-orange-50 border border-orange-100/80 rounded-full"
           >
             <Text
-              style={{ fontSize: dynamicStyles.bottomTextSize * 0.85 }}
+              style={{ fontSize: 13.5 * scale * 0.85 }}
               className="text-slate-700 font-jakarta-semibold"
             >
               Want to be featured?

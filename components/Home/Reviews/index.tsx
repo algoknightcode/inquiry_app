@@ -1,25 +1,20 @@
 import { useIsFocused } from "@react-navigation/native";
 import { Image } from "expo-image";
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
-  Dimensions,
-  StyleSheet,
-  Text,
-  View,
+    Dimensions,
+    StyleSheet,
+    Text,
+    View,
 } from "react-native";
-// 1. Reanimated imports for UI-Thread optimization
 import Animated, {
-  cancelAnimation,
-  runOnJS,
-  runOnUI,
-  scrollTo,
-  SharedValue,
-  useAnimatedReaction,
-  useAnimatedRef,
-  useAnimatedScrollHandler,
-  useSharedValue,
-  withRepeat,
-  withTiming,
+    runOnJS,
+    scrollTo,
+    SharedValue,
+    useAnimatedReaction,
+    useAnimatedRef,
+    useAnimatedScrollHandler,
+    useSharedValue,
 } from "react-native-reanimated";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
@@ -27,7 +22,6 @@ const CARD_WIDTH = Math.round(SCREEN_WIDTH * 0.88);
 const SPACING = 12;
 const ITEM_SIZE = CARD_WIDTH + SPACING;
 
-// ── Local company logos ────────────────────────────────────────────────────
 const client1 = require("../../../assets/images/Company_logo/client1logo.webp");
 const client2 = require("../../../assets/images/Company_logo/client2logo.webp");
 const client3 = require("../../../assets/images/Company_logo/client3logo.webp");
@@ -102,7 +96,6 @@ const testimonials: TestimonialData[] = [
   },
 ];
 
-// ── Optimised Static Card ──────────────────────────────────────────────────
 const TestimonialCard = React.memo(({ item }: { item: TestimonialData }) => (
   <View style={styles.cardContainer}>
     <View style={styles.logoContainer}>
@@ -114,7 +107,7 @@ const TestimonialCard = React.memo(({ item }: { item: TestimonialData }) => (
           item.logoHeight ? { height: item.logoHeight } : undefined,
         ]}
         contentFit="contain"
-        transition={0} // Faster instant load
+        transition={0} 
         cachePolicy="memory-disk"
       />
     </View>
@@ -133,84 +126,79 @@ const getItemLayout = (_: any, index: number) => ({
   index,
 });
 
-// ── Main Component ─────────────────────────────────────────────────────────
-export default function TestimonialCarousel({ isScrolling }: { isScrolling?: SharedValue<boolean> }) {
+export default function TestimonialCarousel({ isScrolling }: { isScrolling?: SharedValue<boolean> } = {}) {
   const isFocused = useIsFocused();
   const [activeDotIndex, setActiveDotIndex] = useState(0);
 
-  // 2. Data Replication for Seamless Infinite Loop
   const replicatedData = useMemo(() => Array(3).fill(testimonials).flat(), []);
   const baseMiddleIndex = useMemo(() => {
     const middle = Math.floor(replicatedData.length / 2);
     return middle - (middle % testimonials.length);
   }, [replicatedData.length]);
 
-  // 3. Reanimated Core Hooks
   const flatListRef = useAnimatedRef<Animated.FlatList<TestimonialData>>();
   const scrollIndex = useSharedValue(baseMiddleIndex);
-  const isAutoPlaying = useSharedValue(false);
-  const autoplayPulse = useSharedValue(0);
+  
+  // Timer Reference for JS autoplay intervals
+  const autoplayTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  // 4. Auto-play using useAnimatedReaction + withRepeat pattern (proven pattern)
-  useAnimatedReaction(
-    () => autoplayPulse.value,
-    (currentPulse, prevPulse) => {
+  const stopAutoPlay = useCallback(() => {
+    if (autoplayTimerRef.current) {
+      clearInterval(autoplayTimerRef.current);
+      autoplayTimerRef.current = null;
+    }
+  }, []);
+
+  const startAutoPlay = useCallback(() => {
+    stopAutoPlay();
+    if (replicatedData.length <= 1) return;
+
+    autoplayTimerRef.current = setInterval(() => {
       if (!isFocused) {
         return;
       }
-      if (prevPulse !== null && currentPulse < prevPulse && isAutoPlaying.value) {
-        scrollIndex.value = scrollIndex.value + 1;
-        scrollTo(flatListRef, scrollIndex.value * ITEM_SIZE, 0, true);
-        runOnJS(setActiveDotIndex)(scrollIndex.value % testimonials.length);
-      }
-    },
-    [isFocused]
-  );
+      const nextIndex = scrollIndex.value + 1;
+      const safeIndex = nextIndex >= replicatedData.length - 2 ? baseMiddleIndex : nextIndex;
 
-  // Start autoplay timer on component focus
+      scrollIndex.value = safeIndex;
+      setActiveDotIndex(safeIndex % testimonials.length);
+
+      flatListRef.current?.scrollToIndex({
+        index: safeIndex,
+        animated: true,
+      });
+    }, 4000);
+  }, [isFocused, replicatedData.length, baseMiddleIndex, stopAutoPlay]);
+
+  // Autoplay control on focus
   useEffect(() => {
     if (isFocused && replicatedData.length > 0) {
-      // Set initial center position immediately
+      scrollIndex.value = baseMiddleIndex;
+      setActiveDotIndex(0);
+      
       const initTimer = setTimeout(() => {
         flatListRef.current?.scrollToIndex({ index: baseMiddleIndex, animated: false });
-        scrollIndex.value = baseMiddleIndex;
-        setActiveDotIndex(0);
-
-        // Start UI Thread Autoplay with 4-second intervals
-        runOnUI(() => {
-          'worklet';
-          isAutoPlaying.value = true;
-          cancelAnimation(autoplayPulse);
-          autoplayPulse.value = withRepeat(
-            withTiming(1, { duration: 4000 }),
-            -1,
-            false
-          );
-        })();
+        startAutoPlay();
       }, 300);
 
       return () => {
         clearTimeout(initTimer);
-        runOnUI(() => {
-          'worklet';
-          isAutoPlaying.value = false;
-          cancelAnimation(autoplayPulse);
-        })();
+        stopAutoPlay();
       };
     } else {
-      runOnUI(() => {
-        'worklet';
-        isAutoPlaying.value = false;
-        cancelAnimation(autoplayPulse);
-      })();
+      stopAutoPlay();
     }
-  }, [isFocused, baseMiddleIndex, scrollIndex, flatListRef, autoplayPulse, isAutoPlaying, replicatedData.length]);
+  }, [isFocused, baseMiddleIndex, startAutoPlay, stopAutoPlay, replicatedData.length]);
 
-  // 5. Scroll Handler completely on the UI Thread
+  // Guarantee background timer clearance on unmount/screen change
+  useEffect(() => {
+    return () => stopAutoPlay();
+  }, [stopAutoPlay]);
+
+  // Scroll Handler completely on the UI Thread
   const scrollHandler = useAnimatedScrollHandler({
     onBeginDrag: () => {
-      isAutoPlaying.value = false; // Pause on user interaction
-      cancelAnimation(autoplayPulse);
+      runOnJS(stopAutoPlay)();
     },
     onMomentumEnd: (event: any) => {
       const scrollOffset = event.contentOffset.x;
@@ -225,45 +213,22 @@ export default function TestimonialCarousel({ isScrolling }: { isScrolling?: Sha
 
       scrollIndex.value = currentIndex;
       runOnJS(setActiveDotIndex)(currentIndex % testimonials.length);
-
-      // Resume Autoplay
-      isAutoPlaying.value = true;
-      cancelAnimation(autoplayPulse);
-      autoplayPulse.value = withRepeat(
-        withTiming(1, { duration: 4000 }),
-        -1,
-        false
-      );
+      runOnJS(startAutoPlay)();
     },
   });
 
-  // ── Pause carousel during main feed scroll ──
+  // Pause autoplay while the main home feed is being scrolled, resume once it settles
   useAnimatedReaction(
     () => isScrolling?.value ?? false,
-    (scrolling) => {
-      if (!isFocused) {
-        isAutoPlaying.value = false;
-        cancelAnimation(autoplayPulse);
-        return;
-      }
+    (scrolling, previousScrolling) => {
+      if (scrolling === previousScrolling) return;
       if (scrolling) {
-        // User is scrolling main feed - pause carousel
-        isAutoPlaying.value = false;
-        cancelAnimation(autoplayPulse);
+        runOnJS(stopAutoPlay)();
       } else {
-        // Scroll ended - resume carousel if focused
-        if (isFocused) {
-          isAutoPlaying.value = true;
-          cancelAnimation(autoplayPulse);
-          autoplayPulse.value = withRepeat(
-            withTiming(1, { duration: 4000 }),
-            -1,
-            false
-          );
-        }
+        runOnJS(startAutoPlay)();
       }
     },
-    [isFocused]
+    [isScrolling]
   );
 
   const renderItem = useCallback(({ item }: { item: TestimonialData }) => (
@@ -274,7 +239,6 @@ export default function TestimonialCarousel({ isScrolling }: { isScrolling?: Sha
     <View style={styles.mainContainer}>
       <Text style={styles.headerText}>What Our Clients Say</Text>
 
-      {/* 6. Animated.FlatList Replaces Standard FlatList */}
       <Animated.FlatList
         ref={flatListRef}
         data={replicatedData}
@@ -288,12 +252,8 @@ export default function TestimonialCarousel({ isScrolling }: { isScrolling?: Sha
         bounces={false}
         contentContainerStyle={{ paddingHorizontal: Math.round((SCREEN_WIDTH - CARD_WIDTH) / 2) }}
         getItemLayout={getItemLayout}
-        
-        // UI Thread Scroll Interactions
         onScroll={scrollHandler}
         scrollEventThrottle={16}
-        
-        // Optimizations
         initialNumToRender={2}
         maxToRenderPerBatch={2}
         windowSize={3}
@@ -315,7 +275,6 @@ export default function TestimonialCarousel({ isScrolling }: { isScrolling?: Sha
   );
 }
 
-// ── Styles ─────────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
   mainContainer: {
     paddingVertical: 28,

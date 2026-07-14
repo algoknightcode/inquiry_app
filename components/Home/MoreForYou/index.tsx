@@ -1,7 +1,7 @@
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { useIsFocused } from "@react-navigation/native";
 import { useRouter } from "expo-router";
-import React, { useCallback, useEffect, useMemo } from "react";
+import React, { useCallback, useEffect, useMemo, useRef } from "react";
 import {
     Linking,
     Text,
@@ -9,18 +9,14 @@ import {
     useWindowDimensions,
     View,
 } from "react-native";
-// 1. Import Reanimated for purely Native UI scrolling
 import Animated, {
-    cancelAnimation,
-    runOnUI,
+    runOnJS,
     scrollTo,
     SharedValue,
     useAnimatedReaction,
     useAnimatedRef,
     useAnimatedScrollHandler,
     useSharedValue,
-    withRepeat,
-    withTiming,
 } from "react-native-reanimated";
 
 export interface MoreForYouCard {
@@ -71,10 +67,9 @@ const cardsData: MoreForYouCard[] = [
 
 const CARDS_LENGTH = cardsData.length;
 const REPLICATED_COUNT = 3;
-const TOTAL_ITEMS = CARDS_LENGTH * REPLICATED_COUNT; // 12 items
-const BASE_MIDDLE = CARDS_LENGTH; // Starts exactly at index 4 (2nd copy)
+const TOTAL_ITEMS = CARDS_LENGTH * REPLICATED_COUNT; 
+const BASE_MIDDLE = CARDS_LENGTH; 
 
-// 2. Extracted and Memoized Card Component
 const MoreForYouCardItem = React.memo(({
   item,
   cardWidth,
@@ -90,7 +85,6 @@ const MoreForYouCardItem = React.memo(({
 }) => {
   const isPopular = item.isPopular;
   
-  // Pre-calculated strict heights to skip layout passes
   const titleContainerHeight = 15 * scale * 1.3 * 2;
   const descContainerHeight = 13 * scale * 1.4 * 4.5;
 
@@ -142,7 +136,6 @@ const MoreForYouCardItem = React.memo(({
       </View>
 
       <View style={{ height: 44 * scale, justifyContent: 'flex-end' }} className="w-full mt-2">
-        {/* 3. Changed to TouchableOpacity: Avoids inline style function memory allocation on every render */}
         <TouchableOpacity
           activeOpacity={0.7}
           onPress={() => onPress(item.route)}
@@ -164,17 +157,14 @@ const MoreForYouCardItem = React.memo(({
   );
 }, (prev, next) => prev.item.id === next.item.id && prev.cardWidth === next.cardWidth);
 
-
-export default function MoreForYou({ isScrolling }: { isScrolling?: SharedValue<boolean> }) {
+export default function MoreForYou({ isScrolling }: { isScrolling?: SharedValue<boolean> } = {}) {
   const isFocused = useIsFocused();
   const { width: screenWidth } = useWindowDimensions();
   const router = useRouter();
 
-  // 4. Reanimated Refs & Shared Values
+  // Scroll and Reference Hooks
   const flatListRef = useAnimatedRef<Animated.FlatList<MoreForYouCard>>();
   const currentIndex = useSharedValue(BASE_MIDDLE);
-  const autoplayPulse = useSharedValue(0);
-  const isDragging = useSharedValue(false);
 
   const isTablet = screenWidth >= 768;
   const scale = isTablet ? 1.15 : Math.max(0.85, Math.min(1.1, screenWidth / 375));
@@ -186,80 +176,91 @@ export default function MoreForYou({ isScrolling }: { isScrolling?: SharedValue<
     return Array(REPLICATED_COUNT).fill(cardsData).flat();
   }, []);
 
-  // 5. Native Engine: Generates ticks strictly on the UI thread
-  const startAutoPlayUI = () => {
-    'worklet';
-    if (!isFocused) return;
-    autoplayPulse.value = 0;
-    autoplayPulse.value = withRepeat(
-      withTiming(1, { duration: 5000 }),
-      -1
-    );
-  };
+  // JS Thread Autoplay Interval
+  const autoplayTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  const stopAutoPlayUI = () => {
-    'worklet';
-    cancelAnimation(autoplayPulse);
-  };
+  const stopAutoPlay = useCallback(() => {
+    if (autoplayTimerRef.current) {
+      clearInterval(autoplayTimerRef.current);
+      autoplayTimerRef.current = null;
+    }
+  }, []);
 
-  // ── Pause carousel during main feed scroll ──
+  const startAutoPlay = useCallback(() => {
+    stopAutoPlay();
+    if (replicatedData.length <= 1) return;
+
+    autoplayTimerRef.current = setInterval(() => {
+      if (!isFocused) {
+        return;
+      }
+      let nextIndex = currentIndex.value + 1;
+      
+      if (nextIndex >= TOTAL_ITEMS - 2) {
+        const remainder = nextIndex % CARDS_LENGTH;
+        const safeMiddleIndex = BASE_MIDDLE + remainder;
+        
+        flatListRef.current?.scrollToIndex({
+          index: safeMiddleIndex,
+          animated: false,
+        });
+        currentIndex.value = safeMiddleIndex;
+      } else {
+        currentIndex.value = nextIndex;
+        flatListRef.current?.scrollToIndex({
+          index: nextIndex,
+          animated: true,
+        });
+      }
+    }, 5000);
+  }, [isFocused, replicatedData.length, stopAutoPlay]);
+
+  // Autoplay control on focus
+  useEffect(() => {
+    if (isFocused) {
+      currentIndex.value = BASE_MIDDLE;
+      const initTimer = setTimeout(() => {
+        flatListRef.current?.scrollToIndex({ index: BASE_MIDDLE, animated: false });
+        startAutoPlay();
+      }, 300);
+
+      return () => {
+        clearTimeout(initTimer);
+        stopAutoPlay();
+      };
+    } else {
+      stopAutoPlay();
+    }
+  }, [isFocused, startAutoPlay, stopAutoPlay]);
+
+  // Guarantee background timer clearance on unmount/screen change
+  useEffect(() => {
+    return () => stopAutoPlay();
+  }, [stopAutoPlay]);
+
+  // Pause autoplay while the main home feed is being scrolled, resume once it settles
   useAnimatedReaction(
     () => isScrolling?.value ?? false,
-    (scrolling) => {
-      if (!isFocused) {
-        stopAutoPlayUI();
-        return;
-      }
+    (scrolling, previousScrolling) => {
+      if (scrolling === previousScrolling) return;
       if (scrolling) {
-        // User is scrolling main feed - pause carousel
-        stopAutoPlayUI();
+        runOnJS(stopAutoPlay)();
       } else {
-        // Scroll ended - resume carousel
-        startAutoPlayUI();
+        runOnJS(startAutoPlay)();
       }
     },
-    [isFocused]
+    [isScrolling]
   );
 
-  // 6. Native Reaction: Listens to the UI ticker and performs smooth or silent snaps
-  useAnimatedReaction(
-    () => autoplayPulse.value,
-    (currentPulse, prevPulse) => {
-      if (!isFocused) {
-        return;
-      }
-      if (prevPulse !== null && currentPulse < prevPulse && prevPulse > 0.9 && currentPulse < 0.1 && !isDragging.value) {
-        let nextIndex = currentIndex.value + 1;
-        
-        // Edge handling directly on the UI thread
-        if (nextIndex >= TOTAL_ITEMS - 2) {
-          const remainder = nextIndex % CARDS_LENGTH;
-          const safeMiddleIndex = BASE_MIDDLE + remainder;
-          
-          // Instant silent reset
-          scrollTo(flatListRef, safeMiddleIndex * cardWidth, 0, false);
-          currentIndex.value = safeMiddleIndex;
-        } else {
-          // Normal animated scroll
-          currentIndex.value = nextIndex;
-          scrollTo(flatListRef, nextIndex * cardWidth, 0, true);
-        }
-      }
-    },
-    [isFocused]
-  );
-
-  // 7. Bridgeless scroll handler for user touches
+  // Scroll handler for user touches
   const scrollHandler = useAnimatedScrollHandler({
     onBeginDrag: () => {
-      isDragging.value = true;
-      stopAutoPlayUI(); // Worklet executed natively
+      runOnJS(stopAutoPlay)(); 
     },
     onMomentumEnd: (event) => {
-      isDragging.value = false;
       let newIndex = Math.round(event.contentOffset.x / cardWidth);
 
-      // Silent edge correction natively if they dragged too far
+      // Edge snapping
       if (newIndex < 2 || newIndex > TOTAL_ITEMS - 3) {
         const remainder = newIndex % CARDS_LENGTH;
         newIndex = BASE_MIDDLE + remainder;
@@ -267,25 +268,9 @@ export default function MoreForYou({ isScrolling }: { isScrolling?: SharedValue<
       }
 
       currentIndex.value = newIndex;
-      startAutoPlayUI(); // Resume Native Engine
+      runOnJS(startAutoPlay)(); 
     }
   });
-
-  useEffect(() => {
-    if (!isFocused) {
-      stopAutoPlayUI();
-      return;
-    }
-
-    const initTimer = setTimeout(() => {
-      if (flatListRef.current) {
-        flatListRef.current.scrollToIndex({ index: BASE_MIDDLE, animated: false });
-      }
-      runOnUI(startAutoPlayUI)(); // Boot up the Native UI ticker once
-    }, 300);
-
-    return () => clearTimeout(initTimer);
-  }, [isFocused]);
 
   const handlePress = useCallback((route: string) => {
     if (route.startsWith("http://") || route.startsWith("https://")) {
@@ -337,7 +322,6 @@ export default function MoreForYou({ isScrolling }: { isScrolling?: SharedValue<
           windowSize={3}
           updateCellsBatchingPeriod={40}
           getItemLayout={getItemLayout}
-          // 8. Assigned Reanimated Worklet Handler
           onScroll={scrollHandler}
           scrollEventThrottle={16}
         />

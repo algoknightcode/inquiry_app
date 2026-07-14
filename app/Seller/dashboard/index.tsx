@@ -27,6 +27,15 @@ const Dashboard = () => {
   const [categoriesList, setCategoriesList] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
+  const isMounted = useRef(true);
+
+  useEffect(() => {
+    isMounted.current = true;
+    return () => {
+      isMounted.current = false;
+    };
+  }, []);
+
   const fetchDashboardData = useCallback(async (showLoader = false) => {
     if (showLoader) setIsLoading(true);
     try {
@@ -45,6 +54,8 @@ const Dashboard = () => {
             },
           }),
         ]);
+
+        if (!isMounted.current) return;
 
         // Safely process products
         if (results[0].status === "fulfilled" && results[0].value.ok) {
@@ -82,8 +93,10 @@ const Dashboard = () => {
     } catch (error) {
       console.error("Error fetching dashboard data:", error);
     } finally {
-      setIsLoading(false);
-      setRefreshing(false);
+      if (isMounted.current) {
+        setIsLoading(false);
+        setRefreshing(false);
+      }
     }
   }, []);
 

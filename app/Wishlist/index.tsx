@@ -2,22 +2,20 @@ import { setProductCache } from "@/utils/productCache";
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useFocusEffect, useRouter } from "expo-router";
-import React, { useState } from "react";
+import React, { useCallback, useState } from "react";
 import {
-  ActivityIndicator,
-  FlatList,
-  Image,
-  Linking,
-  Platform,
-  SafeAreaView,
-  StatusBar,
-  Text,
-  TouchableOpacity,
-  Vibration,
-  View,
+    ActivityIndicator,
+    FlatList,
+    Image,
+    Linking,
+    SafeAreaView,
+    StatusBar,
+    Text,
+    TouchableOpacity,
+    Vibration,
+    View
 } from "react-native";
 
-import { fetchWithCache } from "@/utils/apiCache";
 import EnquiryModal from "@/components/EnquiryModal";
 import Navbar from "@/components/Home/Navbar";
 
@@ -93,7 +91,7 @@ export default function B2BWishlist() {
     Linking.openURL(`mailto:${email}?subject=${subject}`);
   };
 
-  const renderItem = ({ item }: { item: any }) => {
+  const renderItem = useCallback(({ item }: { item: any }) => {
     const primaryImage = getPrimaryImage(item.media);
     const companyName = item.supplier?.business?.companyName || item.supplier?.name || "Verified Seller";
     const location = item.supplier?.business?.city 
@@ -188,7 +186,7 @@ export default function B2BWishlist() {
         </View>
       </View>
     );
-  };
+  }, [handleCardPress, removeFromWishlist]);
 
   const ListEmptyComponent = () => (
     <View className="flex-1 items-center justify-center mt-32">

@@ -1,5 +1,6 @@
 import { useRole } from "@/contexts/RoleContext";
 import { addNotification } from "@/utils/notificationService";
+import { prefetchHomeData } from "@/utils/prefetchHome";
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useRouter } from "expo-router";
@@ -62,6 +63,7 @@ const SellerLogin = () => {
         setSellerSignedIn(true);
         setGlobalRole("seller");
         await addNotification("Supplier logged in successfully.");
+        prefetchHomeData().catch(() => {}); // Warm Home cache during the success delay below
         setIsSuccess(true);
         setTimeout(() => {
           setIsSuccess(false);
@@ -88,6 +90,7 @@ const SellerLogin = () => {
           setSellerSignedIn(true);
           setGlobalRole("seller");
           await addNotification("Supplier logged in successfully.");
+          prefetchHomeData().catch(() => {}); // Warm Home cache during the success delay below
           setIsSuccess(true);
           setTimeout(() => {
             setIsSuccess(false);
@@ -117,6 +120,7 @@ const SellerLogin = () => {
         setGlobalBuyerId(null);
         setSellerSignedIn(true);
         setGlobalRole("seller");
+        prefetchHomeData().catch(() => {}); // Warm Home cache during the success delay below
         setIsSuccess(true);
         setTimeout(() => {
           setIsSuccess(false);

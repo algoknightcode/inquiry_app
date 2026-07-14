@@ -56,10 +56,20 @@ export default function HomeScreen() {
   
   // 1. Replaced Animated.Value with Reanimated's useSharedValue
   const scrollY = useSharedValue(0);
-  
-  // 2. Track if user is currently scrolling (for pausing carousels)
+
+  // Tracks whether the main feed is actively being scrolled, so nested
+  // auto-playing carousels can pause instead of fighting the main scroll
+  // for JS/UI thread time.
   const isScrolling = useSharedValue(false);
-  const scrollEndTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const scrollEndTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const handleScrollActivity = useCallback(() => {
+    if (scrollEndTimerRef.current) clearTimeout(scrollEndTimerRef.current);
+    scrollEndTimerRef.current = setTimeout(() => {
+      isScrolling.value = false;
+    }, 500);
+  }, [isScrolling]);
+
 
  React.useEffect(() => {
     // 🔥 FIX: Waits for the app to finish all heavy lifting, THEN renders the rest smoothly
@@ -98,7 +108,7 @@ export default function HomeScreen() {
         'connect',
         'trusted',
         'moreForYou',
-        'video',
+        // 'video', // TEMPORARILY DISABLED: Memory leak from expo-video loop buffering
         'leadform',
         'testimonials',
         'faq',
@@ -112,7 +122,7 @@ export default function HomeScreen() {
   const renderItem = useCallback(({ item }: { item: string }) => {
     switch (item) {
       case 'marquee':
-        return <MemoizedCategoryMarquee isScrolling={isScrolling} />;
+        return <MemoizedCategoryMarquee />;
       case 'hero':
         return <MemoizedHeroBanner />;
       case 'searchbar':
@@ -126,11 +136,11 @@ export default function HomeScreen() {
       case 'valueadds':
         return <MemoizedMoreValueAdds isScrolling={isScrolling} />;
       case 'brands':
-        return <MemoizedTrendingBrandsCarousel isScrolling={isScrolling} />;
+        return <MemoizedTrendingBrandsCarousel />;
       case 'products':
         return <MemoizedHorizontalProductList isScrolling={isScrolling} />;
       case 'indusTree':
-        return <MemoizedIndustryTreeCarousel isScrolling={isScrolling} scrollY={scrollY} />;
+        return <MemoizedIndustryTreeCarousel scrollY={scrollY} isScrolling={isScrolling} />;
       case 'cities':
         return <MemoizedSellersByCityGrid />;
       case 'newones':
@@ -141,8 +151,8 @@ export default function HomeScreen() {
         return <MemoizedTrustedBy isScrolling={isScrolling} />;
       case 'moreForYou':
         return <MemoizedMoreForYou isScrolling={isScrolling} />;
-      case 'video':
-        return <MemoizedVideoSection scrollY={scrollY} />;
+      // case 'video':
+      //   return <MemoizedVideoSection scrollY={scrollY} />;
       case 'leadform':
         return <MemoizedLeadGenCard />;
       case 'testimonials':
@@ -161,29 +171,16 @@ export default function HomeScreen() {
       default:
         return null;
     }
-  }, [handleSearchBarFocus, isScrolling]);
+  }, [handleSearchBarFocus]);
 
   const keyExtractor = useCallback((item: string) => item, []);
-
-  const handleScrollEnd = useCallback(() => {
-    if (scrollEndTimer.current) {
-      clearTimeout(scrollEndTimer.current);
-    }
-    scrollEndTimer.current = setTimeout(() => {
-      isScrolling.value = false;
-    }, 500);
-  }, [isScrolling]);
 
   // 3. Map standard scroll events directly to the UI thread using Reanimated
   const scrollHandler = useAnimatedScrollHandler({
     onScroll: (event) => {
       scrollY.value = event.contentOffset.y;
-      if (!isScrolling.value) {
-        isScrolling.value = true;
-      }
-    },
-    onEndDrag: () => {
-      runOnJS(handleScrollEnd)();
+      isScrolling.value = true;
+      runOnJS(handleScrollActivity)();
     },
   });
 

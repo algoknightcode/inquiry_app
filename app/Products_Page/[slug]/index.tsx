@@ -147,6 +147,9 @@ export default function ProductDetailPage() {
   useEffect(() => {
     if (!productId && !slug) return;
 
+    const controller = new AbortController();
+    const { signal } = controller;
+
     const fetchFullDetails = async () => {
       if (productId) {
         const cached = getProductCache(productId);
@@ -156,7 +159,7 @@ export default function ProductDetailPage() {
       }
 
       const fetchWrapper = async (url: string) => {
-        const res = await fetch(url);
+        const res = await fetch(url, { signal });
         if (!res.ok) throw new Error(`${res.status}`);
         const json = await res.json();
         if (json.success && json.data) return json.data;
@@ -183,12 +186,18 @@ export default function ProductDetailPage() {
         if (result && isMounted.current) {
           setProduct(result);
         }
-      } catch (e) {
-        console.log("Could not fetch product details from available endpoints", e);
+      } catch (e: any) {
+        if (e.name !== 'AbortError') {
+          console.log("Could not fetch product details from available endpoints", e);
+        }
       }
     };
 
     fetchFullDetails();
+
+    return () => {
+      controller.abort();
+    };
   }, [productId, slug]);
 
   const getPrimaryImage = (media: any[]) => {

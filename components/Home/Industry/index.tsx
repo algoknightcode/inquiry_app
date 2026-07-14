@@ -57,7 +57,7 @@ const Top_Industries = () => {
           source={item.imageUrl ? { uri: item.imageUrl } : CategoryImage}
           style={styles.image}
           contentFit="cover"
-          transition={200}
+          transition={0}
           cachePolicy="memory-disk" 
         />
 
