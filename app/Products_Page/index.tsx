@@ -116,12 +116,6 @@ export default function ProductListingPage() {
   const [hasMore, setHasMore] = useState(true);
   const [isFetchingMore, setIsFetchingMore] = useState(false);
 
-  // Reset pagination when category or location changes
-  useEffect(() => {
-    setPage(1);
-    setProducts([]);
-    setHasMore(true);
-  }, [subCategorySlug, location]);
   const [location, setLocation] = useState(() => {
     const passedCity = params.location || params.search;
     if (passedCity) {
@@ -132,6 +126,13 @@ export default function ProductListingPage() {
     }
     return "Delhi";
   });
+
+  // Reset pagination when category or location changes
+  useEffect(() => {
+    setPage(1);
+    setProducts([]);
+    setHasMore(true);
+  }, [subCategorySlug, location]);
   const [searchQuery, setSearchQuery] = useState("");
   const [isFocused, setIsFocused] = useState(false);
   const [cityModalVisible, setCityModalVisible] = useState(false);
@@ -334,7 +335,7 @@ export default function ProductListingPage() {
             setTotalProducts(prev => prev + fetchedList.length);
           }
 
-          if (fetchedList.length < 13) {
+          if (fetchedList.length === 0 || (params.isParentCategory !== 'true' && fetchedList.length < 13)) {
             setHasMore(false);
           } else {
             setHasMore(true);
@@ -361,6 +362,7 @@ export default function ProductListingPage() {
 
   const handleLoadMore = () => {
     if (!hasMore || isFetchingMore || loading) return;
+    setIsFetchingMore(true);
     setPage(prev => prev + 1);
   };
 
@@ -634,7 +636,7 @@ export default function ProductListingPage() {
         windowSize={5}
         removeClippedSubviews={Platform.OS === "android"}
         onEndReached={handleLoadMore}
-        onEndReachedThreshold={0.4}
+        onEndReachedThreshold={0.1}
         ListFooterComponent={
           isFetchingMore ? (
             <View className="py-6 items-center justify-center">

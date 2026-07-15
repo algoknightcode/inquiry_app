@@ -446,7 +446,7 @@ const AddProduct = () => {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 60000); // 60s timeout
 
-      const response = await fetch("http://192.168.1.3:5000/api/remove-bg", {
+      const response = await fetch("https://backend.inquirybazaar.com/api/remove-bg", {
         method: "POST",
         headers: { 
           "Accept": "application/json",
