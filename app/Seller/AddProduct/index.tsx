@@ -10,6 +10,8 @@ import React, { useEffect, useRef, useState } from "react";
 import { ActivityIndicator, Alert, FlatList, KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets, SafeAreaView } from "react-native-safe-area-context";
 import { scale, verticalScale, moderateScale } from "react-native-size-matters";
+import { EnhancedImage } from "@/utils/imageEnhancer";
+import { Image as RNImage } from 'react-native';
 
 // --- REUSABLE INPUT COMPONENT ---
 const InputField = ({ label, icon, placeholder, value, onChangeText, keyboardType = "default", multiline = false }: any) => (
@@ -197,6 +199,9 @@ const AddProduct = () => {
   const [originalImageUri, setOriginalImageUri] = useState<string | null>(null);
   const [imagesStateData, setImagesStateData] = useState<any[]>([]); 
   const [isLocalImageAdded, setIsLocalImageAdded] = useState(false); 
+  const [isEnhanced, setIsEnhanced] = useState(false);
+  const [enhancedUri, setEnhancedUri] = useState<string | null>(null);
+  const [previewSize, setPreviewSize] = useState({ width: 300, height: 224 });
 
   const [originalSize, setOriginalSize] = useState<string | null>(null);
   const [compressedSize, setCompressedSize] = useState<string | null>(null);
@@ -423,7 +428,7 @@ const AddProduct = () => {
   };
 
   const handleRemoveBackground = async () => {
-    const targetUri = originalImageUri || productImage;
+    const targetUri = isEnhanced && enhancedUri ? enhancedUri : (originalImageUri || productImage);
     if (!targetUri) return;
     try {
       setIsRemovingBg(true);
@@ -559,12 +564,13 @@ const AddProduct = () => {
 
       uploadData.append("imagesState", JSON.stringify(formattedImages));
 
-      if (isLocalImageAdded && productImage) {
-        const filename = productImage.split("/").pop() || "product_image.jpg";
-        const match = /\.(\w+)$/.exec(filename);
+      if (isLocalImageAdded && (isEnhanced && enhancedUri ? enhancedUri : productImage)) {
+        const finalProductImage = isEnhanced && enhancedUri ? enhancedUri : productImage;
+        const filename = finalProductImage!.split("/").pop() || "product_image.jpg";
+        const match = /\.([a-zA-Z0-9]+)$/.exec(filename);
         const type = match ? `image/${match[1]}` : `image/jpeg`;
 
-        const fileUri = Platform.OS === 'ios' ? productImage.replace('file://', '') : productImage;
+        const fileUri = Platform.OS === 'ios' ? finalProductImage!.replace('file://', '') : finalProductImage;
 
         uploadData.append("files", {
           uri: fileUri,
@@ -705,7 +711,45 @@ const AddProduct = () => {
             {productImage || compressionProgress !== null ? (
               <>
                 {productImage && (
-                  <Image source={{ uri: productImage }} style={{ width: '100%', height: '100%', position: 'absolute' }} contentFit="cover" />
+                  <View 
+                    onLayout={(event) => {
+                      const { width, height } = event.nativeEvent.layout;
+                      setPreviewSize({ width, height });
+                    }}
+                    style={{ width: '100%', height: '100%', position: 'absolute' }}
+                  >
+                    {isEnhanced ? (
+                      <EnhancedImage 
+                        sourceUri={productImage} 
+                        width={previewSize.width}
+                        height={previewSize.height}
+                        onExtractImage={(uri) => setEnhancedUri(uri)}
+                      />
+                    ) : (
+                      <Image 
+                        source={{ uri: productImage }} 
+                        style={{ width: '100%', height: '100%', position: 'absolute' }} 
+                        contentFit="cover" 
+                      />
+                    )}
+                  </View>
+                )}
+                
+                {productImage && (
+                  <View className="absolute bottom-4 right-4 z-30">
+                    <TouchableOpacity 
+                      onPress={() => {
+                        if (isEnhanced) setEnhancedUri(null);
+                        setIsEnhanced(!isEnhanced);
+                      }}
+                      className={`flex-row items-center px-3 py-1.5 rounded-xl ${isEnhanced ? 'bg-amber-100' : 'bg-indigo-50 border border-indigo-100 shadow-sm'}`}
+                    >
+                      <Ionicons name={isEnhanced ? "arrow-undo-outline" : "sparkles"} size={14} color={isEnhanced ? "#d97706" : "#4f46e5"} />
+                      <Text className={`ml-1.5 text-[12px] font-jakarta-bold ${isEnhanced ? 'text-amber-700' : 'text-indigo-600'}`}>
+                        {isEnhanced ? 'Revert' : 'Enhance'}
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
                 )}
                 
                 {compressionProgress !== null && !productImage && (
