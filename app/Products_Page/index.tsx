@@ -59,6 +59,7 @@ type Product = {
   deliveryTime?: string;
   media: Media[];
   supplier?: Supplier;
+  subCategoryName?: string;
 };
 
 const POPULAR_CITIES = [
@@ -91,6 +92,7 @@ export default function ProductListingPage() {
     subCategoryId?: string;
     location?: string;
     search?: string;
+    isParentCategory?: string;
   }>();
 
   const isMounted = useRef(true);
@@ -108,6 +110,18 @@ export default function ProductListingPage() {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [totalProducts, setTotalProducts] = useState(0);
+
+  // Pagination states
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(true);
+  const [isFetchingMore, setIsFetchingMore] = useState(false);
+
+  // Reset pagination when category or location changes
+  useEffect(() => {
+    setPage(1);
+    setProducts([]);
+    setHasMore(true);
+  }, [subCategorySlug, location]);
   const [location, setLocation] = useState(() => {
     const passedCity = params.location || params.search;
     if (passedCity) {
@@ -217,6 +231,9 @@ export default function ProductListingPage() {
     });
   }, [products, searchQuery]);
 
+  const prevSlug = useRef(subCategorySlug);
+  const prevLocation = useRef(location);
+
   useEffect(() => {
     if (!subCategorySlug) {
       setLoading(false);
@@ -228,13 +245,100 @@ export default function ProductListingPage() {
 
     const fetchProducts = async () => {
       try {
+        if (page === 1) {
+          setLoading(true);
+        } else {
+          setIsFetchingMore(true);
+        }
+
         const apiLocation = location === "All India" ? "India" : location;
-        const url = `https://backend.inquirybazaar.com/api/categories/sub/${subCategorySlug}/${apiLocation}`;
-        const response = await fetch(url, { signal });
-        const json = await response.json();
-        if (json.success && json.data && isMounted.current) {
-          setProducts(json.data.products || []);
-          setTotalProducts(json.data.totalProducts || 0);
+        let fetchedList: Product[] = [];
+        
+        if (params.isParentCategory === 'true') {
+          // 1. Fetch industries tree to get the subcategories list
+          const treeRes = await fetch("https://backend.inquirybazaar.com/api/industries/tree", { signal });
+          const treeJson = await treeRes.json();
+          let subSlugs: string[] = [];
+          if (treeJson.success && Array.isArray(treeJson.data)) {
+            // Find the category by slug or id and gather subcategory slugs
+            for (const industry of treeJson.data) {
+              if (Array.isArray(industry.categories)) {
+                const matchedCat = industry.categories.find((c: any) => c.slug === subCategorySlug || c._id === params.subCategoryId);
+                if (matchedCat && Array.isArray(matchedCat.subCategories)) {
+                  subSlugs = matchedCat.subCategories.map((s: any) => s.slug).filter(Boolean);
+                  break;
+                }
+              }
+            }
+          }
+
+          if (subSlugs.length > 0) {
+            // 2. Fetch products for each subcategory in parallel with pagination parameters
+            const fetchPromises = subSlugs.map(async (slug) => {
+              try {
+                const url = `https://backend.inquirybazaar.com/api/categories/sub/${slug}/${apiLocation}?page=${page}&limit=13`;
+                const res = await fetch(url, { signal });
+                const json = await res.json();
+                if (json.success && json.data && Array.isArray(json.data.products)) {
+                  return json.data.products.map((p: any) => ({
+                    ...p,
+                    subCategoryName: json.data.category?.name || ''
+                  }));
+                }
+              } catch (e) {
+                console.error(`Error fetching products for subcategory ${slug}:`, e);
+              }
+              return [];
+            });
+
+            const results = await Promise.all(fetchPromises);
+            const seenIds = new Set<string>();
+
+            for (const prodList of results) {
+              for (const product of prodList) {
+                if (product && product._id && !seenIds.has(product._id)) {
+                  seenIds.add(product._id);
+                  fetchedList.push(product);
+                }
+              }
+            }
+          } else {
+            // Fallback: normal single category request with pagination
+            const url = `https://backend.inquirybazaar.com/api/categories/sub/${subCategorySlug}/${apiLocation}?page=${page}&limit=13`;
+            const response = await fetch(url, { signal });
+            const json = await response.json();
+            if (json.success && json.data && Array.isArray(json.data.products)) {
+              fetchedList = json.data.products;
+            }
+          }
+        } else {
+          // Normal subcategory fetch with pagination
+          const url = `https://backend.inquirybazaar.com/api/categories/sub/${subCategorySlug}/${apiLocation}?page=${page}&limit=13`;
+          const response = await fetch(url, { signal });
+          const json = await response.json();
+          if (json.success && json.data && Array.isArray(json.data.products)) {
+            fetchedList = json.data.products;
+          }
+        }
+
+        if (isMounted.current) {
+          if (page === 1) {
+            setProducts(fetchedList);
+            setTotalProducts(fetchedList.length);
+          } else {
+            setProducts(prev => {
+              const existingIds = new Set(prev.map(p => p._id));
+              const uniques = fetchedList.filter(p => !existingIds.has(p._id));
+              return [...prev, ...uniques];
+            });
+            setTotalProducts(prev => prev + fetchedList.length);
+          }
+
+          if (fetchedList.length < 13) {
+            setHasMore(false);
+          } else {
+            setHasMore(true);
+          }
         }
       } catch (err: any) {
         if (err.name !== 'AbortError') {
@@ -243,6 +347,7 @@ export default function ProductListingPage() {
       } finally {
         if (isMounted.current) {
           setLoading(false);
+          setIsFetchingMore(false);
         }
       }
     };
@@ -252,7 +357,12 @@ export default function ProductListingPage() {
     return () => {
       controller.abort();
     };
-  }, [subCategorySlug, location, isMounted]);
+  }, [subCategorySlug, location, isMounted, page, params.isParentCategory, params.subCategoryId]);
+
+  const handleLoadMore = () => {
+    if (!hasMore || isFetchingMore || loading) return;
+    setPage(prev => prev + 1);
+  };
 
   // ── Primary image helper ─────────────────────────────────────────────────
   const getPrimaryImage = (media: Media[]) => {
@@ -272,6 +382,7 @@ export default function ProductListingPage() {
     const whatsapp = item.supplier?.business?.social?.whatsapp;
     const phone = item.supplier?.phone;
     const isOnRequest = item.priceType === "on_request";
+    const subCategoryNameToShow = item.subCategoryName || (params.isParentCategory !== 'true' ? params.subCategoryName : '');
 
     return (
       <View className="bg-white rounded-[24px] p-4 mb-5 border border-slate-100 shadow-sm shadow-slate-200/60">
@@ -312,10 +423,17 @@ export default function ProductListingPage() {
           ) : null}
         </View>
 
-        {/* Product name */}
-        <Text className="text-[16px] font-jakarta-bold text-slate-900 leading-snug mb-3">
-          {item.name}
-        </Text>
+        {/* Product name & Subcategory Label Row */}
+        <View className="flex-row justify-between items-start mb-3">
+          <Text className="text-[16px] font-jakarta-bold text-slate-900 leading-snug flex-1 mr-3">
+            {item.name}
+          </Text>
+          {subCategoryNameToShow ? (
+            <Text className="text-[11px] font-jakarta-bold text-orange-500 uppercase tracking-wider mt-0.5 text-right">
+              {subCategoryNameToShow}
+            </Text>
+          ) : null}
+        </View>
 
         {/* Price & MOQ */}
         <View className="flex-row items-end mb-4 flex-wrap gap-y-1">
@@ -515,6 +633,15 @@ export default function ProductListingPage() {
         maxToRenderPerBatch={8}
         windowSize={5}
         removeClippedSubviews={Platform.OS === "android"}
+        onEndReached={handleLoadMore}
+        onEndReachedThreshold={0.4}
+        ListFooterComponent={
+          isFetchingMore ? (
+            <View className="py-6 items-center justify-center">
+              <ActivityIndicator size="small" color="#4f46e5" />
+            </View>
+          ) : null
+        }
         ListEmptyComponent={
           <View className="flex-1 items-center justify-center mt-20">
             <Ionicons name={searchQuery ? "search-outline" : "cube-outline"} size={56} color="#cbd5e1" />

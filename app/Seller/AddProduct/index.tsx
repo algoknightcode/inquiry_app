@@ -446,7 +446,7 @@ const AddProduct = () => {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 60000); // 60s timeout
 
-      const response = await fetch("http://76.13.242.16:6789/api/remove-bg", {
+      const response = await fetch("http://192.168.1.3:5000/api/remove-bg", {
         method: "POST",
         headers: { 
           "Accept": "application/json",
@@ -459,7 +459,7 @@ const AddProduct = () => {
 
       console.log("[BG Isolation] Response status:", response.status);
       const result = await response.json();
-      console.log("[BG Isolation] Response body:", result);
+      console.log("[BG Isolation] Response success:", result.success, "Base64 length:", result.base64 ? result.base64.length : 0);
 
       if (result.success && result.base64) {
         const cleanLocalUri = `${FileSystem.cacheDirectory}nobg_${Date.now()}.png`;
@@ -705,7 +705,7 @@ const AddProduct = () => {
             {productImage || compressionProgress !== null ? (
               <>
                 {productImage && (
-                  <Image source={{ uri: productImage }} className="w-full h-full absolute" contentFit="cover" />
+                  <Image source={{ uri: productImage }} style={{ width: '100%', height: '100%', position: 'absolute' }} contentFit="cover" />
                 )}
                 
                 {compressionProgress !== null && !productImage && (

@@ -13,9 +13,10 @@ import {
     View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-
+import { useRouter } from "expo-router";
 export default function ContactUs() {
   const insets = useSafeAreaInsets();
+  const router = useRouter();
   
   // Form State
   const [form, setForm] = useState({
@@ -91,6 +92,14 @@ export default function ContactUs() {
           className="w-full h-80 justify-center items-center"
           imageStyle={{ opacity: 0.2, backgroundColor: "#0F172A" }} // Dark overlay fallback
         >
+          {/* Back Button Container */}
+          <TouchableOpacity 
+             onPress={() => router.back()}
+             style={{ position: 'absolute', top: insets.top + 10, left: 20, zIndex: 10, backgroundColor: '#1E3A8A', padding: 8, borderRadius: 20 }}
+          >
+             <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
+          </TouchableOpacity>
+          
           <View style={{ paddingTop: insets.top }} className="w-full h-full justify-center items-center px-6 bg-slate-900/60">
             <Text className="text-4xl font-extrabold text-white mb-3 tracking-tight text-center">
               Contact Us

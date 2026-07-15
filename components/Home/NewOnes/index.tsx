@@ -411,6 +411,8 @@ const NewOnes = ({ isScrolling }: { isScrolling?: SharedValue<boolean> } = {}) =
   }, [stopAutoPlay]);
 
   const handleMomentumScrollEnd = useCallback((event: any) => {
+    if (!productsList || productsList.length === 0) return;
+
     const scrollOffset = event.nativeEvent.contentOffset.x;
     let currentIndex = Math.round(scrollOffset / ITEM_SIZE);
 

@@ -172,21 +172,13 @@ export default function ProductDetailPage() {
         let result: any = null;
 
         if (slug) {
-          result = await fetchWrapper(`https://backend.inquirybazaar.com/api/products/slug/${slug}`);
+          result = await fetchWrapper(`https://backend.inquirybazaar.com/api/product/${slug}`);
         } else if (productId) {
-          try {
-            result = await fetchWrapper(`https://backend.inquirybazaar.com/api/products/${productId}`);
-          } catch (err) {
-            try {
-              result = await fetchWrapper(`https://backend.inquirybazaar.com/api/products/single/${productId}`);
-            } catch (err2) {
-              result = await fetchWrapper(`https://backend.inquirybazaar.com/api/product/${productId}`);
-            }
-          }
+          result = await fetchWrapper(`https://backend.inquirybazaar.com/api/product/${productId}`);
         }
 
         if (result && isMounted.current) {
-          setProduct(result);
+          setProduct(result.product ? result.product : result);
         }
       } catch (e: any) {
         if (e.name !== 'AbortError') {

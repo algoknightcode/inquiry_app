@@ -4,7 +4,8 @@ import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useFocusEffect, useRouter } from "expo-router";
 import React, { useCallback, useState } from "react";
-import { ActivityIndicator, FlatList, Linking, SafeAreaView, StatusBar, Text, TouchableOpacity, Vibration, View } from 'react-native';
+import { ActivityIndicator, FlatList, Linking, StatusBar, Text, TouchableOpacity, Vibration, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 import EnquiryModal from "@/components/EnquiryModal";
 import Navbar from "@/components/Home/Navbar";
@@ -193,7 +194,7 @@ export default function B2BWishlist() {
   );
 
   return (
-    <SafeAreaView className="flex-1 bg-slate-50">
+    <View className="flex-1 bg-slate-50">
       <StatusBar barStyle="dark-content" backgroundColor="#f8fafc" />
       
       <Navbar />
@@ -230,6 +231,6 @@ export default function B2BWishlist() {
         onClose={() => setIsEnquiryVisible(false)} 
         product={selectedProduct} 
       />
-    </SafeAreaView>
+    </View>
   );
 }

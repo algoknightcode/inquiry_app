@@ -1,16 +1,16 @@
 import { useRole } from "@/contexts/RoleContext";
 import { Ionicons } from "@expo/vector-icons";
+import { Image } from "expo-image";
 import { useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import React, { useState } from "react";
 import { Platform, Pressable, View } from "react-native";
-import { Image } from "expo-image";
 import Animated, {
-    Extrapolation,
-    interpolate,
-    SharedValue,
-    useAnimatedStyle,
-    useSharedValue
+  Extrapolation,
+  interpolate,
+  SharedValue,
+  useAnimatedStyle,
+  useSharedValue
 } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Sidebar from "../../ui/Sidebar";
@@ -29,6 +29,7 @@ const Navbar = React.memo(({ onMenuPress, scrollY: externalScrollY, userRole: pr
   const internalScrollY = useSharedValue<number>(0);
   const scrollY = externalScrollY || internalScrollY;
   const insets = useSafeAreaInsets();
+  const statusBarHeight = insets.top > 0 ? insets.top : (Platform.OS === 'ios' ? 44 : 24);
   const router = useRouter();
   const { userRole: contextUserRole } = useRole();
   const userRole = propUserRole || contextUserRole;
@@ -91,7 +92,7 @@ const Navbar = React.memo(({ onMenuPress, scrollY: externalScrollY, userRole: pr
   return (
     <View 
       style={{ 
-        paddingTop: Platform.OS === 'android' ? Math.max(insets.top, 10) : 0, 
+        paddingTop: Math.max(statusBarHeight, 10), 
         zIndex: 999,
         overflow: 'visible',
       }}

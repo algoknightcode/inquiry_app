@@ -2,7 +2,8 @@ import { Image } from 'expo-image';
 import { prefetchHomeData } from "@/utils/prefetchHome";
 import { useRouter } from "expo-router";
 import React, { useState } from "react";
-import { Alert, KeyboardAvoidingView, Platform, SafeAreaView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { Alert, KeyboardAvoidingView, Platform, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import Logo from "../../assets/images/logoo-Photoroom.png";
 
 const OtpVerify = () => {

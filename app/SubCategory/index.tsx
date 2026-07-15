@@ -11,6 +11,7 @@ type MainCategory = {
   _id: string;
   name: string;
   imageUrl: string;
+  slug?: string;
 };
 
 // Type for the Right Grid (Subcategories)
@@ -216,6 +217,31 @@ const SubCateGory = () => {
               <Text className="text-center text-slate-400 mt-10 font-jakarta-medium">
                 No subcategories found.
               </Text>
+            }
+            ListHeaderComponent={
+              currentSubCategories.length > 0 && activeMainCategory ? (
+                <Pressable
+                  className="bg-orange-500 rounded-xl py-3 px-4 mb-4 flex-row items-center justify-center shadow-sm"
+                  android_ripple={{ color: "#ea580c" }}
+                  onPress={() => {
+                    router.push({
+                      pathname: "/Products_Page",
+                      params: {
+                        subCategorySlug: activeMainCategory.slug || '',
+                        subCategoryName: `All ${activeMainCategory.name}`,
+                        isParentCategory: 'true',
+                        subCategoryId: activeMainCategory._id,
+                        location
+                      }
+                    });
+                  }}
+                >
+                  <Text className="text-white font-jakarta-bold text-[13px] mr-2">
+                    View All {activeMainCategory.name}
+                  </Text>
+                  <Ionicons name="arrow-forward" size={16} color="#FFFFFF" />
+                </Pressable>
+              ) : null
             }
             renderItem={renderSubCategoryItem}
           />

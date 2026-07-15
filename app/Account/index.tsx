@@ -4,11 +4,11 @@ import {
   Text,
   TouchableOpacity,
   ScrollView,
-  SafeAreaView,
   StyleSheet,
   Dimensions,
   Modal,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter, Stack } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -29,12 +29,39 @@ export default function AccountChoicePage() {
   const [modalVisible, setModalVisible] = useState(false);
   const [targetRole, setTargetRole] = useState<"buyer" | "seller" | null>(null);
 
-  const activeLoggedInRole = globalSellerId ? "seller" : (globalBuyerId ? "buyer" : null);
+  const [activeLoggedInRole, setActiveLoggedInRole] = useState<"buyer" | "seller" | null>(
+    globalSellerId ? "seller" : (globalBuyerId ? "buyer" : null)
+  );
+
+  React.useEffect(() => {
+    const checkAuthStatus = async () => {
+      try {
+        const storedSeller = await AsyncStorage.getItem("supplierId");
+        const storedBuyer = await AsyncStorage.getItem("buyerId");
+        
+        if (storedSeller) {
+          setGlobalSellerId(storedSeller);
+          setActiveLoggedInRole("seller");
+        } else if (storedBuyer) {
+          setGlobalBuyerId(storedBuyer);
+          setActiveLoggedInRole("buyer");
+        }
+      } catch (error) {
+        console.error("Error reading auth state from storage", error);
+      }
+    };
+    checkAuthStatus();
+  }, []);
 
   const handleSelectRole = (role: "buyer" | "seller") => {
     if (activeLoggedInRole && activeLoggedInRole !== role) {
       setTargetRole(role);
       setModalVisible(true);
+      return;
+    }
+
+    if (activeLoggedInRole === role) {
+      // Already logged in.
       return;
     }
 
@@ -66,12 +93,21 @@ export default function AccountChoicePage() {
   return (
     <SafeAreaView style={styles.container}>
       <Stack.Screen options={{ headerShown: false }} />
+      
+      {/* Back Button Container */}
+      <TouchableOpacity 
+         onPress={() => router.back()}
+         style={{ position: 'absolute', top: insets.top + 10, left: 20, zIndex: 10, backgroundColor: '#1E3A8A', padding: 8, borderRadius: 20 }}
+      >
+         <Ionicons name="arrow-back" size={20} color="#FFFFFF" />
+      </TouchableOpacity>
+
       <ScrollView
         contentContainerStyle={{
           flexGrow: 1,
           justifyContent: "center",
           paddingHorizontal: 24,
-          paddingTop: insets.top,
+          paddingTop: insets.top + 40,
           paddingBottom: insets.bottom + 40,
         }}
         showsVerticalScrollIndicator={false}
@@ -91,7 +127,7 @@ export default function AccountChoicePage() {
         <View style={styles.cardsContainer}>
           {/* Buyer Card */}
           <TouchableOpacity
-            activeOpacity={0.9}
+            activeOpacity={activeLoggedInRole === "buyer" ? 1.0 : 0.9}
             onPress={() => handleSelectRole("buyer")}
             style={[styles.card, styles.buyerCard]}
           >
@@ -113,17 +149,19 @@ export default function AccountChoicePage() {
             <Text style={styles.cardDescription}>
               Post buying requirements, explore top industries, and contact verified suppliers globally.
             </Text>
-            <View style={[styles.actionButton, styles.buyerButton]}>
-              <Text style={[styles.actionButtonText, styles.buyerButtonText]}>
-                Login / Register
-              </Text>
-              <Ionicons name="arrow-forward" size={16} color="#ffffff" />
-            </View>
+            {activeLoggedInRole !== "buyer" && (
+              <View style={[styles.actionButton, styles.buyerButton]}>
+                <Text style={[styles.actionButtonText, styles.buyerButtonText]}>
+                  Login / Register
+                </Text>
+                <Ionicons name="arrow-forward" size={16} color="#ffffff" />
+              </View>
+            )}
           </TouchableOpacity>
 
           {/* Seller Card */}
           <TouchableOpacity
-            activeOpacity={0.9}
+            activeOpacity={activeLoggedInRole === "seller" ? 1.0 : 0.9}
             onPress={() => handleSelectRole("seller")}
             style={[styles.card, styles.sellerCard]}
           >
@@ -145,12 +183,14 @@ export default function AccountChoicePage() {
             <Text style={styles.cardDescription}>
               List products, manage leads, view your business dashboard, and grow your sales.
             </Text>
-            <View style={[styles.actionButton, styles.sellerButton]}>
-              <Text style={[styles.actionButtonText, styles.sellerButtonText]}>
-                Login / Register
-              </Text>
-              <Ionicons name="arrow-forward" size={16} color="#ffffff" />
-            </View>
+            {activeLoggedInRole !== "seller" && (
+              <View style={[styles.actionButton, styles.sellerButton]}>
+                <Text style={[styles.actionButtonText, styles.sellerButtonText]}>
+                  Login / Register
+                </Text>
+                <Ionicons name="arrow-forward" size={16} color="#ffffff" />
+              </View>
+            )}
           </TouchableOpacity>
         </View>
 

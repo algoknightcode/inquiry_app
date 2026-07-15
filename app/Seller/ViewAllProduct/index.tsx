@@ -4,7 +4,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useRouter } from "expo-router";
 import { useIsFocused } from "@react-navigation/native";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ActivityIndicator, FlatList, KeyboardAvoidingView, Platform, RefreshControl, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Alert, FlatList, KeyboardAvoidingView, Platform, RefreshControl, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from "react-native-safe-area-context";
 import { moderateScale, scale, verticalScale } from "react-native-size-matters";
 
@@ -15,11 +15,52 @@ const ManageProducts = () => {
   const [products, setProducts] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  
+  const [categoryNames, setCategoryNames] = useState<{ [key: string]: string }>({});
+  const [subCategoryNames, setSubCategoryNames] = useState<{ [key: string]: string }>({});
+  const [industryNames, setIndustryNames] = useState<{ [key: string]: string }>({});
 
   const isMounted = useRef(true);
 
   useEffect(() => {
     isMounted.current = true;
+    
+    const fetchTree = async () => {
+      try {
+        const response = await fetch("https://backend.inquirybazaar.com/api/industries/tree");
+        const json = await response.json();
+        if (json.success && json.data) {
+          const catMap: { [key: string]: string } = {};
+          const subMap: { [key: string]: string } = {};
+          const indMap: { [key: string]: string } = {};
+          
+          json.data.forEach((industry: any) => {
+            if (industry.categories) {
+              industry.categories.forEach((cat: any) => {
+                catMap[cat._id] = cat.name;
+                indMap[cat._id] = industry.name;
+                if (cat.subCategories) {
+                  cat.subCategories.forEach((sub: any) => {
+                    subMap[sub._id] = sub.name;
+                  });
+                }
+              });
+            }
+          });
+          
+          if (isMounted.current) {
+            setCategoryNames(catMap);
+            setSubCategoryNames(subMap);
+            setIndustryNames(indMap);
+          }
+        }
+      } catch (error) {
+        console.error("Error loading categories tree:", error);
+      }
+    };
+
+    fetchTree();
+
     return () => {
       isMounted.current = false;
     };
@@ -62,6 +103,38 @@ const ManageProducts = () => {
     setRefreshing(false);
   }, [fetchProducts]);
 
+  const handleDelete = useCallback(async (id: string) => {
+    Alert.alert(
+      "Delete Product",
+      "Are you sure you want to delete this product?",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              const response = await fetch(`https://seller.inquirybazaar.com/api/product/${id}`, {
+                method: 'DELETE',
+              });
+              const json = await response.json();
+              if (json.success) {
+                Alert.alert("Success", "Product deleted successfully");
+                fetchProducts(false);
+              } else {
+                Alert.alert("Error", json.error || "Delete failed");
+                console.error("Delete failed:", json.error);
+              }
+            } catch (error) {
+              Alert.alert("Error", "Error deleting product");
+              console.error("Error deleting product:", error);
+            }
+          }
+        }
+      ]
+    );
+  }, [fetchProducts]);
+
   // ✅ MEMOIZED: Filter runs only when searchQuery or products change
   const filteredProducts = useMemo(() =>
     products.filter(product => {
@@ -77,12 +150,24 @@ const ManageProducts = () => {
     const displayName = item.productName || item.name || "Unnamed Product";
     const displayPrice = item.newPrice || item.price || "N/A";
     const displayUnit = item.unit || "Unit";
-    const displayIndustry = item.industry || "Industry";
-    const displayCategory = item.category || "Category";
-    const displaySubCategory = item.subCategory || "Subcategory";
+    const displayIndustry = industryNames[item.categoryId] || item.industryName || item.industry?.name || (typeof item.industry === 'string' ? item.industry : null) || "Industry";
+    const displayCategory = categoryNames[item.categoryId] || item.categoryName || item.category?.name || (typeof item.category === 'string' ? item.category : null) || "Category";
+    const displaySubCategory = subCategoryNames[item.subCategoryId] || item.subCategoryName || item.subCategory?.name || (typeof item.subCategory === 'string' ? item.subCategory : null) || "Subcategory";
 
     return (
-      <View style={s.card}>
+      <TouchableOpacity 
+        activeOpacity={0.9}
+        onPress={() => {
+          router.push({
+            pathname: "/Products_Page/[slug]",
+            params: {
+              slug: item.slug || item.productName?.toLowerCase().replace(/[^a-z0-9]+/g, '-') || 'product',
+              productId: item._id || item.id
+            }
+          });
+        }}
+        style={s.card}
+      >
         {/* Product Image Box */}
         <View style={s.imageBox}>
           <Image 
@@ -136,8 +221,8 @@ const ManageProducts = () => {
                   name: displayName,
                   price: displayPrice,
                   unit: displayUnit,
-                  category: item.categoryName || item.category?.name || item.category || displayCategory,
-                  subCategory: item.subCategoryName || item.subCategory?.name || item.subCategory || displaySubCategory,
+                  category: categoryNames[item.categoryId] || item.categoryName || item.category?.name || item.category || displayCategory,
+                  subCategory: subCategoryNames[item.subCategoryId] || item.subCategoryName || item.subCategory?.name || item.subCategory || displaySubCategory,
                   categoryId: item.categoryId?._id || item.categoryId || "",
                   subCategoryId: item.subCategoryId?._id || item.subCategoryId || "",
                   image: displayImage,
@@ -159,14 +244,17 @@ const ManageProducts = () => {
             >
               <Ionicons name="create-outline" size={moderateScale(15)} color="#1E3A8A" />
             </TouchableOpacity>
-            <TouchableOpacity style={s.deleteBtn}>
+            <TouchableOpacity 
+              style={s.deleteBtn}
+              onPress={() => handleDelete(item._id || item.id)}
+            >
               <Ionicons name="trash-outline" size={moderateScale(15)} color="#EF4444" />
             </TouchableOpacity>
           </View>
         </View>
-      </View>
+      </TouchableOpacity>
     );
-  }, [router]);
+  }, [router, categoryNames, subCategoryNames, industryNames, handleDelete]);
 
   return (
     <SafeAreaView style={s.safeArea} edges={["top", "bottom"]}>
