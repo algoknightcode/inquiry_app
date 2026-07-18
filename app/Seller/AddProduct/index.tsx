@@ -6,12 +6,15 @@ import * as FileSystem from "expo-file-system/legacy";
 import * as ImageManipulator from "expo-image-manipulator";
 import * as ImagePicker from "expo-image-picker";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState, lazy, Suspense } from "react";
 import { ActivityIndicator, Alert, FlatList, KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets, SafeAreaView } from "react-native-safe-area-context";
 import { scale, verticalScale, moderateScale } from "react-native-size-matters";
-import { EnhancedImage } from "@/utils/imageEnhancer";
 import { Image as RNImage } from 'react-native';
+
+const EnhancedImage = lazy(() =>
+  import("@/utils/imageEnhancer").then((m) => ({ default: m.EnhancedImage }))
+);
 
 // --- REUSABLE INPUT COMPONENT ---
 const InputField = ({ label, icon, placeholder, value, onChangeText, keyboardType = "default", multiline = false }: any) => (
@@ -201,6 +204,28 @@ const AddProduct = () => {
   const [isLocalImageAdded, setIsLocalImageAdded] = useState(false); 
   const [isEnhanced, setIsEnhanced] = useState(false);
   const [enhancedUri, setEnhancedUri] = useState<string | null>(null);
+
+  // Clean up enhanced image temporary file when it changes or when component unmounts
+  useEffect(() => {
+    return () => {
+      if (enhancedUri && enhancedUri.startsWith('file://')) {
+        FileSystem.deleteAsync(enhancedUri, { idempotent: true }).catch(err => {
+          console.log("Error cleaning up enhanced image:", err);
+        });
+      }
+    };
+  }, [enhancedUri]);
+
+  const abortControllerRef = useRef<AbortController | null>(null);
+
+  const handleCancelBgRemoval = () => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      abortControllerRef.current = null;
+    }
+    setIsRemovingBg(false);
+  };
+
   const [previewSize, setPreviewSize] = useState({ width: 300, height: 224 });
 
   const [originalSize, setOriginalSize] = useState<string | null>(null);
@@ -449,6 +474,7 @@ const AddProduct = () => {
       console.log("[BG Isolation] Uploading base64 image string...");
 
       const controller = new AbortController();
+      abortControllerRef.current = controller;
       const timeoutId = setTimeout(() => controller.abort(), 60000); // 60s timeout
 
       const response = await fetch("https://backend.inquirybazaar.com/api/remove-bg", {
@@ -491,9 +517,14 @@ const AddProduct = () => {
         Alert.alert("Error", result.error || "Failed to remove background.");
       }
     } catch (error: any) {
+      if (error.name === "AbortError" || error.message?.includes("aborted")) {
+        console.log("[BG Isolation] Request was cancelled by the user.");
+        return;
+      }
       console.error("BG isolation error:", error);
       Alert.alert("Error", `BG isolation error: ${error.message || error}`);
     } finally {
+      abortControllerRef.current = null;
       setIsRemovingBg(false);
     }
   };
@@ -687,7 +718,13 @@ const AddProduct = () => {
             <View className="bg-white rounded-[32px] p-8 items-center w-[80%] max-w-[340px]">
               <ActivityIndicator size="large" color="#7C3AED" className="mb-4" />
               <Text className="text-[18px] font-jakarta-bold text-slate-900 mb-1">Isolating Subject</Text>
-              <Text className="text-[13px] font-jakarta-medium text-slate-500 text-center">Removing background via AI...</Text>
+              <Text className="text-[13px] font-jakarta-medium text-slate-500 text-center mb-5">Removing background via AI...</Text>
+              <TouchableOpacity
+                onPress={handleCancelBgRemoval}
+                className="w-full bg-slate-100 py-3 rounded-2xl items-center justify-center active:scale-[0.98] border border-slate-200"
+              >
+                <Text className="text-slate-600 font-jakarta-bold text-[14px]">Cancel</Text>
+              </TouchableOpacity>
             </View>
           </View>
         </Modal>
@@ -719,12 +756,18 @@ const AddProduct = () => {
                     style={{ width: '100%', height: '100%', position: 'absolute' }}
                   >
                     {isEnhanced ? (
-                      <EnhancedImage 
-                        sourceUri={productImage} 
-                        width={previewSize.width}
-                        height={previewSize.height}
-                        onExtractImage={(uri) => setEnhancedUri(uri)}
-                      />
+                      <Suspense fallback={
+                        <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
+                          <ActivityIndicator size="small" color="#10B981" />
+                        </View>
+                      }>
+                        <EnhancedImage 
+                          sourceUri={productImage} 
+                          width={previewSize.width}
+                          height={previewSize.height}
+                          onExtractImage={(uri) => setEnhancedUri(uri)}
+                        />
+                      </Suspense>
                     ) : (
                       <Image 
                         source={{ uri: productImage }} 
