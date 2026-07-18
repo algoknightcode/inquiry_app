@@ -8,6 +8,7 @@ import { Image } from "expo-image";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import React, { useEffect, useRef, useState } from "react";
 import {
+  ActivityIndicator,
   Linking,
   ScrollView,
   Share,
@@ -35,6 +36,7 @@ export default function ProductDetailPage() {
   const [product, setProduct] = useState<any>(() => {
     return productId ? getProductCache(productId as string) : null;
   });
+  const [loading, setLoading] = useState(!product); // Loading starts as true only if product is not cached
 
   // --- INQUIRY MODAL STATES ---
   const [isModalVisible, setModalVisible] = useState(false);
@@ -184,6 +186,10 @@ export default function ProductDetailPage() {
         if (e.name !== 'AbortError') {
           console.log("Could not fetch product details from available endpoints", e);
         }
+      } finally {
+        if (isMounted.current) {
+          setLoading(false);
+        }
       }
     };
 
@@ -216,6 +222,17 @@ export default function ProductDetailPage() {
       Linking.openURL(`https://wa.me/${formattedPhone}?text=${encodeURIComponent(message)}`);
     });
   };
+
+  // --- RENDER FALLBACK LOADING SPINNER ---
+  if (loading) {
+    return (
+      <View style={{ flex: 1, backgroundColor: "#fff", alignItems: "center", justifyContent: "center" }}>
+        <Stack.Screen options={{ headerShown: false }} />
+        <ActivityIndicator size="large" color="#1e3a8a" />
+        <Text style={{ marginTop: 12, color: "#64748b", fontWeight: "600", fontSize: 14 }}>Loading details...</Text>
+      </View>
+    );
+  }
 
   if (!product) {
     return (

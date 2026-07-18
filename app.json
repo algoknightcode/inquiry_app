@@ -10,7 +10,9 @@
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.simran-singh123.inquiry-app"
+      "bundleIdentifier": "com.simran-singh123.inquiry-app",
+      "googleServicesFile": "./GoogleService-Info.plist",
+      "useFrameworks": "static"
     },
     "android": {
       "adaptiveIcon": {

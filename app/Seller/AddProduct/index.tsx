@@ -63,8 +63,19 @@ const InputField = ({ label, icon, placeholder, value, onChangeText, keyboardTyp
 );
 
 // --- REUSABLE DROPDOWN COMPONENT ---
-const DropdownField = ({ label, icon, placeholder, value, options, onSelect }: any) => {
+const DropdownField = ({ label, icon, placeholder, value, options, onSelect, searchable = false }: any) => {
   const [modalVisible, setModalVisible] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+
+  useEffect(() => {
+    if (!modalVisible) {
+      setSearchQuery("");
+    }
+  }, [modalVisible]);
+
+  const filteredOptions = searchable
+    ? options.filter((item: string) => item.toLowerCase().includes(searchQuery.toLowerCase()))
+    : options;
 
   return (
     <View style={{ marginBottom: verticalScale(14) }}>
@@ -106,13 +117,50 @@ const DropdownField = ({ label, icon, placeholder, value, options, onSelect }: a
             <View style={{ width: scale(40), height: verticalScale(5), borderRadius: 10 }} className="bg-slate-200 self-center mb-6" />
             <Text style={{ fontSize: moderateScale(16) }} className="font-jakarta-bold text-slate-900 mb-4 px-2">Select {label}</Text>
             
-            {options.length === 0 ? (
-              <Text style={{ fontSize: moderateScale(13) }} className="text-slate-500 text-center py-4 font-jakarta-medium">No options available</Text>
+            {searchable && (
+              <View 
+                style={{
+                  flexDirection: "row",
+                  alignItems: "center",
+                  backgroundColor: "#F1F5F9",
+                  borderRadius: moderateScale(12),
+                  paddingHorizontal: scale(10),
+                  height: verticalScale(40),
+                  marginBottom: verticalScale(14),
+                  marginHorizontal: scale(8),
+                }}
+              >
+                <Ionicons name="search-outline" size={moderateScale(16)} color="#64748B" style={{ marginRight: scale(6) }} />
+                <TextInput
+                  placeholder={`Search ${label}...`}
+                  placeholderTextColor="#94A3B8"
+                  value={searchQuery}
+                  onChangeText={setSearchQuery}
+                  style={{
+                    fontSize: moderateScale(13),
+                    flex: 1,
+                    height: "100%",
+                    color: "#0F172A",
+                  }}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                />
+                {searchQuery.length > 0 && (
+                  <TouchableOpacity onPress={() => setSearchQuery("")}>
+                    <Ionicons name="close-circle" size={moderateScale(16)} color="#94A3B8" />
+                  </TouchableOpacity>
+                )}
+              </View>
+            )}
+
+            {filteredOptions.length === 0 ? (
+              <Text style={{ fontSize: moderateScale(13) }} className="text-slate-500 text-center py-4 font-jakarta-medium">No matching options</Text>
             ) : (
               <FlatList
-                data={options}
+                data={filteredOptions}
                 keyExtractor={(item) => item}
                 showsVerticalScrollIndicator={false}
+                keyboardShouldPersistTaps="handled"
                 renderItem={({ item }) => (
                   <TouchableOpacity
                     style={{ paddingVertical: verticalScale(12), paddingHorizontal: scale(12) }}
@@ -893,6 +941,7 @@ const AddProduct = () => {
                     setSubCategoryIdState(""); 
                   }} 
                   options={categoryOptions}
+                  searchable={true}
                 />
                 <DropdownField 
                   label="Sub Category" 
@@ -905,6 +954,7 @@ const AddProduct = () => {
                     if (match) setSubCategoryIdState(match._id);
                   }} 
                   options={subCategoryOptions} 
+                  searchable={true}
                 />
               </View>
             )}
@@ -977,9 +1027,11 @@ const AddProduct = () => {
                 </TouchableOpacity>
               )}
 
-              <TouchableOpacity onPress={handleSaveProduct} className="bg-blue-900 px-6 py-3.5 rounded-xl shadow-lg shadow-blue-900/30 active:opacity-90">
-                <Text className="text-white font-jakarta-bold text-[15px]">{isEditMode ? "Update" : "Save"}</Text>
-              </TouchableOpacity>
+              {!hasNextTab && (
+                <TouchableOpacity onPress={handleSaveProduct} className="bg-blue-900 px-6 py-3.5 rounded-xl shadow-lg shadow-blue-900/30 active:opacity-90">
+                  <Text className="text-white font-jakarta-bold text-[15px]">{isEditMode ? "Update" : "Save"}</Text>
+                </TouchableOpacity>
+              )}
             </View>
 
           </View>

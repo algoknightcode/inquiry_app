@@ -45,12 +45,12 @@ const Dashboard = () => {
     if (abortControllerRef.current) abortControllerRef.current.abort();
     abortControllerRef.current = new AbortController();
     const { signal } = abortControllerRef.current;
-
+ 
     try {
       const supplierId = globalSellerId || await AsyncStorage.getItem("supplierId");
-
+ 
       if (supplierId) {
-        // 🔥 FIX 1: allSettled prevents one broken API from crashing the whole dashboard
+        // 🔥 Fetch products, inquiries, business profile, AND the category tree
         const results = await Promise.allSettled([
           fetch(`https://seller.inquirybazaar.com/api/product?supplierId=${supplierId}`, { signal }),
           fetch(`https://brandbnalo.com/api/form/get-forms/${supplierId}?filter=today`, { signal }),
@@ -62,28 +62,47 @@ const Dashboard = () => {
             },
             signal,
           }),
+          fetch("https://backend.inquirybazaar.com/api/industries/tree", { signal }),
         ]);
-
+ 
         if (!isMounted.current) return;
+ 
+        // 1. Build Category ID-to-Name mapping lookup table
+        const catMap: { [key: string]: string } = {};
+        if (results[3].status === "fulfilled" && results[3].value.ok) {
+          try {
+            const treeJson = await results[3].value.json();
+            if (treeJson.success && Array.isArray(treeJson.data)) {
+              treeJson.data.forEach((industry: any) => {
+                if (industry.categories) {
+                  industry.categories.forEach((cat: any) => {
+                    catMap[cat._id] = cat.name;
+                  });
+                }
+              });
+            }
+          } catch (e) {
+            console.log("Error parsing categories tree:", e);
+          }
+        }
 
-        // Safely process products
+        // 2. Process products and resolve unique category names
         if (results[0].status === "fulfilled" && results[0].value.ok) {
           const prodJson = await results[0].value.json();
           const productsArray = prodJson.data || prodJson.products || prodJson || [];
           setProductsCount(productsArray.length);
-
+ 
           const categorySet = new Set<string>();
           productsArray.forEach((p: any) => {
-            const cat = p.categoryName || p.category?.name || p.category;
-            if (cat && typeof cat === 'string') {
-              categorySet.add(cat);
-            } else if (cat && typeof cat === 'object' && cat.name) {
-              categorySet.add(cat.name);
+            // Check lookup map first, then fallbacks
+            const catName = catMap[p.categoryId] || p.categoryName || p.category?.name || (typeof p.category === 'string' ? p.category : null);
+            if (catName) {
+              categorySet.add(catName);
             }
           });
           setCategoriesList(Array.from(categorySet));
         }
-
+ 
         // Safely process inquiries
         if (results[1].status === "fulfilled" && results[1].value.ok) {
           const leadJson = await results[1].value.json();
@@ -91,7 +110,7 @@ const Dashboard = () => {
             setInquiries(leadJson.data);
           }
         }
-
+ 
         // Safely process business profile
         if (results[2].status === "fulfilled" && results[2].value.ok) {
           const businessJson = await results[2].value.json();
@@ -210,7 +229,7 @@ const Dashboard = () => {
           </View>
         </View>
 
-        {/* --- LATEST INQUIRIES --- */}
+         {/* --- LATEST INQUIRIES --- */}
         <View style={s.sectionCard}>
           <View style={s.sectionHeader}>
             <View style={s.sectionHeaderTitleWrapper}>
@@ -219,7 +238,7 @@ const Dashboard = () => {
                 Latest Inquiries
               </Text>
             </View>
-            <TouchableOpacity>
+            <TouchableOpacity onPress={() => router.push("/Seller/Lead")}>
               <Text style={s.viewAllLink}>View All</Text>
             </TouchableOpacity>
           </View>
@@ -231,7 +250,11 @@ const Dashboard = () => {
                 const timeString = item.createdAt ? new Date(item.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : "N/A";
                 const messageDetail = item.message || item.query || item.requirements || "Inquiry Request";
                 return (
-                  <TouchableOpacity key={item._id || index} style={s.inquiryCard}>
+                  <TouchableOpacity 
+                    key={item._id || index} 
+                    style={s.inquiryCard}
+                    onPress={() => router.push("/Seller/Lead")}
+                  >
                     <View style={s.inquiryCardHeader}>
                       <Text style={s.inquiryUser}>{userName}</Text>
                       <Text style={s.inquiryTime}>{timeString}</Text>

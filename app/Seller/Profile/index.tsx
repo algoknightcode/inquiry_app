@@ -359,7 +359,16 @@ const SellerProfileSettings = () => {
             companyName: businessData.companyName || businessData.name || businessData.company_name || "",
             ceoName: businessData.ceoName || businessData.ceo_name || "",
             gstNumber: businessData.gstNumber || businessData.gst || businessData.gst_number || "",
-            establishedDate: businessData.establishedDate || businessData.established_date || "",
+            establishedDate: (() => {
+              const rawDate = businessData.establishedDate || businessData.established_date || "";
+              if (!rawDate) return "";
+              const dateOnly = rawDate.split("T")[0];
+              const parts = dateOnly.split("-");
+              if (parts.length === 3) {
+                return `${parts[2]}/${parts[1]}/${parts[0]}`; // Convert YYYY-MM-DD to DD/MM/YYYY
+              }
+              return rawDate;
+            })(),
             ownershipType: businessData.ownershipType || businessData.ownership_type || "",
             businessField: businessData.businessField || businessData.business_field || "",
             businessType: businessData.businessType || businessData.business_type || "",
@@ -547,40 +556,47 @@ const SellerProfileSettings = () => {
         setLoading(false);
       }
     } else {
+      let finalEstablishedDate = "";
+      if (profileData.establishedDate) {
+        const cleanedDate = profileData.establishedDate.trim();
+        
+        // 1. Check if user typed in dd/mm/yyyy format
+        const dateRegex = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/;
+        const match = cleanedDate.match(dateRegex);
+        
+        if (match) {
+          const day = match[1].padStart(2, '0');
+          const month = match[2].padStart(2, '0');
+          const year = match[3];
+          finalEstablishedDate = `${year}-${month}-${day}`; // ISO format YYYY-MM-DD
+        } else {
+          // 2. Check if already in yyyy-mm-dd format (e.g. unmodified from DB fetch)
+          const isoRegex = /^\d{4}-\d{2}-\d{2}$/;
+          if (isoRegex.test(cleanedDate)) {
+            finalEstablishedDate = cleanedDate;
+          } else {
+            Alert.alert("Invalid Date", "Please enter the Established Date in dd/mm/yyyy format (e.g., 15/08/2020) or leave it empty.");
+            setLoading(false);
+            return;
+          }
+        }
+      }
+
       // Save Business Profile details using /api/profile/business
       const payload = {
-        ...profileData,
+        companyName: profileData.companyName,
+        ceoName: profileData.ceoName,
+        gstNumber: profileData.gstNumber,
+        establishedDate: finalEstablishedDate || null, // send null if empty
+        ownershipType: profileData.ownershipType,
+        businessField: profileData.businessField,
+        businessType: profileData.businessType,
+        annualTurnover: profileData.annualTurnover,
         numberOfEmployees: profileData.employeeCount, // Backend DB field name
         state: profileData.stateName, // Backend DB field name
         city: profileData.cityName, // Backend DB field name (REQUIRED in DB Schema)
         address: profileData.businessAddress, // Backend DB field name
-        social: {
-          whatsApp: profileData.whatsApp,
-          linkedIn: profileData.linkedIn,
-          instagram: profileData.instagram,
-          facebook: profileData.facebook,
-          telegram: profileData.telegram,
-          youtube: profileData.youtube,
-          twitter: profileData.twitter,
-        },
-        socialLinks: {
-          whatsApp: profileData.whatsApp,
-          linkedIn: profileData.linkedIn,
-          instagram: profileData.instagram,
-          facebook: profileData.facebook,
-          telegram: profileData.telegram,
-          youtube: profileData.youtube,
-          twitter: profileData.twitter,
-        },
-        social_links: {
-          whatsapp: profileData.whatsApp,
-          linkedin: profileData.linkedIn,
-          instagram: profileData.instagram,
-          facebook: profileData.facebook,
-          telegram: profileData.telegram,
-          youtube: profileData.youtube,
-          twitter: profileData.twitter,
-        }
+        serviceLocations: [""], // Add this to prevent Joi/Mongoose validation error
       };
 
       try {
