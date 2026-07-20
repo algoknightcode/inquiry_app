@@ -4,6 +4,7 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useCallback, useEffect, useState } from "react";
 import { ActivityIndicator, FlatList, Pressable, ScrollView, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { Ionicons } from "@expo/vector-icons";
 
 import { CategoryImage } from "@/assets/images"; // Make sure your path is correct
 
@@ -58,11 +59,20 @@ const Grid_mainCategory = () => {
       showsVerticalScrollIndicator={false}
     >
       {/* Dynamic Header */}
-      <View className="mb-6">
-        <Text className="text-[26px] font-jakarta-bold text-slate-900 tracking-tight">
-          {name || "All Categories"}
-        </Text>
-        <Text className="text-[14px] font-jakarta-medium text-slate-500 mt-1">
+      <View style={{ marginBottom: 20 }}>
+        <View style={{ flexDirection: "row", alignItems: "center" }}>
+          <Pressable 
+            onPress={() => router.back()} 
+            style={{ marginRight: 12, padding: 4 }}
+            hitSlop={12}
+          >
+            <Ionicons name="arrow-back" size={24} color="#0f172a" />
+          </Pressable>
+          <Text className="text-[24px] font-jakarta-bold text-slate-900 tracking-tight flex-1">
+            {name || "All Categories"}
+          </Text>
+        </View>
+        <Text style={{ marginLeft: 44 }} className="text-[14px] font-jakarta-medium text-slate-500 mt-1">
           Explore products within this sector
         </Text>
       </View>

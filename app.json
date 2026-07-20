@@ -11,8 +11,7 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.simran-singh123.inquiry-app",
-      "googleServicesFile": "./GoogleService-Info.plist",
-      "useFrameworks": "static"
+      "googleServicesFile": "./GoogleService-Info.plist"
     },
     "android": {
       "adaptiveIcon": {

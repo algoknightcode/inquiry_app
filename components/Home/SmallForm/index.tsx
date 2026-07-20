@@ -209,6 +209,7 @@ const styles = StyleSheet.create({
   outer: {
     paddingHorizontal: 20,
     backgroundColor: "#f8fafc",
+    paddingTop: 20,
   },
   card: {
     backgroundColor: "#ffffff",

@@ -208,16 +208,20 @@ export default function IndustryTreeCarousel({
     stopAutoPlay();
     if (data.length <= 1) return;
 
-    return; // Autoplay safely disabled
     autoplayTimerRef.current = setInterval(() => {
       if (!isFocused || !hasBeenVisible) {
         return;
       }
 
-      scrollIndex.value = (scrollIndex.value + 1) % data.length;
-      
+      const nextIndex = scrollIndex.value + 1;
+      if (nextIndex >= data.length) {
+        stopAutoPlay();
+        return;
+      }
+
+      scrollIndex.value = nextIndex;
       flatRef.current?.scrollToIndex({
-        index: scrollIndex.value,
+        index: nextIndex,
         animated: true,
       });
     }, 4000);

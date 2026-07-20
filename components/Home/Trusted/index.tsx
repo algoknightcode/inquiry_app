@@ -342,7 +342,7 @@ const IBTrusted = ({ isScrolling }: { isScrolling?: SharedValue<boolean> } = {})
     const cardWidth = (screenWidth - containerPadding * 2) / 2.3;
     const cardSpacing = 16 * scale;
     const cardHeight = cardWidth * 1.25;
-    const totalListHeight = cardHeight + (180 * scale);
+    const totalListHeight = cardHeight + (145 * scale);
     return {
       cardWidth,
       cardHeight,
@@ -539,7 +539,7 @@ const IBTrusted = ({ isScrolling }: { isScrolling?: SharedValue<boolean> } = {})
   }), [layout.ITEM_SIZE]);
 
   return (
-    <View style={[staticStyles.container, { paddingTop: 24 * scale, paddingBottom: 24 * scale }]}>
+    <View style={[staticStyles.container, { paddingTop: 24 * scale, paddingBottom: 8 * scale }]}>
       {/* Header */}
       <View style={[staticStyles.headerContainer, { paddingHorizontal: layout.containerPadding }]}>
         <View style={{ flexDirection: "column" }}>
@@ -566,7 +566,7 @@ const IBTrusted = ({ isScrolling }: { isScrolling?: SharedValue<boolean> } = {})
           showsHorizontalScrollIndicator={false}
           scrollEnabled={false}
           style={{ marginTop: 24, height: layout.totalListHeight }}
-          contentContainerStyle={{ paddingLeft: layout.containerPadding, paddingBottom: 28 }}
+          contentContainerStyle={{ paddingLeft: layout.containerPadding }}
         >
           {[...Array(4)].map((_, i) => (
             <SkeletonProductCard key={`skeleton-${i}`} layout={layout} />
@@ -584,7 +584,6 @@ const IBTrusted = ({ isScrolling }: { isScrolling?: SharedValue<boolean> } = {})
           contentContainerStyle={{
             paddingLeft: layout.containerPadding,
             paddingRight: layout.containerPadding + layout.cardWidth, 
-            paddingBottom: 28,
           }}
           snapToInterval={layout.ITEM_SIZE}
           snapToAlignment="start"

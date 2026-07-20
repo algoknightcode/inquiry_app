@@ -130,8 +130,17 @@ const IndustriesList = () => {
   return (
     <View style={{ flex: 1, backgroundColor: "#fff", paddingTop: insets.top }}>
       <View className={styles.header}>
-        <Text className={styles.headerTitle}>All Industries</Text>
-        <Text className={styles.headerSubtitle}>
+        <View style={{ flexDirection: "row", alignItems: "center" }}>
+          <Pressable 
+            onPress={() => router.back()} 
+            style={{ marginRight: 12, padding: 4 }}
+            hitSlop={12}
+          >
+            <Ionicons name="arrow-back" size={24} color="#0f172a" />
+          </Pressable>
+          <Text className={styles.headerTitle + " flex-1"}>All Industries</Text>
+        </View>
+        <Text style={{ marginLeft: 44 }} className={styles.headerSubtitle}>
           Discover products across {industriesList.length || 'all'} sectors
         </Text>
       </View>

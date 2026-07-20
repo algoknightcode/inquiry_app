@@ -3,10 +3,8 @@ import { useRouter } from "expo-router";
 import React, { useCallback, useMemo, useRef, useState } from "react";
 import {
     ActivityIndicator,
-    KeyboardAvoidingView,
     Linking,
     Modal,
-    Platform,
     ScrollView,
     StatusBar,
     StyleSheet,
@@ -250,16 +248,13 @@ export default function RequestQuoteForm() {
         </View>
       </View>
 
-      <KeyboardAvoidingView
-        style={styles.container}
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
-        keyboardVerticalOffset={Platform.OS === "ios" ? 88 : 0}
-      >
-        <ScrollView
+      <ScrollView
           ref={scrollViewRef}
+          style={styles.container}
           contentContainerStyle={[styles.scrollContent, { paddingHorizontal: 20 * scale }]}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
+          automaticallyAdjustKeyboardInsets={true}
         >
           {/* Header */}
           <View style={{ marginBottom: 24 * scale }}>
@@ -404,7 +399,6 @@ export default function RequestQuoteForm() {
             </Text>
           </View>
         </ScrollView>
-      </KeyboardAvoidingView>
 
       {/* SUCCESS MODAL POPUP */}
       <Modal visible={showModal} transparent={true} animationType="fade" onRequestClose={() => setShowModal(false)}>

@@ -30,9 +30,9 @@ export default function HomeFooterHelp({
 
     return {
       containerPadding: 20 * scale,
-      iconSize: 22 * scale,
-      itemTitleSize: 15.5 * scale,
-      itemDescSize: 13 * scale,
+      iconSize: 20 * scale,
+      itemTitleSize: Math.max(12, 14.5 * scale),
+      itemDescSize: 12 * scale,
       headingSize: 15 * scale,
       itemWidth: isTablet ? "31.5%" : "48%",
       columnGap: isTablet ? 12 : 8,
@@ -106,9 +106,9 @@ export default function HomeFooterHelp({
             style={{ width: metrics.itemWidth as DimensionValue }}
             className="mb-3 items-start active:scale-[0.98] transition-transform p-3 rounded-xl bg-white/5 border border-white/5"
           >
-            {/* Icon Header Row - Switched to items-start for wrapped text alignment */}
-            <View className="flex-row items-start mb-2 w-full">
-              <View className="bg-white/10 p-1.5 rounded-lg mr-2.5 items-center justify-center">
+            {/* Icon Header Row - Stacked vertically for maximum text space */}
+            <View className="items-start mb-2 w-full">
+              <View className="bg-white/10 p-1.5 rounded-lg mb-2 items-center justify-center">
                 {feat.iconProvider === "ionicons" ? (
                   <Ionicons name={feat.iconName as any} size={metrics.iconSize} color="#38BDF8" />
                 ) : (
@@ -117,8 +117,8 @@ export default function HomeFooterHelp({
               </View>
               <Text 
                 style={{ fontSize: metrics.itemTitleSize }}
-                className="font-jakarta-bold text-white flex-1 leading-snug pt-0.5"
-                numberOfLines={2} // Allows text to wrap perfectly without truncating
+                className="font-jakarta-bold text-white w-full leading-snug"
+                numberOfLines={2}
               >
                 {feat.title}
               </Text>
