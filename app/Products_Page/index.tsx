@@ -213,9 +213,11 @@ export default function ProductListingPage() {
         supToken = globalUserId;
       }
 
+      const resolvedCompany = selectedProductForInquiry?.supplier?.business?.companyName || selectedProductForInquiry?.supplier?.name || "Supplier";
+
       const payload = {
         supplierToken: supToken || "NA",
-        platform: "App Product Listing",
+        platform: `App - ${resolvedCompany}`,
         platformEmail: selectedProductForInquiry?.supplier?.email || "lead.inquirybazaar@gmail.com",
         name: inqName,
         email: inqEmail || "NA",

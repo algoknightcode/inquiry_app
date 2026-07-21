@@ -120,9 +120,11 @@ export default function EnquiryModal({ visible, onClose, product }: EnquiryModal
         supToken = globalUserId;
       }
 
+      const resolvedCompany = product.supplier?.business?.companyName || product.supplier?.name || "Supplier";
+
       const payload = {
         supplierToken: supToken || "NA",
-        platform: "App Product Listing",
+        platform: `App - ${resolvedCompany}`,
         platformEmail: product.supplier?.email || "lead.inquirybazaar@gmail.com",
         name: inqName,
         email: inqEmail || "NA",

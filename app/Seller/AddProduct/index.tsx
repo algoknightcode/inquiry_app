@@ -444,7 +444,7 @@ const AddProduct = () => {
 
   const pickImage = async () => {
     let result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaType.Images,
+      mediaTypes: ImagePicker.MediaTypeOptions?.Images || ['images'],
       allowsEditing: true,
       aspect: [4, 3],
       quality: 1, 
@@ -616,10 +616,12 @@ const AddProduct = () => {
       
       if (formData.brandName) uploadData.append("brandName", formData.brandName);
       if (formData.newPrice) uploadData.append("price", formData.newPrice);
-      if (formData.oldPrice) uploadData.append("oldPrice", formData.oldPrice);
-      if (formData.unit) uploadData.append("unit", formData.unit);
-      if (formData.priceType) uploadData.append("priceType", formData.priceType.toLowerCase()); 
-      if (formData.minOrderQty) uploadData.append("minOrderQty", formData.minOrderQty);
+      if (formData.unit) uploadData.append("unit", formData.unit.toLowerCase());
+      if (formData.priceType) {
+        const pt = formData.priceType.toLowerCase();
+        const apiPriceType = (pt === "on request" || pt === "on_request" || pt === "negotiable") ? "on_request" : "fixed";
+        uploadData.append("priceType", apiPriceType);
+      }
       if (formData.description) uploadData.append("description", formData.description);
       if (formData.deliveryTime) uploadData.append("deliveryTime", formData.deliveryTime);
       if (formData.paymentTerms) uploadData.append("paymentTerms", formData.paymentTerms);
@@ -649,7 +651,9 @@ const AddProduct = () => {
         const match = /\.([a-zA-Z0-9]+)$/.exec(filename);
         const type = match ? `image/${match[1]}` : `image/jpeg`;
 
-        const fileUri = Platform.OS === 'ios' ? finalProductImage!.replace('file://', '') : finalProductImage;
+        const fileUri = Platform.OS === 'ios' && !finalProductImage!.startsWith('file://')
+          ? `file://${finalProductImage}`
+          : finalProductImage;
 
         uploadData.append("files", {
           uri: fileUri,

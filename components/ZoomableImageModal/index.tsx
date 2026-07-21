@@ -109,6 +109,7 @@ const ZoomableImageModal = ({ visible, onClose, imageUri }: ZoomableModalProps) 
 
   return (
     <Modal visible={visible} transparent={true} animationType="fade" onRequestClose={handleClose}>
+      <GestureHandlerRootView style={{ flex: 1 }}>
         <View style={{ flex: 1, backgroundColor: "rgba(0, 0, 0, 0.95)", justifyContent: "center", alignItems: "center" }}>
           <TouchableOpacity
             onPress={handleClose}
@@ -117,22 +118,22 @@ const ZoomableImageModal = ({ visible, onClose, imageUri }: ZoomableModalProps) 
             <Ionicons name="close" size={24} color="#fff" />
           </TouchableOpacity>
 
-          <PanGestureHandler
-            ref={panRef}
-            enabled={isZoomed}
-            onGestureEvent={onPanEvent}
-            onHandlerStateChange={onPanStateChange}
-            simultaneousHandlers={pinchRef}
-            minPointers={1}
-            maxPointers={2}
-            avgTouches
+          <PinchGestureHandler
+            ref={pinchRef}
+            onGestureEvent={onPinchEvent}
+            onHandlerStateChange={onPinchStateChange}
+            simultaneousHandlers={panRef}
           >
             <Animated.View style={{ flex: 1, width: "100%", justifyContent: "center", alignItems: "center" }}>
-              <PinchGestureHandler
-                ref={pinchRef}
-                onGestureEvent={onPinchEvent}
-                onHandlerStateChange={onPinchStateChange}
-                simultaneousHandlers={panRef}
+              <PanGestureHandler
+                ref={panRef}
+                enabled={true}
+                onGestureEvent={onPanEvent}
+                onHandlerStateChange={onPanStateChange}
+                simultaneousHandlers={pinchRef}
+                minPointers={1}
+                maxPointers={2}
+                avgTouches
               >
                 <Animated.View
                   style={{
@@ -147,10 +148,11 @@ const ZoomableImageModal = ({ visible, onClose, imageUri }: ZoomableModalProps) 
                     contentFit="contain"
                   />
                 </Animated.View>
-              </PinchGestureHandler>
+              </PanGestureHandler>
             </Animated.View>
-          </PanGestureHandler>
+          </PinchGestureHandler>
         </View>
+      </GestureHandlerRootView>
     </Modal>
   );
 };
