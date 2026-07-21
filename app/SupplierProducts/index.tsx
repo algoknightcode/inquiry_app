@@ -16,49 +16,42 @@ import {
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { getIndustryTree as getGlobalIndustryTree } from "@/utils/industryTreeCache";
 
-// ─── Module-level singleton: fetched ONCE per app session, never again ───────
+// ─── Module-level cache for supplier product category maps ───────
 type IndustryTreeCache = {
   catNames: { [key: string]: string };
   subNames: { [key: string]: string };
 } | null;
 let _industryTreeCache: IndustryTreeCache = null;
-let _industryTreeFetchPromise: Promise<IndustryTreeCache> | null = null;
 
 async function getIndustryTree(): Promise<IndustryTreeCache> {
   if (_industryTreeCache) return _industryTreeCache;
-  if (_industryTreeFetchPromise) return _industryTreeFetchPromise;
 
-  _industryTreeFetchPromise = fetch("https://backend.inquirybazaar.com/api/industries/tree")
-    .then(res => res.json())
-    .then(json => {
-      if (json.success && Array.isArray(json.data)) {
-        const catNames: { [key: string]: string } = {};
-        const subNames: { [key: string]: string } = {};
-        json.data.forEach((industry: any) => {
-          if (Array.isArray(industry.categories)) {
-            industry.categories.forEach((cat: any) => {
-              catNames[cat._id] = cat.name;
-              if (Array.isArray(cat.subCategories)) {
-                cat.subCategories.forEach((sub: any) => {
-                  subNames[sub._id] = sub.name;
-                });
-              }
-            });
-          }
-        });
-        _industryTreeCache = { catNames, subNames };
-      }
-      _industryTreeFetchPromise = null;
-      return _industryTreeCache;
-    })
-    .catch(err => {
-      _industryTreeFetchPromise = null;
-      console.error("Industry tree fetch failed:", err);
-      return null;
-    });
+  try {
+    const json = await getGlobalIndustryTree();
+    if (json?.success && Array.isArray(json.data)) {
+      const catNames: { [key: string]: string } = {};
+      const subNames: { [key: string]: string } = {};
+      json.data.forEach((industry: any) => {
+        if (Array.isArray(industry.categories)) {
+          industry.categories.forEach((cat: any) => {
+            catNames[cat._id] = cat.name;
+            if (Array.isArray(cat.subCategories)) {
+              cat.subCategories.forEach((sub: any) => {
+                subNames[sub._id] = sub.name;
+              });
+            }
+          });
+        }
+      });
+      _industryTreeCache = { catNames, subNames };
+    }
+  } catch (err) {
+    console.error("SupplierProducts tree fetch failed:", err);
+  }
 
-  return _industryTreeFetchPromise;
+  return _industryTreeCache;
 }
 // ─────────────────────────────────────────────────────────────────────────────
 

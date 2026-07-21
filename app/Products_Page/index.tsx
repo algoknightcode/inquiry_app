@@ -1,4 +1,6 @@
+import { SortFilterModal } from "@/components/ProductsPage/SortFilterModal";
 import { Spinner } from "@/components/ui/spinner";
+import { getIndustryTree } from "@/utils/industryTreeCache";
 import { setProductCache } from "@/utils/productCache";
 import { globalSellerId } from "@/utils/roleCache";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
@@ -269,6 +271,10 @@ export default function ProductListingPage() {
     }
   };
 
+  // Sort & Filter state
+  const [sortOption, setSortOption] = useState<"none" | "high_to_low" | "low_to_high">("none");
+  const [sortModalVisible, setSortModalVisible] = useState(false);
+
   // Memoize filtered products to prevent re-filtering on every render
   const filteredProducts = useMemo(() => {
     return products.filter((product) => {
@@ -280,6 +286,37 @@ export default function ProductListingPage() {
       return productName.includes(query) || companyName.includes(query) || supplierName.includes(query);
     });
   }, [products, searchQuery]);
+
+  // Apply price sorting (Only apply sorting when filter is selected; default order remains untouched)
+  const sortedProducts = useMemo(() => {
+    if (sortOption === "none") return filteredProducts;
+
+    const list = [...filteredProducts];
+    
+    const isPriceOnRequest = (p: Product) => 
+      p.priceType === "on_request" || !p.price || p.price <= 0;
+
+    if (sortOption === "high_to_low") {
+      list.sort((a, b) => {
+        const aOnReq = isPriceOnRequest(a);
+        const bOnReq = isPriceOnRequest(b);
+        if (aOnReq && !bOnReq) return 1;  // Push 'a' to bottom
+        if (!aOnReq && bOnReq) return -1; // Keep 'b' at bottom
+        if (aOnReq && bOnReq) return 0;
+        return b.price - a.price; // High to Low
+      });
+    } else if (sortOption === "low_to_high") {
+      list.sort((a, b) => {
+        const aOnReq = isPriceOnRequest(a);
+        const bOnReq = isPriceOnRequest(b);
+        if (aOnReq && !bOnReq) return 1;  // Push 'a' to bottom
+        if (!aOnReq && bOnReq) return -1; // Keep 'b' at bottom
+        if (aOnReq && bOnReq) return 0;
+        return a.price - b.price; // Low to High
+      });
+    }
+    return list;
+  }, [filteredProducts, sortOption]);
 
   const prevSlug = useRef(subCategorySlug);
   const prevLocation = useRef(location);
@@ -306,11 +343,10 @@ export default function ProductListingPage() {
         let fetchedList: Product[] = [];
         
         if (params.isParentCategory === 'true') {
-          // 1. Fetch industries tree to get the subcategories list
-          const treeRes = await fetch("https://backend.inquirybazaar.com/api/industries/tree", { signal });
-          const treeJson = await treeRes.json();
+          // 1. Fetch industries tree to get the subcategories list via RAM cache
+          const treeJson = await getIndustryTree();
           let subSlugs: string[] = [];
-          if (treeJson.success && Array.isArray(treeJson.data)) {
+          if (treeJson?.success && Array.isArray(treeJson.data)) {
             // Find the category by slug or id and gather subcategory slugs
             for (const industry of treeJson.data) {
               if (Array.isArray(industry.categories)) {
@@ -457,7 +493,7 @@ export default function ProductListingPage() {
         android_ripple={{ color: "#e2e8f0" }}
       >
         {/* Image */}
-        <View className="w-full rounded-2xl bg-slate-100 overflow-hidden mb-4" style={{ height: 212 }}>
+        <View className="w-full rounded-2xl bg-slate-100 overflow-hidden mb-4" style={{ height: 250 }}>
           {imageUri ? (
             <Image
               source={{ uri: imageUri }}
@@ -633,8 +669,18 @@ export default function ProductListingPage() {
             </Text>
           </View>
           <View className="flex-row items-center">
-            <TouchableOpacity className="ml-3 active:opacity-50">
-              <Ionicons name="options-outline" size={22} color="#0f172a" />
+            <TouchableOpacity 
+              className="ml-3 active:opacity-50 relative"
+              onPress={() => setSortModalVisible(true)}
+            >
+              <Ionicons 
+                name="options-outline" 
+                size={22} 
+                color={sortOption !== "none" ? "#4F46E5" : "#0f172a"} 
+              />
+              {sortOption !== "none" && (
+                <View className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-indigo-600 rounded-full border-2 border-white" />
+              )}
             </TouchableOpacity>
           </View>
         </View>
@@ -661,7 +707,7 @@ export default function ProductListingPage() {
         {/* Count + Location pill row */}
         <View className="flex-row items-center justify-between">
           <Text className="text-slate-500 font-jakarta-medium text-[13px]">
-            {filteredProducts.length} suppliers found
+            {sortedProducts.length} suppliers found
           </Text>
           <Pressable 
             onPress={() => setCityModalVisible(true)}
@@ -678,7 +724,7 @@ export default function ProductListingPage() {
 
       {/* PRODUCT LIST */}
       <FlatList
-        data={filteredProducts}
+        data={sortedProducts}
         keyExtractor={(item) => item._id}
         renderItem={renderProduct}
         showsVerticalScrollIndicator={false}
@@ -709,6 +755,14 @@ export default function ProductListingPage() {
             </Text>
           </View>
         }
+      />
+
+      {/* SORT & FILTER MODAL */}
+      <SortFilterModal
+        visible={sortModalVisible}
+        sortOption={sortOption}
+        onClose={() => setSortModalVisible(false)}
+        onSelectSort={setSortOption}
       />
 
 

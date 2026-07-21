@@ -1,22 +1,24 @@
 import { fetchWithCache, getCacheSync } from "@/utils/apiCache";
 import { useRouter } from "expo-router";
-import React, { useEffect, useMemo, useRef, useState, useCallback } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ActivityIndicator, Pressable, StyleSheet, Text, useWindowDimensions, View } from "react-native";
-import { runOnJS, SharedValue, useAnimatedReaction } from "react-native-reanimated";
+import Animated, { runOnJS, SharedValue, useAnimatedReaction } from "react-native-reanimated";
 import Carousel, { ICarouselInstance } from "react-native-reanimated-carousel";
+
+const API_URL = "https://backend.inquirybazaar.com/api/industries";
 
 type Industry = {
   _id: string;
   name: string;
 };
 
-const TREE_URL = "https://backend.inquirybazaar.com/api/industries/tree";
-
 function getInitialCachedIndustries(): Industry[] {
   try {
-    const json = getCacheSync(TREE_URL);
+    const json = getCacheSync(API_URL);
     if (json?.success && Array.isArray(json.data)) {
       return json.data;
+    } else if (Array.isArray(json)) {
+      return json;
     }
   } catch (err) {
     console.warn("Error reading CategoryMarquee cache:", err);
@@ -48,7 +50,7 @@ const CategoryPill = React.memo(({ id, name, onPress, width }: CategoryPillProps
   );
 });
 
-export default function CategoryMarquee() {
+export default function CategoryMarquee({ isScrolling }: { isScrolling?: SharedValue<boolean> } = {}) {
   const router = useRouter();
   const { width: screenWidth } = useWindowDimensions();
   const carouselRef = useRef<ICarouselInstance>(null);
@@ -56,15 +58,30 @@ export default function CategoryMarquee() {
   const initialIndustries = getInitialCachedIndustries();
   const [industries, setIndustries] = useState<Industry[]>(initialIndustries);
   const [loading, setLoading] = useState(initialIndustries.length === 0);
+  const [isScrollPaused, setIsScrollPaused] = useState(false);
+
+  useAnimatedReaction(
+    () => isScrolling?.value ?? false,
+    (scrolling, previousScrolling) => {
+      if (scrolling !== previousScrolling) {
+        runOnJS(setIsScrollPaused)(scrolling);
+      }
+    },
+    [isScrolling]
+  );
 
   useEffect(() => {
     (async () => {
       try {
-        const json = await fetchWithCache(TREE_URL);
+        const json = await fetchWithCache(API_URL);
 
-        if (json?.success && json.data) {
+        if (json?.success && Array.isArray(json.data)) {
           setIndustries(json.data);
+        } else if (Array.isArray(json)) {
+          setIndustries(json);
         }
+      } catch (err) {
+        console.error("CategoryMarquee fetch error:", err);
       } finally {
         setLoading(false);
       }
@@ -117,7 +134,7 @@ export default function CategoryMarquee() {
       <Carousel
         ref={carouselRef}
         loop={true}
-        autoPlay={true}
+        autoPlay={!isScrollPaused}
         autoPlayInterval={2500}
         scrollAnimationDuration={800}
         data={chunkedIndustries}
@@ -180,6 +197,9 @@ const styles = StyleSheet.create({
     alignItems: "center",
     borderRadius: 999,
     paddingHorizontal: 12,
+  },
+  pillPressed: {
+    opacity: 0.8,
   },
   pillText: {
     color: "#fff",

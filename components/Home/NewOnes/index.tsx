@@ -7,21 +7,22 @@ import { Image } from "expo-image";
 import { useRouter } from "expo-router";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
-    Pressable,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View
 } from "react-native";
 import EnquiryModal from "../../EnquiryModal";
 // 1. Import Reanimated for UI-Thread animations
 import Animated, {
-    runOnJS,
-    SharedValue,
-    useAnimatedReaction,
-    useAnimatedRef,
-    useSharedValue,
+  runOnJS,
+  SharedValue,
+  useAnimatedReaction,
+  useAnimatedRef,
+  useSharedValue,
 } from "react-native-reanimated";
 
 
@@ -338,33 +339,6 @@ const NewOnes = ({ isScrolling }: { isScrolling?: SharedValue<boolean> } = {}) =
     if (productsList.length <= 0) return;
 
     return; // Autoplay safely disabled
-    autoplayTimerRef.current = setInterval(() => {
-      if (!isFocused || isModalVisible) {
-        return;
-      }
-
-      scrollIndex.value = scrollIndex.value + 1;
-      
-      // Scroll to the next index smoothly
-      flatListRef.current?.scrollToIndex({
-        index: scrollIndex.value,
-        animated: true,
-      });
-
-      // Handle wrapping at the bounds
-      if (scrollIndex.value >= replicatedData.length - 2) {
-        const remainder = scrollIndex.value % productsList.length;
-        const safeIndex = baseMiddleIndex + remainder;
-        scrollIndex.value = safeIndex;
-        // Wait for the slide animation to finish before snapping back to the middle
-        setTimeout(() => {
-          flatListRef.current?.scrollToIndex({
-            index: safeIndex,
-            animated: false,
-          });
-        }, 500);
-      }
-    }, 4000);
   }, [isFocused, isModalVisible, productsList.length, replicatedData.length, baseMiddleIndex, stopAutoPlay]);
 
   // Pause autoplay while the main home feed is being scrolled, resume once it settles
@@ -525,8 +499,8 @@ const NewOnes = ({ isScrolling }: { isScrolling?: SharedValue<boolean> } = {}) =
           initialNumToRender={5}
           initialScrollIndex={baseMiddleIndex}
           windowSize={11}
-          updateCellsBatchingPeriod={40} // 6. Optimized React Native Batching
-          removeClippedSubviews={true}
+          updateCellsBatchingPeriod={120} // 6. Optimized React Native Batching
+          removeClippedSubviews={Platform.OS === 'android'}
         />
       )}
 

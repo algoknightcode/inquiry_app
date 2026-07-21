@@ -1,4 +1,4 @@
-import { fetchWithCache } from "@/utils/apiCache";
+import { getIndustryTree } from "@/utils/industryTreeCache";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
@@ -79,7 +79,7 @@ export default function SearchBar({ onFocus, variant = 'default' }: SearchBarPro
 
   // Data states
   const [industries, setIndustries] = useState<Industry[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
 
   // Search input & recommendation states
   const [inputText, setInputText] = useState("");
@@ -89,22 +89,40 @@ export default function SearchBar({ onFocus, variant = 'default' }: SearchBarPro
 
   const isCompact = variant === 'compact';
 
-  // Fetch the full industry tree on mount
+  // Fetch the industry tree lazily only when search input is focused / user starts typing
+  const [hasInteracted, setHasInteracted] = useState(false);
+
+  const handleInputFocus = useCallback(() => {
+    setHasInteracted(true);
+    setShowRecommendations(true);
+  }, []);
+
   useEffect(() => {
+    if (!hasInteracted) return;
+    let isMounted = true;
     const loadTree = async () => {
       try {
-        const json = await fetchWithCache("https://backend.inquirybazaar.com/api/industries/tree");
-        if (json.success && Array.isArray(json.data)) {
+        if (industries.length === 0) {
+          setLoading(true);
+        }
+        const json = await getIndustryTree();
+        if (!isMounted) return;
+        if (json?.success && Array.isArray(json.data)) {
           setIndustries(json.data);
+        } else if (Array.isArray(json)) {
+          setIndustries(json);
         }
       } catch (err) {
         console.error("Error loading industries tree in SearchBar:", err);
       } finally {
-        setLoading(false);
+        if (isMounted) setLoading(false);
       }
     };
     loadTree();
-  }, []);
+    return () => {
+      isMounted = false;
+    };
+  }, [hasInteracted]);
 
   // ── PERFORMANCE UPGRADE: Debounce Typing ──
   // Prevents the heavy fuzzy search from running on every single keystroke, saving CPU
@@ -250,7 +268,7 @@ export default function SearchBar({ onFocus, variant = 'default' }: SearchBarPro
             value={inputText}
             onChangeText={handleTextChange}
             onFocus={() => {
-              setShowRecommendations(true);
+              handleInputFocus();
               onFocus?.();
             }}
             onSubmitEditing={handleSearchSubmit}

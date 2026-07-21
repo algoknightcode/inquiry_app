@@ -384,7 +384,7 @@ const IBTrusted = ({ isScrolling }: { isScrolling?: SharedValue<boolean> } = {})
 
   const replicatedData = useMemo(() => {
     if (!products || products.length === 0) return [];
-    return Array(3).fill(products).flat();
+    return products;
   }, [products]);
 
   const baseMiddleIndex = useMemo(() => {
@@ -595,7 +595,7 @@ const IBTrusted = ({ isScrolling }: { isScrolling?: SharedValue<boolean> } = {})
           onScrollToIndexFailed={handleScrollToIndexFailed}
 
           // FlatList Optimizations
-         removeClippedSubviews={Platform.OS === 'android'} // Safely destroys hidden views
+          removeClippedSubviews={Platform.OS === 'android'} // Safely destroys hidden views
           getItemLayout={getItemLayout}
           initialNumToRender={4}
           maxToRenderPerBatch={6}      // Increased to handle faster swiping

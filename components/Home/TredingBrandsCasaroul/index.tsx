@@ -109,10 +109,21 @@ const BrandCard = React.memo(({ brand, itemWidth, scale, marqueeHeight }: BrandC
   );
 });
 
-function TrendingBrandsCarousel() {
+function TrendingBrandsCarousel({ isScrolling }: { isScrolling?: SharedValue<boolean> } = {}) {
   const isFocused = useIsFocused();
   const router = useRouter();
   const { width: screenWidth } = useWindowDimensions();
+  const [isScrollPaused, setIsScrollPaused] = useState(false);
+
+  useAnimatedReaction(
+    () => isScrolling?.value ?? false,
+    (scrolling, previousScrolling) => {
+      if (scrolling !== previousScrolling) {
+        runOnJS(setIsScrollPaused)(scrolling);
+      }
+    },
+    [isScrolling]
+  );
 
   const { scale, paddingHorizontal, itemWidth, marqueeHeight } = useMemo(() => {
     const isTablet = screenWidth >= 768;
@@ -179,7 +190,7 @@ function TrendingBrandsCarousel() {
           {isFocused && (
             <Carousel
               loop={true}
-              autoPlay={true}
+              autoPlay={!isScrollPaused}
               autoPlayInterval={2500}
               scrollAnimationDuration={800}
               data={mockBrands}

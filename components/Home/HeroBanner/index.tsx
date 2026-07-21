@@ -4,7 +4,9 @@ import React, { useEffect } from "react";
 import { useWindowDimensions, View } from "react-native";
 import Animated, {
     interpolateColor,
+    runOnJS,
     SharedValue,
+    useAnimatedReaction,
     useAnimatedStyle,
     useSharedValue,
     withTiming,
@@ -58,14 +60,25 @@ const PaginationDot = React.memo(({ index, activeIndex }: { index: number, activ
   );
 });
 
-const HeroBanner = () => {
+const HeroBanner = ({ isScrolling }: { isScrolling?: SharedValue<boolean> } = {}) => {
   const isFocused = useIsFocused();
   const { width: screenWidth } = useWindowDimensions();
   
   const activeIndex = useSharedValue(0);
+  const [isScrollPaused, setIsScrollPaused] = React.useState(false);
+
+  useAnimatedReaction(
+    () => isScrolling?.value ?? false,
+    (scrolling, previousScrolling) => {
+      if (scrolling !== previousScrolling) {
+        runOnJS(setIsScrollPaused)(scrolling);
+      }
+    },
+    [isScrolling]
+  );
 
   useEffect(() => {
-    if (!isFocused) return;
+    if (!isFocused || isScrollPaused) return;
 
     const interval = setInterval(() => {
       // 5. Update the value without triggering a React re-render
@@ -73,7 +86,7 @@ const HeroBanner = () => {
     }, 4000);
 
     return () => clearInterval(interval);
-  }, [isFocused, activeIndex]);
+  }, [isFocused, isScrollPaused, activeIndex]);
 
   return (
     <View className="h-[360px] w-full relative bg-slate-900 overflow-hidden">

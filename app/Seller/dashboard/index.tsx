@@ -18,34 +18,27 @@ import {
   View,
 } from "react-native";
 import { moderateScale, scale, verticalScale } from "react-native-size-matters";
+import { getIndustryTree } from "@/utils/industryTreeCache";
 
-// ─── Fix #3: Module-level singleton for industry tree (fetched ONCE per session) ──
+// ─── Module-level cache map for dashboard category names ──
 let _dashCatCache: { [key: string]: string } | null = null;
-let _dashCatFetchPromise: Promise<{ [key: string]: string }> | null = null;
 async function getIndustryTreeForDashboard(): Promise<{ [key: string]: string }> {
   if (_dashCatCache) return _dashCatCache;
-  if (_dashCatFetchPromise) return _dashCatFetchPromise;
-  _dashCatFetchPromise = fetch("https://backend.inquirybazaar.com/api/industries/tree")
-    .then(res => res.json())
-    .then(json => {
-      const map: { [key: string]: string } = {};
-      if (json.success && Array.isArray(json.data)) {
-        json.data.forEach((industry: any) => {
-          if (industry.categories) {
-            industry.categories.forEach((cat: any) => { map[cat._id] = cat.name; });
-          }
-        });
-      }
-      _dashCatCache = map;
-      _dashCatFetchPromise = null;
-      return map;
-    })
-    .catch(err => {
-      _dashCatFetchPromise = null;
-      console.error("Dashboard tree fetch failed:", err);
-      return {} as { [key: string]: string };
-    });
-  return _dashCatFetchPromise;
+  try {
+    const json = await getIndustryTree();
+    const map: { [key: string]: string } = {};
+    if (json?.success && Array.isArray(json.data)) {
+      json.data.forEach((industry: any) => {
+        if (industry.categories) {
+          industry.categories.forEach((cat: any) => { map[cat._id] = cat.name; });
+        }
+      });
+    }
+    _dashCatCache = map;
+    return _dashCatCache;
+  } catch {
+    return {};
+  }
 }
 // ─────────────────────────────────────────────────────────────────────
 

@@ -132,13 +132,15 @@ const PaginationDot = React.memo(({ index, scrollX }: { index: number, scrollX: 
 // ------------------------------------------------------------------
 // Cache helpers
 // ------------------------------------------------------------------
-const TREE_URL = "https://backend.inquirybazaar.com/api/industries/tree";
+import { getIndustryTree, getIndustryTreeSync } from "@/utils/industryTreeCache";
 
 function getInitialData(): Industry[] {
   try {
-    const cached: ApiResponse | null = getCacheSync(TREE_URL);
+    const cached: ApiResponse | null = getIndustryTreeSync();
     if (cached?.success && cached.data) {
       return cached.data.filter((i) => (i.categories?.length ?? 0) >= 4);
+    } else if (Array.isArray(cached)) {
+      return (cached as any[]).filter((i) => (i.categories?.length ?? 0) >= 4);
     }
   } catch (_) {}
   return [];
@@ -147,26 +149,37 @@ function getInitialData(): Industry[] {
 // ------------------------------------------------------------------
 // Main Component
 // ------------------------------------------------------------------
-export default function IndustryTreeCarousel({ 
+export default function IndustryTreeCarousel({
   scrollY,
   isScrolling,
-}: { 
+  userRole,
+}: {
   scrollY?: SharedValue<number>;
   isScrolling?: SharedValue<boolean>;
+  userRole?: string;
 }) {
   const router = useRouter();
-  
+  const [data, setData] = useState<Industry[]>(getInitialData);
+  const [loading, setLoading] = useState<boolean>(() => data.length === 0);
+  const [error, setError] = useState<string | null>(null);
+
+  // Lazy viewport visibility check
+  const [hasBeenVisible, setHasBeenVisible] = useState(!scrollY);
+  useAnimatedReaction(
+    () => (scrollY ? scrollY.value > 150 : true),
+    (isPastThreshold, prev) => {
+      if (isPastThreshold && !prev) {
+        runOnJS(setHasBeenVisible)(true);
+      }
+    },
+    [scrollY]
+  );
+
   const containerRef = useRef<View>(null);
   const isMeasuredRef = useRef(false);
-  const { height: screenHeight } = useWindowDimensions();
+  const { height: screenHeight, width: screenWidth } = useWindowDimensions();
   const [absoluteY, setAbsoluteY] = useState(0);
-  const [hasBeenVisible, setHasBeenVisible] = useState(false);
 
-  const initialData = getInitialData();
-  const [data, setData] = useState<Industry[]>(initialData);
-  const [loading, setLoading] = useState(initialData.length === 0); // skip loader if cache hit
-  const [error, setError] = useState<string | null>(null);
-  
   const isFocused = useIsFocused();
   const flatRef = useAnimatedRef<Animated.FlatList<Industry>>();
   const scrollX = useSharedValue(0);
@@ -178,8 +191,8 @@ export default function IndustryTreeCarousel({
     if (!hasBeenVisible) return;
     (async () => {
       try {
-        const json: ApiResponse = await fetchWithCache(TREE_URL);
-        if (json.success && json.data) {
+        const json: ApiResponse = await getIndustryTree();
+        if (json?.success && json.data) {
           const filtered = json.data.filter((i) => (i.categories?.length ?? 0) >= 4);
           setData((prev) => {
             if (prev.length === filtered.length && prev[0]?._id === filtered[0]?._id) return prev;

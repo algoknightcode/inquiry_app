@@ -133,9 +133,9 @@ export default function HomeScreen() {
   const renderItem = useCallback(({ item }: { item: string }) => {
     switch (item) {
       case 'marquee':
-        return <MemoizedCategoryMarquee />;
+        return <MemoizedCategoryMarquee isScrolling={isScrolling} />;
       case 'hero':
-        return <MemoizedHeroBanner />;
+        return <MemoizedHeroBanner isScrolling={isScrolling} />;
       case 'searchbar':
         return <MemoizedSearchBar onFocus={handleSearchBarFocus} />;
       case 'category':
@@ -147,7 +147,7 @@ export default function HomeScreen() {
       case 'valueadds':
         return <MemoizedMoreValueAdds isScrolling={isScrolling} />;
       case 'brands':
-        return <MemoizedTrendingBrandsCarousel />;
+        return <MemoizedTrendingBrandsCarousel isScrolling={isScrolling} />;
       case 'products':
         return <MemoizedHorizontalProductList isScrolling={isScrolling} />;
       case 'indusTree':
@@ -219,7 +219,7 @@ export default function HomeScreen() {
   windowSize={11}              
   maxToRenderPerBatch={8}      
   initialNumToRender={5}       
-  updateCellsBatchingPeriod={80} 
+  updateCellsBatchingPeriod={90} 
   // ──────────────────────────────────────────────────────────────
   
   onScroll={scrollHandler}

@@ -6,7 +6,7 @@ const pending: Record<string, Promise<any> | undefined> = {};
 
 const FETCH_TIMEOUT_MS = 12000; 
 const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes expiration
-const MAX_CACHE_ENTRIES = 40; // Hard memory cap
+const MAX_CACHE_ENTRIES = 15; // Tight memory cap to prevent JS GC heap bloat
 
 // No background polling interval - we rely on O(1) lazy eviction in fetchWithCache
 

@@ -1,5 +1,6 @@
 import { Image } from 'expo-image';
 import { globalSellerId } from "@/utils/roleCache";
+import { getIndustryTree } from "@/utils/industryTreeCache";
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as FileSystem from "expo-file-system/legacy";
@@ -297,9 +298,8 @@ const AddProduct = () => {
   useEffect(() => {
     const fetchCategoriesAndSubs = async () => {
       try {
-        const response = await fetch("https://backend.inquirybazaar.com/api/industries/tree");
-        const json = await response.json();
-        if (json.success && json.data && isMounted.current) {
+        const json = await getIndustryTree();
+        if (json?.success && json.data && isMounted.current) {
           const allCats: any[] = [];
           const allSubs: any[] = [];
           

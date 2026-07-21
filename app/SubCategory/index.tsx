@@ -1,3 +1,4 @@
+import { getIndustryTree } from "@/utils/industryTreeCache";
 import { Ionicons } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
@@ -38,14 +39,13 @@ const SubCateGory = () => {
   const [selectedMainId, setSelectedMainId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // 1. Fetch from the industry tree API
+  // 1. Fetch from the industry tree API via RAM cache
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const response = await fetch("https://backend.inquirybazaar.com/api/industries/tree");
-        const json = await response.json();
+        const json = await getIndustryTree();
 
-        if (json.success && Array.isArray(json.data)) {
+        if (json?.success && Array.isArray(json.data)) {
           // Find the active industry matching the passed industryId
           let activeIndustry = json.data.find((ind: any) => ind?._id === industryId);
           
