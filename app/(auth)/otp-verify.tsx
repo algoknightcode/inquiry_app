@@ -114,14 +114,14 @@ const s = StyleSheet.create({
     borderColor: "#f1f5f9",
   },
   title: {
-    fontSize: 24,
+    fontSize: 25,
     fontWeight: "bold",
     color: "#1e3a8a",
     textAlign: "center",
     marginBottom: 8,
   },
   subtitle: {
-    fontSize: 14,
+    fontSize: 15,
     color: "#64748b",
     textAlign: "center",
     marginBottom: 24,
@@ -140,7 +140,7 @@ const s = StyleSheet.create({
     borderColor: "#e2e8f0",
     borderRadius: 16,
     textAlign: "center",
-    fontSize: 22,
+    fontSize: 23,
     fontWeight: "bold",
     color: "#1e3a8a",
     backgroundColor: "#f8fafc",
@@ -159,7 +159,7 @@ const s = StyleSheet.create({
   },
   btnText: {
     color: "#fff",
-    fontSize: 16,
+    fontSize: 17,
     fontWeight: "bold",
   },
 });

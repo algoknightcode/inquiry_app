@@ -5,8 +5,8 @@ import { prefetchHomeData } from "@/utils/prefetchHome";
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useRouter } from "expo-router";
-import React, { useState } from "react";
-import { ActivityIndicator, Alert, KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import React, { useRef, useState } from "react";
+import { ActivityIndicator, Alert, KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, unstable_batchedUpdates, View } from 'react-native';
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { moderateScale, scale, verticalScale } from "react-native-size-matters";
 import Logo from "../../../assets/images/logoo-Photoroom.png";
@@ -28,6 +28,7 @@ const SellerLogin = () => {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { setSellerSignedIn, setGlobalSellerId, setGlobalBuyerId, setGlobalRole } = useRole();
+  const isNavigating = useRef(false);
 
   const [loginMode, setLoginMode] = useState<"password" | "otp">("password");
   const [phoneNumber, setPhoneNumber] = useState("");
@@ -95,13 +96,17 @@ const SellerLogin = () => {
         console.log("ℹ️ OTP Verify: DEMO OTP BYPASS MATCHED");
         await AsyncStorage.setItem("supplierId", "6a36322b7d11e405b8330ea1");
         await AsyncStorage.removeItem("buyerId");
-        setGlobalSellerId("6a36322b7d11e405b8330ea1");
-        setGlobalBuyerId(null);
-        setSellerSignedIn(true);
-        setGlobalRole("seller");
+        // FIX #2: batch all 4 setters → single React render instead of 4
+        unstable_batchedUpdates(() => {
+          setGlobalSellerId("6a36322b7d11e405b8330ea1");
+          setGlobalBuyerId(null);
+          setSellerSignedIn(true);
+          setGlobalRole("seller");
+          setIsSuccess(true);
+        });
         await addNotification("Supplier logged in successfully.");
-        prefetchHomeData().catch(() => {});
-        setIsSuccess(true);
+        // FIX #1: delay prefetch so it doesn't fight the nav animation
+        setTimeout(() => prefetchHomeData().catch(() => {}), 2000);
         setTimeout(() => {
           setIsSuccess(false);
           router.navigate("/(tabs)");
@@ -139,15 +144,19 @@ const SellerLogin = () => {
         const loggedInUserId = data.user?.id || data.user?._id;
         if (loggedInUserId) {
           await AsyncStorage.setItem("supplierId", loggedInUserId);
-          setGlobalSellerId(loggedInUserId);
         }
         await AsyncStorage.removeItem("buyerId");
-        setGlobalBuyerId(null);
-        setSellerSignedIn(true);
-        setGlobalRole("seller");
+        // FIX #2: batch all 4 setters → single React render instead of 4
+        unstable_batchedUpdates(() => {
+          if (loggedInUserId) setGlobalSellerId(loggedInUserId);
+          setGlobalBuyerId(null);
+          setSellerSignedIn(true);
+          setGlobalRole("seller");
+          setIsSuccess(true);
+        });
         await addNotification("Supplier logged in successfully.");
-        prefetchHomeData().catch(() => {});
-        setIsSuccess(true);
+        // FIX #1: delay prefetch so it doesn't fight the nav animation
+        setTimeout(() => prefetchHomeData().catch(() => {}), 2000);
         setTimeout(() => {
           setIsSuccess(false);
           router.navigate("/(tabs)");
@@ -178,13 +187,17 @@ const SellerLogin = () => {
         console.log("ℹ️ Login Path: DEMO BYPASS MATCHED");
         await AsyncStorage.setItem("supplierId", "6a36322b7d11e405b8330ea1");
         await AsyncStorage.removeItem("buyerId");
-        setGlobalSellerId("6a36322b7d11e405b8330ea1");
-        setGlobalBuyerId(null);
-        setSellerSignedIn(true);
-        setGlobalRole("seller");
+        // FIX #2: batch all 4 setters → single React render instead of 4
+        unstable_batchedUpdates(() => {
+          setGlobalSellerId("6a36322b7d11e405b8330ea1");
+          setGlobalBuyerId(null);
+          setSellerSignedIn(true);
+          setGlobalRole("seller");
+          setIsSuccess(true);
+        });
         await addNotification("Supplier logged in successfully.");
-        prefetchHomeData().catch(() => {}); // Warm Home cache during the success delay below
-        setIsSuccess(true);
+        // FIX #1: delay prefetch so it doesn't fight the nav animation
+        setTimeout(() => prefetchHomeData().catch(() => {}), 2000);
         setTimeout(() => {
           setIsSuccess(false);
           router.navigate("/(tabs)");
@@ -203,15 +216,19 @@ const SellerLogin = () => {
           console.log("👤 Logged-in Seller User ID:", response.id);
           if (response.id) {
             await AsyncStorage.setItem("supplierId", response.id);
-            setGlobalSellerId(response.id);
           }
           await AsyncStorage.removeItem("buyerId");
-          setGlobalBuyerId(null);
-          setSellerSignedIn(true);
-          setGlobalRole("seller");
+          // FIX #2: batch all 4 setters → single React render instead of 4
+          unstable_batchedUpdates(() => {
+            if (response.id) setGlobalSellerId(response.id);
+            setGlobalBuyerId(null);
+            setSellerSignedIn(true);
+            setGlobalRole("seller");
+            setIsSuccess(true);
+          });
           await addNotification("Supplier logged in successfully.");
-          prefetchHomeData().catch(() => {}); // Warm Home cache during the success delay below
-          setIsSuccess(true);
+          // FIX #1: delay prefetch so it doesn't fight the nav animation
+          setTimeout(() => prefetchHomeData().catch(() => {}), 2000);
           setTimeout(() => {
             setIsSuccess(false);
             router.navigate("/(tabs)");
@@ -236,12 +253,16 @@ const SellerLogin = () => {
         console.log("ℹ️ Login Path: DEMO OTP BYPASS MATCHED");
         await AsyncStorage.setItem("supplierId", "6a36322b7d11e405b8330ea1");
         await AsyncStorage.removeItem("buyerId");
-        setGlobalSellerId("6a36322b7d11e405b8330ea1");
-        setGlobalBuyerId(null);
-        setSellerSignedIn(true);
-        setGlobalRole("seller");
-        prefetchHomeData().catch(() => {}); // Warm Home cache during the success delay below
-        setIsSuccess(true);
+        // FIX #2: batch all 4 setters → single React render instead of 4
+        unstable_batchedUpdates(() => {
+          setGlobalSellerId("6a36322b7d11e405b8330ea1");
+          setGlobalBuyerId(null);
+          setSellerSignedIn(true);
+          setGlobalRole("seller");
+          setIsSuccess(true);
+        });
+        // FIX #1: delay prefetch so it doesn't fight the nav animation
+        setTimeout(() => prefetchHomeData().catch(() => {}), 2000);
         setTimeout(() => {
           setIsSuccess(false);
           router.navigate("/(tabs)");
@@ -484,7 +505,12 @@ const SellerLogin = () => {
                 Don't have an account?{" "}
                 <Text
                   style={s.redirectHighlight}
-                  onPress={() => router.push("/Seller/auth/Signup")}
+                  onPress={() => {
+                    if (isNavigating.current) return;
+                    isNavigating.current = true;
+                    router.push("/Seller/auth/Signup");
+                    setTimeout(() => { isNavigating.current = false; }, 1000);
+                  }}
                 >
                   Sign Up
                 </Text>
@@ -562,14 +588,14 @@ const s = StyleSheet.create({
     elevation: 2,
   },
   modalTitle: {
-    fontSize: moderateScale(18),
+    fontSize: moderateScale(19),
     fontWeight: "700",
     color: '#0F172A',
     marginBottom: verticalScale(6),
     letterSpacing: -0.3,
   },
   modalSubtitle: {
-    fontSize: moderateScale(13),
+    fontSize: moderateScale(14),
     color: '#64748B',
     textAlign: 'center',
     lineHeight: verticalScale(18),
@@ -589,11 +615,11 @@ const s = StyleSheet.create({
   },
   backText: {
     color: "#007AFF",
-    fontSize: moderateScale(16),
+    fontSize: moderateScale(17),
     marginLeft: scale(-4),
   },
   headerTitle: {
-    fontSize: moderateScale(16),
+    fontSize: moderateScale(17),
     fontWeight: "700",
     color: "#1E293B",
     marginLeft: scale(16),
@@ -632,14 +658,14 @@ const s = StyleSheet.create({
     marginBottom: verticalScale(12),
   },
   title: {
-    fontSize: moderateScale(24),
+    fontSize: moderateScale(25),
     fontWeight: "800",
     color: "#1E3A8A",
     letterSpacing: -0.5,
     marginBottom: verticalScale(6),
   },
   subtitle: {
-    fontSize: moderateScale(14),
+    fontSize: moderateScale(15),
     color: "#94A3B8",
   },
   inputsWrapper: {
@@ -663,7 +689,7 @@ const s = StyleSheet.create({
     flex: 1,
     height: "100%",
     color: "#0F172A",
-    fontSize: moderateScale(14),
+    fontSize: moderateScale(15),
     fontWeight: "600",
   },
   eyeButton: {
@@ -678,7 +704,7 @@ const s = StyleSheet.create({
   forgotPasswordText: {
     color: "#1E3A8A",
     fontWeight: "700",
-    fontSize: moderateScale(11.5),
+    fontSize: moderateScale(12.5),
   },
   loginButton: {
     backgroundColor: "#1E3A8A",
@@ -695,7 +721,7 @@ const s = StyleSheet.create({
   },
   loginButtonText: {
     color: "#FFFFFF",
-    fontSize: moderateScale(15),
+    fontSize: moderateScale(16),
     fontWeight: "700",
   },
   signupRedirect: {
@@ -703,7 +729,7 @@ const s = StyleSheet.create({
     marginTop: verticalScale(24),
   },
   redirectText: {
-    fontSize: moderateScale(13),
+    fontSize: moderateScale(14),
     color: "#64748B",
   },
   redirectHighlight: {
@@ -732,7 +758,7 @@ const s = StyleSheet.create({
     elevation: 2,
   },
   tabButtonText: {
-    fontSize: moderateScale(14),
+    fontSize: moderateScale(15),
     fontWeight: '600',
     color: '#64748B',
   },
@@ -740,7 +766,7 @@ const s = StyleSheet.create({
     color: '#1E3A8A',
   },
   countryCode: {
-    fontSize: moderateScale(14),
+    fontSize: moderateScale(15),
     fontWeight: '700',
     color: '#1E293B',
     marginRight: scale(4),
@@ -752,7 +778,7 @@ const s = StyleSheet.create({
   resendText: {
     color: '#1E3A8A',
     fontWeight: '600',
-    fontSize: moderateScale(13),
+    fontSize: moderateScale(14),
     textDecorationLine: 'underline',
   },
 });

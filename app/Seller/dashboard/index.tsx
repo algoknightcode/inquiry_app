@@ -19,6 +19,37 @@ import {
 } from "react-native";
 import { moderateScale, scale, verticalScale } from "react-native-size-matters";
 
+// ─── Fix #3: Module-level singleton for industry tree (fetched ONCE per session) ──
+let _dashCatCache: { [key: string]: string } | null = null;
+let _dashCatFetchPromise: Promise<{ [key: string]: string }> | null = null;
+async function getIndustryTreeForDashboard(): Promise<{ [key: string]: string }> {
+  if (_dashCatCache) return _dashCatCache;
+  if (_dashCatFetchPromise) return _dashCatFetchPromise;
+  _dashCatFetchPromise = fetch("https://backend.inquirybazaar.com/api/industries/tree")
+    .then(res => res.json())
+    .then(json => {
+      const map: { [key: string]: string } = {};
+      if (json.success && Array.isArray(json.data)) {
+        json.data.forEach((industry: any) => {
+          if (industry.categories) {
+            industry.categories.forEach((cat: any) => { map[cat._id] = cat.name; });
+          }
+        });
+      }
+      _dashCatCache = map;
+      _dashCatFetchPromise = null;
+      return map;
+    })
+    .catch(err => {
+      _dashCatFetchPromise = null;
+      console.error("Dashboard tree fetch failed:", err);
+      return {} as { [key: string]: string };
+    });
+  return _dashCatFetchPromise;
+}
+// ─────────────────────────────────────────────────────────────────────
+
+
 const Dashboard = () => {
   const [refreshing, setRefreshing] = useState(false);
   const [productsCount, setProductsCount] = useState(0);
@@ -50,41 +81,25 @@ const Dashboard = () => {
       const supplierId = globalSellerId || await AsyncStorage.getItem("supplierId");
  
       if (supplierId) {
-        // 🔥 Fetch products, inquiries, business profile, AND the category tree
-        const results = await Promise.allSettled([
-          fetch(`https://seller.inquirybazaar.com/api/product?supplierId=${supplierId}`, { signal }),
-          fetch(`https://brandbnalo.com/api/form/get-forms/${supplierId}?filter=today`, { signal }),
-          fetch("https://seller.inquirybazaar.com/api/profile/business", {
-            method: "GET",
-            headers: {
-              "Content-Type": "application/json",
-              "x-user-id": supplierId,
-            },
-            signal,
-          }),
-          fetch("https://backend.inquirybazaar.com/api/industries/tree", { signal }),
+        // Fetch products, inquiries, business profile in parallel
+        // Industry tree is loaded from the module-level singleton (no repeated network calls)
+        const [catMap, results] = await Promise.all([
+          getIndustryTreeForDashboard(),
+          Promise.allSettled([
+            fetch(`https://seller.inquirybazaar.com/api/product?supplierId=${supplierId}`, { signal }),
+            fetch(`https://brandbnalo.com/api/form/get-forms/${supplierId}?filter=today`, { signal }),
+            fetch("https://seller.inquirybazaar.com/api/profile/business", {
+              method: "GET",
+              headers: {
+                "Content-Type": "application/json",
+                "x-user-id": supplierId,
+              },
+              signal,
+            }),
+          ]),
         ]);
  
         if (!isMounted.current) return;
- 
-        // 1. Build Category ID-to-Name mapping lookup table
-        const catMap: { [key: string]: string } = {};
-        if (results[3].status === "fulfilled" && results[3].value.ok) {
-          try {
-            const treeJson = await results[3].value.json();
-            if (treeJson.success && Array.isArray(treeJson.data)) {
-              treeJson.data.forEach((industry: any) => {
-                if (industry.categories) {
-                  industry.categories.forEach((cat: any) => {
-                    catMap[cat._id] = cat.name;
-                  });
-                }
-              });
-            }
-          } catch (e) {
-            console.log("Error parsing categories tree:", e);
-          }
-        }
 
         // 2. Process products and resolve unique category names
         if (results[0].status === "fulfilled" && results[0].value.ok) {

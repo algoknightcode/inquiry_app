@@ -16,22 +16,20 @@ export const logProductInteraction = async (
   currentRole: "buyer" | "seller",
   product?: any
 ) => {
-  // Rule 1: If guest user (no buyerId and no sellerId), skip notification writing entirely
-  if (!buyerId && !sellerId) return;
-
   let message = "";
   const timeString = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
-  // Rule 2: If seller session is active
+  // Rule 1: If seller session is active
   if (currentRole === "seller" && sellerId) {
     message = `Seller logged in at ${timeString}: Interacted with "${productName}"`;
   } 
-  // Rule 3: If buyer session is active
+  // Rule 2: If buyer session is active
   else if (currentRole === "buyer" && buyerId) {
     message = `Buyer visited product: "${productName}"`;
-  } else {
-    // Fallback if roles are mixed up
-    message = `Visited product: "${productName}"`;
+  } 
+  // Rule 3: Guest session (no active buyer/seller login)
+  else {
+    message = `Guest visited product: "${productName}"`;
   }
 
   try {

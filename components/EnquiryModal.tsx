@@ -82,7 +82,9 @@ export default function EnquiryModal({ visible, onClose, product }: EnquiryModal
       }
     }
 
-    if (inqEmail.trim()) {
+    if (!inqEmail.trim()) {
+      newErrors.email = "Email is required";
+    } else {
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
       if (!emailRegex.test(inqEmail.trim())) {
         newErrors.email = "Please enter a valid email address";

@@ -110,13 +110,25 @@ export default function RequestQuoteForm() {
 
   // --- 1. SEND OTP ---
   const handleSendOTP = async () => {
-    if (!formData.fullName || !formData.phoneNumber || !formData.requirement) {
+    if (!formData.fullName || !formData.phoneNumber || !formData.requirement || !formData.email.trim()) {
       setErrorMessage("Please fill all required fields before proceeding.");
+      return;
+    }
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(formData.email.trim())) {
+      setErrorMessage("Please enter a valid email address.");
       return;
     }
     if (formData.phoneNumber.trim().length !== 10) {
       setErrorMessage("Enter a valid 10-digit phone number.");
       return;
+    }
+    if (formData.gstNumber.trim().length > 0) {
+      const gstRegex = /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/;
+      if (!gstRegex.test(formData.gstNumber.trim().toUpperCase())) {
+        setErrorMessage("Please enter a valid 15-character GSTIN (e.g. 07AAAAA0000A1Z5).");
+        return;
+      }
     }
 
     setLoading(true);
@@ -281,6 +293,7 @@ export default function RequestQuoteForm() {
               <View style={styles.halfInput}>
                 <InputField
                   label="Email"
+                  required
                   scale={scale}
                   placeholder="Your email"
                   keyboardType="email-address"
@@ -307,6 +320,7 @@ export default function RequestQuoteForm() {
                   scale={scale}
                   placeholder="15-digit GSTIN"
                   autoCapitalize="characters"
+                  maxLength={15}
                   value={formData.gstNumber}
                   onChangeText={(text) => handleChange("gstNumber", text)}
                 />

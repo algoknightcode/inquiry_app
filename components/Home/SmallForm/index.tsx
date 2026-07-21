@@ -1,3 +1,4 @@
+import { addNotification } from "@/utils/notificationService";
 import { Ionicons } from "@expo/vector-icons";
 import React, { useRef, useState } from "react";
 import {
@@ -67,6 +68,7 @@ export default function LeadGenCard() {
       if (response.ok) {
         // Success! Show modal and clear form
         setShowModal(true);
+        addNotification(`Submitted requirement for "${productName.trim()}"`);
         setMobile("");
         setProductName("");
       } else {

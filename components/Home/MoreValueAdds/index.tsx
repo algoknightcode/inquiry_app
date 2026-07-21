@@ -62,9 +62,9 @@ export default function MoreValueAdds({ isScrolling }: { isScrolling?: SharedVal
   const [currentIndex, setCurrentIndex] = useState(0);
 
   const containerPadding = 16;
-  const cardGap = 16;
+  const cardGap = 10;
   const cardWidth = (screenWidth - containerPadding * 2 - cardGap) / 2;
-  const cardHeight = 164; 
+  const cardHeight = 148; 
 
   const scale = Math.max(0.85, Math.min(1.1, screenWidth / 375));
   const titleSize = 22 * scale;
@@ -182,10 +182,10 @@ export default function MoreValueAdds({ isScrolling }: { isScrolling?: SharedVal
         className="rounded-[20px] bg-[#F1F5F9] border border-[#F97316] relative overflow-hidden active:scale-[0.97] transition-transform"
       >
         {/* User Provided Image */}
-        <View className="absolute bottom-2 right-1 z-0 opacity-80">
+        <View className="absolute bottom-1 right-1 z-0 opacity-80">
           <Image 
             source={item.imageSource}
-            style={{ width: 100, height: 100 }}
+            style={{ width: 88, height: 88 }}
             contentFit="contain"
             transition={300}
           />

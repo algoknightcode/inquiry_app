@@ -65,22 +65,63 @@ type Product = {
 const POPULAR_CITIES = [
   "All India",
   "Delhi",
-  "Mumbai",
-  "Bengaluru",
-  "Chennai",
-  "Kolkata",
-  "Ahmedabad",
-  "Pune",
-  "Surat",
-  "Hyderabad",
-  "Noida",
-  "Gurugram",
-  "Faridabad",
-  "Ghaziabad",
+  "New Delhi",
   "Lucknow",
   "Kanpur",
+  "Noida",
+  "Ghaziabad",
+  "Meerut",
+  "Varanasi",
+  "Agra",
+  "Greater Noida",
+  "Ludhiana",
+  "Amritsar",
+  "Gurugram",
+  "Kundli",
+  "Sonipat",
+  "Rohtak",
+  "Faridabad",
+  "Mumbai",
+  "Pune",
+  "Ahmedabad",
+  "Surat",
+  "Chennai",
+  "Coimbatore",
+  "Bengaluru",
+  "Mysuru",
+  "Hyderabad",
+  "Warangal",
+  "Ajmer",
+  "Jodhpur",
   "Jaipur",
-  "Coimbatore"
+  "Udaipur",
+  "Gwalior",
+  "Indore",
+  "Bhopal",
+  "Kolkata",
+  "Durgapur",
+  "Patna",
+  "Muzaffarpur",
+  "Bhubaneswar",
+  "Cuttack",
+  "Visakhapatnam",
+  "Vijayawada",
+  "Kochi",
+  "Thiruvananthapuram",
+  "Raipur",
+  "Bhilai",
+  "Ranchi",
+  "Jamshedpur",
+  "Guwahati",
+  "Dibrugarh",
+  "Dehradun",
+  "Haridwar",
+  "Shimla",
+  "Baddi",
+  "Srinagar",
+  "Jammu",
+  "Goa",
+  "Chandigarh"
 ];
 
 // ── Component ──────────────────────────────────────────────────────────────
@@ -149,8 +190,14 @@ export default function ProductListingPage() {
   const [isSubmittingInquiry, setIsSubmittingInquiry] = useState(false);
 
   const handleSendInquiry = async () => {
-    if (!inqName.trim() || !inqPhone.trim() || !inqMessage.trim()) {
-      Alert.alert("Required Fields", "Please provide your Name, Phone Number, and Message.");
+    if (!inqName.trim() || !inqPhone.trim() || !inqMessage.trim() || !inqEmail.trim()) {
+      Alert.alert("Required Fields", "Please provide your Name, Email, Phone Number, and Message.");
+      return;
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(inqEmail.trim())) {
+      Alert.alert("Invalid Email", "Please enter a valid email address.");
       return;
     }
 
@@ -252,7 +299,8 @@ export default function ProductListingPage() {
           setIsFetchingMore(true);
         }
 
-        const apiLocation = location === "All India" ? "India" : location;
+        // Force API to always request products for "India" (All India) regardless of UI location selection
+        const apiLocation = "India";
         let fetchedList: Product[] = [];
         
         if (params.isParentCategory === 'true') {
@@ -323,6 +371,7 @@ export default function ProductListingPage() {
         }
 
         if (isMounted.current) {
+          const MAX_PRODUCTS_IN_MEMORY = 100;
           if (page === 1) {
             setProducts(fetchedList);
             setTotalProducts(fetchedList.length);
@@ -330,7 +379,11 @@ export default function ProductListingPage() {
             setProducts(prev => {
               const existingIds = new Set(prev.map(p => p._id));
               const uniques = fetchedList.filter(p => !existingIds.has(p._id));
-              return [...prev, ...uniques];
+              const combined = [...prev, ...uniques];
+              // Sliding window: drop oldest items from the front if we exceed the cap
+              return combined.length > MAX_PRODUCTS_IN_MEMORY
+                ? combined.slice(combined.length - MAX_PRODUCTS_IN_MEMORY)
+                : combined;
             });
             setTotalProducts(prev => prev + fetchedList.length);
           }
@@ -425,16 +478,11 @@ export default function ProductListingPage() {
           ) : null}
         </View>
 
-        {/* Product name & Subcategory Label Row */}
+        {/* Product name Row */}
         <View className="flex-row justify-between items-start mb-3">
-          <Text className="text-[16px] font-jakarta-bold text-slate-900 leading-snug flex-1 mr-3">
+          <Text className="text-[16px] font-jakarta-bold text-slate-900 leading-snug flex-1">
             {item.name}
           </Text>
-          {subCategoryNameToShow ? (
-            <Text className="text-[11px] font-jakarta-bold text-orange-500 uppercase tracking-wider mt-0.5 text-right">
-              {subCategoryNameToShow}
-            </Text>
-          ) : null}
         </View>
 
         {/* Price & MOQ */}
@@ -484,7 +532,7 @@ export default function ProductListingPage() {
             </View>
           )}
           <View className="flex-1">
-            <Text className="text-slate-800 font-jakarta-bold text-[14px]" numberOfLines={1}>
+            <Text className="text-slate-800 font-jakarta-bold text-[15px]" numberOfLines={1}>
               {company}
             </Text>
             {locationText ? (
@@ -511,7 +559,7 @@ export default function ProductListingPage() {
             className="flex-1 flex-row justify-center items-center py-3 rounded-xl border-[2px] border-[#1e3a8a] bg-white active:bg-slate-50 mr-2"
           >
             <Ionicons name="call" size={15} color="#1e3a8a" />
-            <Text className="text-[#1e3a8a] font-jakarta-bold text-[12px] ml-1">Call</Text>
+            <Text className="text-[#1e3a8a] font-jakarta-bold text-[14px] ml-1">Call</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -519,7 +567,9 @@ export default function ProductListingPage() {
               if (!phone) return;
               const cleanPhone = phone.replace(/[^\d]/g, '');
               const formattedPhone = cleanPhone.length === 10 ? `91${cleanPhone}` : cleanPhone;
-              const message = `Hello, I am interested in your product: ${item.name} listed on Inquiry Bazaar.\n\nLink: https://dir.inquirybazaar.com/products/${item.slug}`;
+              const resolvedCompanyName = item.supplier?.business?.companyName || item.supplier?.name || "";
+              const greeting = resolvedCompanyName ? `Hello ${resolvedCompanyName}` : "Hello";
+              const message = `${greeting}, I am interested in your product: ${item.name} listed on Inquiry Bazaar.\n\nLink: https://dir.inquirybazaar.com/products/${item.slug}`;
               const url = `whatsapp://send?phone=${formattedPhone}&text=${encodeURIComponent(message)}`;
               Linking.openURL(url).catch(() => {
                 Linking.openURL(`https://wa.me/${formattedPhone}?text=${encodeURIComponent(message)}`);
@@ -529,7 +579,7 @@ export default function ProductListingPage() {
             className="flex-1 flex-row justify-center items-center py-3 rounded-xl bg-[#25D366] active:opacity-80 mr-2"
           >
             <Ionicons name="logo-whatsapp" size={16} color="#fff" />
-            <Text className="text-white font-jakarta-bold text-[12px] ml-1">WhatsApp</Text>
+            <Text className="text-white font-jakarta-bold text-[14px] ml-1">WhatsApp</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -541,7 +591,7 @@ export default function ProductListingPage() {
             className="flex-[1.5] flex-row justify-center items-center py-3 rounded-xl bg-[#1e3a8a] active:opacity-90"
           >
             <Ionicons name="paper-plane-outline" size={15} color="white" />
-            <Text className="text-white font-jakarta-bold text-[12px] ml-1">Inquiry</Text>
+            <Text className="text-white font-jakarta-bold text-[14px] ml-1">Inquiry</Text>
           </TouchableOpacity>
         </View>
       </View>

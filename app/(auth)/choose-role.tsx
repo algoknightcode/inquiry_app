@@ -5,37 +5,46 @@ import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
-import React, { useState } from "react";
+import React, { useRef, useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from "react-native-safe-area-context";
 import { moderateScale, scale, verticalScale } from "react-native-size-matters";
 import Logo from "../../assets/images/logoo-Photoroom.png";
 
+import { addNotification } from "@/utils/notificationService";
+
 const ChooseRole = () => {
   const router = useRouter();
   const { setGlobalRole } = useRole();
   const [pressedRole, setPressedRole] = useState<"buyer" | "seller" | null>(null);
+  const isNavigating = useRef(false);
 
   const handleSelectRole = (role: "buyer" | "seller") => {
+    if (isNavigating.current) return;
+    isNavigating.current = true;
     setGlobalRole(role);
     console.log("Selected role:", role);
     if (role === "buyer") {
-      router.push("/Buyer/auth/Signup");
+      router.push("/Buyer/auth/Login");
     } else {
-      router.push("/Seller/auth/Signup");
+      router.push("/Seller/auth/Login");
     }
+    setTimeout(() => { isNavigating.current = false; }, 1000);
   };
 
   const handleSkip = async () => {
+    if (isNavigating.current) return;
+    isNavigating.current = true;
     try {
       setSessionSkipRole();
       await AsyncStorage.setItem("skippedRole", "true");
-      // 🔥 FIX 3: 'replace' deletes the auth screen from navigation history
+      await addNotification("Browsing as Guest");
       router.replace("/(tabs)"); 
     } catch (e) {
       console.log("Error navigating", e);
       router.replace("/(tabs)");
     }
+    setTimeout(() => { isNavigating.current = false; }, 1000);
   };
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -162,7 +171,7 @@ const styles = StyleSheet.create({
     marginBottom: verticalScale(8),
   },
   eyebrow: {
-    fontSize: moderateScale(11),
+    fontSize: moderateScale(12),
     fontWeight: "800",
     color: "#4F46E5",
     letterSpacing: 2.5,
@@ -170,7 +179,7 @@ const styles = StyleSheet.create({
     textTransform: "uppercase",
   },
   title: {
-    fontSize: moderateScale(26),
+    fontSize: moderateScale(27),
     fontWeight: "800",
     color: "#111827",
     textAlign: "center",
@@ -223,13 +232,13 @@ const styles = StyleSheet.create({
   cardTitle: {
     color: "#FFFFFF",
     fontWeight: "800",
-    fontSize: moderateScale(20),
+    fontSize: moderateScale(21),
     letterSpacing: 0.5,
   },
   cardSubtitle: {
     color: "rgba(255, 255, 255, 0.85)",
     fontWeight: "600",
-    fontSize: moderateScale(11),
+    fontSize: moderateScale(12),
     marginTop: verticalScale(4),
     textAlign: "center",
   },
@@ -255,7 +264,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   dividerDotText: {
-    fontSize: moderateScale(9),
+    fontSize: moderateScale(10),
     fontWeight: "800",
     color: "#94A3B8",
   },
@@ -266,7 +275,7 @@ const styles = StyleSheet.create({
     marginTop: verticalScale(20),
   },
   footerText: {
-    fontSize: moderateScale(15),
+    fontSize: moderateScale(16),
     fontWeight: "700",
     color: "#6B7280",
     textDecorationLine: "underline",

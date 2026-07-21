@@ -219,6 +219,8 @@ const SubCateGory = () => {
               </Text>
             }
             ListHeaderComponent={
+              null
+              /*
               currentSubCategories.length > 0 && activeMainCategory ? (
                 <Pressable
                   className="bg-orange-500 rounded-xl py-3 px-4 mb-4 flex-row items-center justify-center shadow-sm"
@@ -242,6 +244,7 @@ const SubCateGory = () => {
                   <Ionicons name="arrow-forward" size={16} color="#FFFFFF" />
                 </Pressable>
               ) : null
+              */
             }
             renderItem={renderSubCategoryItem}
           />

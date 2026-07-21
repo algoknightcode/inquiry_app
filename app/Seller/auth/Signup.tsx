@@ -1,7 +1,7 @@
 import { Image } from 'expo-image';
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import React, { useState } from "react";
+import React, { useRef, useState } from "react";
 import { ActivityIndicator, Alert, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { moderateScale, scale, verticalScale } from "react-native-size-matters";
@@ -10,6 +10,7 @@ import Logo from "../../../assets/images/logoo-Photoroom.png";
 const SellerSignUp = () => {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const isNavigating = useRef(false);
 
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -205,7 +206,10 @@ const SellerSignUp = () => {
                 <Text 
                   style={s.redirectHighlight} 
                   onPress={() => {
-                    if (!isLoading) router.push("/Seller/auth/Login");
+                    if (isNavigating.current || isLoading) return;
+                    isNavigating.current = true;
+                    router.push("/Seller/auth/Login");
+                    setTimeout(() => { isNavigating.current = false; }, 1000);
                   }}
                 >
                   Login
@@ -240,11 +244,11 @@ const s = StyleSheet.create({
   },
   backText: {
     color: "#007AFF",
-    fontSize: moderateScale(16),
+    fontSize: moderateScale(17),
     marginLeft: scale(-4),
   },
   headerTitle: {
-    fontSize: moderateScale(16),
+    fontSize: moderateScale(17),
     fontWeight: "700",
     color: "#1E293B",
     marginLeft: scale(16),
@@ -283,14 +287,14 @@ const s = StyleSheet.create({
     marginBottom: verticalScale(12),
   },
   title: {
-    fontSize: moderateScale(22),
+    fontSize: moderateScale(23),
     fontWeight: "800",
     color: "#1E3A8A",
     letterSpacing: -0.5,
     marginBottom: verticalScale(6),
   },
   subtitle: {
-    fontSize: moderateScale(14),
+    fontSize: moderateScale(15),
     color: "#64748B",
   },
   inputsWrapper: {
@@ -314,7 +318,7 @@ const s = StyleSheet.create({
     flex: 1,
     height: "100%",
     color: "#0F172A",
-    fontSize: moderateScale(14),
+    fontSize: moderateScale(15),
     fontWeight: "600",
   },
   eyeButton: {
@@ -341,7 +345,7 @@ const s = StyleSheet.create({
   },
   registerBtnText: {
     color: "#FFFFFF",
-    fontSize: moderateScale(15),
+    fontSize: moderateScale(16),
     fontWeight: "700",
   },
   loginRedirect: {
@@ -349,7 +353,7 @@ const s = StyleSheet.create({
     marginTop: verticalScale(24),
   },
   redirectText: {
-    fontSize: moderateScale(13),
+    fontSize: moderateScale(14),
     color: "#64748B",
   },
   redirectHighlight: {

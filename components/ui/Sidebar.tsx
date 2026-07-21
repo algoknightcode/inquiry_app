@@ -1,5 +1,7 @@
+import { Logo, SplashIcon } from "@/assets/images";
 import { useRole } from "@/contexts/RoleContext";
 import { Ionicons } from "@expo/vector-icons";
+import { Image } from "expo-image";
 import { router, usePathname } from "expo-router";
 import React, { memo, useCallback, useEffect, useMemo, useState } from "react";
 import {
@@ -215,12 +217,29 @@ const Sidebar = ({ visible, onClose, currentRole }: SidebarProps) => {
           }, drawerStyle]}
         >
           {/* Header */}
-          <View className="px-8 pb-6 pt-4 border-b border-slate-100 flex-row items-center justify-between">
+          <View className="px-6 pb-2 pt-2 border-b border-slate-100 flex-row items-center justify-between">
             <View className="flex-row items-center">
-              <View className="w-10 h-10 rounded-full bg-[#1E3A8A] items-center justify-center mr-4">
-                <Text className="text-white font-jakarta-bold text-[17px]">IB</Text>
+              <Image
+                source={SplashIcon}
+                style={{ width: 76, height: 76, marginRight: 20 }}
+                contentFit="contain"
+              />
+              <View>
+                <View className="flex-row items-center">
+                  <Text className="text-[19px] font-jakarta-extrabold text-[#1E3A8A] tracking-tight">
+                    Inquiry{" "}
+                  </Text>
+                  <Text className="text-[19px] font-jakarta-extrabold text-[#EA580C] tracking-tight">
+                    Bazaar
+                  </Text>
+                </View>
+                <View className="flex-row items-center mt-0.5">
+                  <View className="w-1.5 h-1.5 rounded-full bg-emerald-500 mr-1.5" />
+                  <Text className="text-[10px] font-jakarta-bold text-slate-400 uppercase tracking-wider">
+                    B2B Marketplace
+                  </Text>
+                </View>
               </View>
-              <Text className="text-[18px] font-jakarta-bold text-slate-900 tracking-tight">Inquiry Bazaar</Text>
             </View>
             <TouchableOpacity onPress={handleClose} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
               <Ionicons name="close" size={24} color="#94a3b8" />

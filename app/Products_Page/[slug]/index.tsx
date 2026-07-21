@@ -62,7 +62,8 @@ export default function ProductDetailPage() {
         product._id,
         globalBuyerId,
         globalSellerId,
-        userRole as "buyer" | "seller"
+        userRole as "buyer" | "seller",
+        product
       );
     }
   }, [product?.name, product?._id, globalBuyerId, globalSellerId, userRole]);
@@ -209,7 +210,9 @@ export default function ProductDetailPage() {
     if (!phone) return;
     const cleanPhone = phone.replace(/[^\d]/g, '');
     const formattedPhone = cleanPhone.length === 10 ? `91${cleanPhone}` : cleanPhone;
-    const message = `Hello, I am interested in your product: ${product.name} listed on Inquiry Bazaar.\n\nLink: https://dir.inquirybazaar.com/products/${product.slug}`;
+    const companyName = product.supplier?.business?.companyName || product.supplier?.name || "";
+    const greeting = companyName ? `Hello ${companyName}` : "Hello";
+    const message = `${greeting}, I am interested in your product: ${product.name} listed on Inquiry Bazaar.\n\nLink: https://dir.inquirybazaar.com/products/${product.slug}`;
     const url = `whatsapp://send?phone=${formattedPhone}&text=${encodeURIComponent(message)}`;
     
     Linking.canOpenURL(url).then(supported => {
@@ -220,6 +223,23 @@ export default function ProductDetailPage() {
       }
     }).catch(() => {
       Linking.openURL(`https://wa.me/${formattedPhone}?text=${encodeURIComponent(message)}`);
+    });
+  };
+
+  const handleViewAllProducts = () => {
+    const sId = product.supplier?._id || (typeof product.supplier === "string" ? product.supplier : null);
+    router.push({
+      pathname: "/SupplierProducts",
+      params: {
+        supplierId: sId || "",
+        companyName: company,
+        city: city,
+        state: state,
+        phone: phone || "",
+        businessType: businessType,
+        profileImage: product.supplier?.profileImage || "",
+        address: address,
+      },
     });
   };
 
@@ -259,6 +279,8 @@ export default function ProductDetailPage() {
   const address = product.supplier?.business?.address || "";
   const businessType = product.supplier?.business?.businessType || "";
   const phone = product.supplier?.phone;
+  const supplierSlug = product.supplier?.slug || company.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-');
+  const supplierWebsiteUrl = `https://dir.inquirybazaar.com/${supplierSlug}`;
   const isOnRequest = product.priceType === "on_request";
   const specs: any[] = product.specifications || [];
 
@@ -303,10 +325,10 @@ export default function ProductDetailPage() {
         <TouchableOpacity
           activeOpacity={0.9}
           onPress={() => setIsImageModalOpen(true)}
-          style={{ width: "100%", height: 280, backgroundColor: "#e2e8f0" }}
+          style={{ width: "100%", height: 300, backgroundColor: "#ffffff" }}
         >
           {imageUri ? (
-            <Image source={{ uri: imageUri }} style={{ width: "100%", height: "100%" }} contentFit="cover" transition={300} />
+            <Image source={{ uri: imageUri }} style={{ width: "100%", height: "100%" }} contentFit="contain" transition={300} />
           ) : (
             <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
               <Ionicons name="image-outline" size={64} color="#cbd5e1" />
@@ -402,7 +424,14 @@ export default function ProductDetailPage() {
 
         {/* Supplier Details Section */}
         <View style={{ marginTop: (hasDescription || specs.length > 0) ? 0 : 12, borderTopWidth: (hasDescription || specs.length > 0) ? 1 : 0, borderTopColor: "#f1f5f9", backgroundColor: "#fff", paddingHorizontal: 24, paddingVertical: 32, marginBottom: 24 }}>
-          <Text style={{ fontSize: 17, fontWeight: "800", color: "#0f172a", marginBottom: 20 }}>Supplier Details</Text>
+          <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
+            <Text style={{ fontSize: 17, fontWeight: "800", color: "#0f172a" }}>Supplier Details</Text>
+            <TouchableOpacity onPress={handleViewAllProducts} style={{ flexDirection: "row", alignItems: "center" }} activeOpacity={0.7}>
+              <Text style={{ color: "#2563eb", fontWeight: "700", fontSize: 14 }}>View All Products</Text>
+              <Ionicons name="chevron-forward" size={16} color="#2563eb" style={{ marginLeft: 2 }} />
+            </TouchableOpacity>
+          </View>
+
           <View style={{ backgroundColor: "#f0f7ff", borderWidth: 1, borderColor: "#bfdbfe", borderRadius: 20, padding: 20 }}>
             <View style={{ flexDirection: "row", alignItems: "center", paddingBottom: 16, marginBottom: 16, borderBottomWidth: 1, borderBottomColor: "#bfdbfe" }}>
               {product.supplier?.profileImage ? (
@@ -433,6 +462,19 @@ export default function ProductDetailPage() {
               </View>
             ) : null}
 
+             <TouchableOpacity 
+              onPress={() => Linking.openURL(supplierWebsiteUrl)} 
+              style={{ flexDirection: "row", alignItems: "center", marginBottom: 20 }}
+              activeOpacity={0.7}
+            >
+              <View style={{ width: 28, height: 28, borderRadius: 14, backgroundColor: "#eff6ff", alignItems: "center", justifyContent: "center", marginRight: 12 }}>
+                <Feather name="globe" size={13} color="#2563eb" />
+              </View>
+              <Text style={{ color: "#2563eb", fontWeight: "700", fontSize: 16, flex: 1 }} numberOfLines={1}>
+                Website Link
+              </Text>
+            </TouchableOpacity>
+
             {phone ? (
               <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
                 <TouchableOpacity onPress={() => Linking.openURL(`tel:${phone}`)} style={{ flexDirection: "row", alignItems: "center", flex: 1 }}>
@@ -445,11 +487,14 @@ export default function ProductDetailPage() {
                   onPress={openWhatsApp}
                   style={{ flexDirection: "row", alignItems: "center", backgroundColor: "#e8f5e9", borderWidth: 1, borderColor: "#a5d6a7", paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20, gap: 6 }}
                 >
-                  <FontAwesome name="whatsapp" size={16} color="#25D366" />
-                  <Text style={{ color: "#1b5e20", fontWeight: "700", fontSize: 12 }}>WhatsApp</Text>
+                  <FontAwesome name="whatsapp" size={18} color="#25D366" />
+                  <Text style={{ color: "#1b5e20", fontWeight: "700", fontSize: 14 }}>WhatsApp</Text>
                 </TouchableOpacity>
               </View>
             ) : null}
+
+            {/* Supplier Website Link */}
+           
 
             <View style={{ flexDirection: "row", gap: 12 }}>
               <TouchableOpacity
@@ -468,6 +513,32 @@ export default function ProductDetailPage() {
                 <Text style={{ color: "#fff", fontWeight: "700", fontSize: 14, marginLeft: 8 }}>Inquiry</Text>
               </TouchableOpacity>
             </View>
+
+            {/* Prominent View All Products Button */}
+            <TouchableOpacity
+              onPress={handleViewAllProducts}
+              activeOpacity={0.85}
+              style={{
+                marginTop: 16,
+                flexDirection: "row",
+                alignItems: "center",
+                justifyContent: "space-between",
+                paddingVertical: 12,
+                paddingHorizontal: 16,
+                borderRadius: 12,
+                backgroundColor: "#eff6ff",
+                borderWidth: 1,
+                borderColor: "#bfdbfe",
+              }}
+            >
+              <View style={{ flexDirection: "row", alignItems: "center", flex: 1, marginRight: 8 }}>
+                <Ionicons name="grid-outline" size={18} color="#2563eb" style={{ marginRight: 10 }} />
+                <Text style={{ color: "#1e40af", fontWeight: "700", fontSize: 14, flex: 1 }} numberOfLines={1}>
+                  View All Products from {company}
+                </Text>
+              </View>
+              <Ionicons name="chevron-forward" size={18} color="#1e40af" />
+            </TouchableOpacity>
           </View>
         </View>
       </ScrollView>

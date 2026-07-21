@@ -5,8 +5,8 @@ import { prefetchHomeData } from "@/utils/prefetchHome";
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useRouter } from "expo-router";
-import React, { useState } from "react";
-import { ActivityIndicator, Alert, KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import React, { useRef, useState } from "react";
+import { ActivityIndicator, Alert, KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, unstable_batchedUpdates, View } from 'react-native';
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { moderateScale, scale, verticalScale } from "react-native-size-matters";
 import Logo from "../../../assets/images/logoo-Photoroom.png";
@@ -17,6 +17,7 @@ const BuyerLogin = () => {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { setGlobalRole, setGlobalBuyerId, setGlobalSellerId, setSellerSignedIn } = useRole();
+  const isNavigating = useRef(false);
 
   const [showPassword, setShowPassword] = useState(false);
   const [formdata, setFormData] = useState({
@@ -41,13 +42,17 @@ const BuyerLogin = () => {
       console.log("ℹ️ Buyer Login Path: DEMO BYPASS MATCHED");
       await AsyncStorage.setItem("buyerId", "buyer-demo-id-12345");
       await AsyncStorage.removeItem("supplierId");
-      setGlobalBuyerId("buyer-demo-id-12345");
-      setGlobalSellerId(null);
-      setSellerSignedIn(false);
-      setGlobalRole("buyer");
+      // FIX #2: batch all 4 setters → single React render instead of 4
+      unstable_batchedUpdates(() => {
+        setGlobalBuyerId("buyer-demo-id-12345");
+        setGlobalSellerId(null);
+        setSellerSignedIn(false);
+        setGlobalRole("buyer");
+        setIsSuccess(true);
+      });
       await addNotification("Buyer logged in successfully.");
-      prefetchHomeData().catch(() => {}); // Warm Home cache during the success delay below
-      setIsSuccess(true);
+      // FIX #1: delay prefetch so it doesn't fight the nav animation
+      setTimeout(() => prefetchHomeData().catch(() => {}), 2000);
       setTimeout(() => {
         setIsSuccess(false);
         router.navigate("/Buyer/profile");
@@ -77,14 +82,17 @@ const BuyerLogin = () => {
           
           await AsyncStorage.setItem("buyerId", loggedInUserId);
           await AsyncStorage.removeItem("supplierId");
-          setGlobalBuyerId(loggedInUserId);
-          setGlobalSellerId(null);
-          setSellerSignedIn(false);
-          setGlobalRole("buyer");
+          // FIX #2: batch all 4 setters → single React render instead of 4
+          unstable_batchedUpdates(() => {
+            setGlobalBuyerId(loggedInUserId);
+            setGlobalSellerId(null);
+            setSellerSignedIn(false);
+            setGlobalRole("buyer");
+            setIsSuccess(true);
+          });
           await addNotification("Buyer logged in successfully.");
-          
-          prefetchHomeData().catch(() => {}); // Warm Home cache during the success delay below
-          setIsSuccess(true);
+          // FIX #1: delay prefetch so it doesn't fight the nav animation
+          setTimeout(() => prefetchHomeData().catch(() => {}), 2000);
           setTimeout(() => {
             setIsSuccess(false);
             router.navigate("/Buyer/profile");
@@ -231,7 +239,12 @@ const BuyerLogin = () => {
                 Don't have an account?{" "}
                 <Text
                   style={s.redirectHighlight}
-                  onPress={() => router.push("/Buyer/auth/Signup")}
+                  onPress={() => {
+                    if (isNavigating.current) return;
+                    isNavigating.current = true;
+                    router.push("/Buyer/auth/Signup");
+                    setTimeout(() => { isNavigating.current = false; }, 1000);
+                  }}
                 >
                   Sign Up
                 </Text>
@@ -285,14 +298,14 @@ const s = StyleSheet.create({
     elevation: 2,
   },
   modalTitle: {
-    fontSize: moderateScale(18),
+    fontSize: moderateScale(19),
     fontWeight: "700",
     color: '#0F172A',
     marginBottom: verticalScale(6),
     letterSpacing: -0.3,
   },
   modalSubtitle: {
-    fontSize: moderateScale(13),
+    fontSize: moderateScale(14),
     color: '#64748B',
     textAlign: 'center',
     lineHeight: verticalScale(18),
@@ -312,11 +325,11 @@ const s = StyleSheet.create({
   },
   backText: {
     color: "#007AFF",
-    fontSize: moderateScale(16),
+    fontSize: moderateScale(17),
     marginLeft: scale(-4),
   },
   headerTitle: {
-    fontSize: moderateScale(16),
+    fontSize: moderateScale(17),
     fontWeight: "700",
     color: "#1E293B",
     marginLeft: scale(16),
@@ -355,14 +368,14 @@ const s = StyleSheet.create({
     marginBottom: verticalScale(12),
   },
   title: {
-    fontSize: moderateScale(24),
+    fontSize: moderateScale(25),
     fontWeight: "800",
     color: "#1E3A8A",
     letterSpacing: -0.5,
     marginBottom: verticalScale(6),
   },
   subtitle: {
-    fontSize: moderateScale(14),
+    fontSize: moderateScale(15),
     color: "#94A3B8",
   },
   inputsWrapper: {
@@ -386,7 +399,7 @@ const s = StyleSheet.create({
     flex: 1,
     height: "100%",
     color: "#0F172A",
-    fontSize: moderateScale(14),
+    fontSize: moderateScale(15),
     fontWeight: "600",
   },
   eyeButton: {
@@ -401,7 +414,7 @@ const s = StyleSheet.create({
   forgotPasswordText: {
     color: "#1E3A8A",
     fontWeight: "700",
-    fontSize: moderateScale(11.5),
+    fontSize: moderateScale(12.5),
   },
   loginButton: {
     backgroundColor: "#1E3A8A",
@@ -418,7 +431,7 @@ const s = StyleSheet.create({
   },
   loginButtonText: {
     color: "#FFFFFF",
-    fontSize: moderateScale(15),
+    fontSize: moderateScale(16),
     fontWeight: "700",
   },
   signupRedirect: {
@@ -426,7 +439,7 @@ const s = StyleSheet.create({
     marginTop: verticalScale(24),
   },
   redirectText: {
-    fontSize: moderateScale(13),
+    fontSize: moderateScale(14),
     color: "#64748B",
   },
   redirectHighlight: {
