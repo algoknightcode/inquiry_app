@@ -720,6 +720,21 @@ export default function ProductListingPage() {
             <Ionicons name="chevron-down" size={13} color="#64748b" />
           </Pressable>
         </View>
+
+        {/* Active Filter Chip */}
+        {sortOption !== "none" && (
+          <View className="flex-row items-center mt-2.5">
+            <TouchableOpacity
+              onPress={() => setSortOption("none")}
+              className="flex-row items-center bg-indigo-50 border border-indigo-200 px-3 py-1.5 rounded-full"
+            >
+              <Text className="text-indigo-700 font-jakarta-bold text-[12px] mr-1.5">
+                Sort: {sortOption === "high_to_low" ? "High to Low" : "Low to High"}
+              </Text>
+              <Ionicons name="close-circle" size={15} color="#4338ca" />
+            </TouchableOpacity>
+          </View>
+        )}
       </View>
 
       {/* PRODUCT LIST */}

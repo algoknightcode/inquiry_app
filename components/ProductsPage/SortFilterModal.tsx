@@ -35,14 +35,29 @@ export const SortFilterModal: React.FC<SortFilterModalProps> = React.memo(({
           {/* Modal Header */}
           <View className="flex-row items-center justify-between mb-6">
             <Text className="text-[20px] font-jakarta-extrabold text-slate-900">
-              Sort Products
+              Sort & Filter
             </Text>
-            <TouchableOpacity
-              onPress={onClose}
-              className="w-8 h-8 rounded-full bg-slate-100 items-center justify-center active:bg-slate-200"
-            >
-              <Ionicons name="close" size={20} color="#475569" />
-            </TouchableOpacity>
+            <View className="flex-row items-center gap-3">
+              {sortOption !== "none" && (
+                <TouchableOpacity
+                  onPress={() => {
+                    onSelectSort("none");
+                    onClose();
+                  }}
+                  className="px-3 py-1 bg-red-50 rounded-full border border-red-100"
+                >
+                  <Text className="text-red-600 font-jakarta-bold text-[12px]">
+                    Clear Filter
+                  </Text>
+                </TouchableOpacity>
+              )}
+              <TouchableOpacity
+                onPress={onClose}
+                className="w-8 h-8 rounded-full bg-slate-100 items-center justify-center active:bg-slate-200"
+              >
+                <Ionicons name="close" size={20} color="#475569" />
+              </TouchableOpacity>
+            </View>
           </View>
 
           {/* Sort Options */}
@@ -138,10 +153,11 @@ export const SortFilterModal: React.FC<SortFilterModalProps> = React.memo(({
                   onSelectSort("none");
                   onClose();
                 }}
-                className="mt-2 py-3 items-center justify-center"
+                className="mt-3 py-3 px-4 rounded-xl bg-slate-100 flex-row items-center justify-center active:bg-slate-200"
               >
-                <Text className="text-slate-500 font-jakarta-semibold text-[14px]">
-                  Reset to Default Sorting
+                <Ionicons name="refresh-outline" size={16} color="#475569" style={{ marginRight: 6 }} />
+                <Text className="text-slate-700 font-jakarta-semibold text-[14px]">
+                  Clear Filter
                 </Text>
               </TouchableOpacity>
             )}
