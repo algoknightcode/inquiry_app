@@ -10,6 +10,17 @@ import { ActivityIndicator, Alert, KeyboardAvoidingView, Modal, Platform, Pressa
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { moderateScale, scale, verticalScale } from "react-native-size-matters";
 import Logo from "../../../assets/images/logoo-Photoroom.png";
+import Constants, { ExecutionEnvironment } from 'expo-constants';
+
+const isExpoGo = Constants.executionEnvironment === ExecutionEnvironment.StoreClient;
+let nativeAuth: any = null;
+if (!isExpoGo) {
+  try {
+    nativeAuth = require('@react-native-firebase/auth').default;
+  } catch (e) {
+    console.log("Firebase Auth native module loading skipped");
+  }
+}
 
 const BuyerLogin = () => {
   const [loading, setLoading] = useState(false);
@@ -19,6 +30,11 @@ const BuyerLogin = () => {
   const { setGlobalRole, setGlobalBuyerId, setGlobalSellerId, setSellerSignedIn } = useRole();
   const isNavigating = useRef(false);
 
+  const [loginMode, setLoginMode] = useState<"password" | "otp">("password");
+  const [phoneNumber, setPhoneNumber] = useState("");
+  const [otp, setOtp] = useState("");
+  const [otpSent, setOtpSent] = useState(false);
+  const [confirmResult, setConfirmResult] = useState<any>(null);
   const [showPassword, setShowPassword] = useState(false);
   const [formdata, setFormData] = useState({
     email: "",
@@ -27,6 +43,129 @@ const BuyerLogin = () => {
 
   const handleChange = (name: string, value: string) => {
     setFormData((prevData) => ({ ...prevData, [name]: value }));
+  };
+
+  const handleSendOtp = async () => {
+    if (!/^[6-9]\d{9}$/.test(phoneNumber)) {
+      Alert.alert("Invalid Phone Number", "Please enter a valid 10-digit mobile number starting with 6-9.");
+      return;
+    }
+
+    setLoading(true);
+
+    // Expo Go or Demo Number Bypass
+    if (isExpoGo || phoneNumber === "1111111111" || phoneNumber === "8888888888") {
+      console.log("ℹ️ OTP Send: DEMO/EXPO GO BYPASS");
+      setTimeout(() => {
+        setOtpSent(true);
+        setLoading(false);
+        Alert.alert("Demo OTP Sent", "Please use dummy OTP: 1234");
+      }, 1000);
+      return;
+    }
+
+    try {
+      if (nativeAuth) {
+        console.log("🚀 OTP Send: Calling Native Firebase Auth for +91" + phoneNumber);
+        const confirmation = await nativeAuth().signInWithPhoneNumber(`+91${phoneNumber}`);
+        setConfirmResult(confirmation);
+        setOtpSent(true);
+        Alert.alert("OTP Sent", "A verification code has been sent to your phone number.");
+      } else {
+        Alert.alert("Error", "Native Firebase Auth is not loaded in this environment.");
+      }
+    } catch (error: any) {
+      console.error(error);
+      Alert.alert("Failed to send OTP", error.message || "An error occurred.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleVerifyOtp = async () => {
+    if (otp.length < 4) {
+      Alert.alert("Error", "Please enter a valid OTP.");
+      return;
+    }
+
+    setLoading(true);
+
+    // Demo / Expo Go Verification Bypass
+    if (isExpoGo || phoneNumber === "1111111111" || phoneNumber === "8888888888") {
+      if (otp === "1234") {
+        console.log("ℹ️ OTP Verify: DEMO OTP BYPASS MATCHED");
+        await AsyncStorage.setItem("buyerId", "buyer-demo-id-12345");
+        await AsyncStorage.removeItem("supplierId");
+        unstable_batchedUpdates(() => {
+          setGlobalBuyerId("buyer-demo-id-12345");
+          setGlobalSellerId(null);
+          setSellerSignedIn(false);
+          setGlobalRole("buyer");
+          setIsSuccess(true);
+        });
+        await addNotification("Buyer logged in successfully.");
+        setTimeout(() => prefetchHomeData().catch(() => {}), 2000);
+        setTimeout(() => {
+          setIsSuccess(false);
+          router.navigate("/Buyer/profile");
+        }, 1500);
+        setLoading(false);
+        return;
+      } else {
+        Alert.alert("Invalid OTP", "Please use dummy OTP 1234");
+        setLoading(false);
+        return;
+      }
+    }
+
+    try {
+      if (confirmResult) {
+        console.log("🚀 OTP Verify: Confirming OTP code");
+        await confirmResult.confirm(otp);
+      } else {
+        throw new Error("No pending verification session found.");
+      }
+
+      console.log("🚀 Syncing with Backend DB for phone:", phoneNumber);
+      const response = await fetch("https://seller.inquirybazaar.com/api/auth/login-with-otp", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ phone: phoneNumber, role: "buyer" }),
+      });
+
+      const data = await response.json();
+      console.log("📥 Backend OTP Login Response:", data);
+
+      if (response.ok && data.success) {
+        const loggedInUserId = data.user?.id || data.user?._id;
+        if (loggedInUserId) {
+          await AsyncStorage.setItem("buyerId", loggedInUserId);
+        }
+        await AsyncStorage.removeItem("supplierId");
+        unstable_batchedUpdates(() => {
+          if (loggedInUserId) setGlobalBuyerId(loggedInUserId);
+          setGlobalSellerId(null);
+          setSellerSignedIn(false);
+          setGlobalRole("buyer");
+          setIsSuccess(true);
+        });
+        await addNotification("Buyer logged in successfully.");
+        setTimeout(() => prefetchHomeData().catch(() => {}), 2000);
+        setTimeout(() => {
+          setIsSuccess(false);
+          router.navigate("/Buyer/profile");
+        }, 1500);
+      } else {
+        Alert.alert("Login Failed", data.message || "Failed to log in via server.");
+      }
+    } catch (error: any) {
+      console.error(error);
+      Alert.alert("Error", error.message || "Verification failed. Please try again.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleSubmit = async () => {
@@ -172,65 +311,164 @@ const BuyerLogin = () => {
               </Text>
             </View>
 
-            {/* Inputs & Form Wrapper */}
-            <View style={s.inputsWrapper}>
-              {/* Email or Phone Number Field */}
-              <View style={s.inputContainer}>
-                <Ionicons name="person-outline" size={moderateScale(18)} color="#64748B" style={s.inputIcon} />
-                <TextInput
-                  style={s.textInput}
-                  placeholder="Email Address or Phone Number"
-                  placeholderTextColor="#94A3B8"
-                  value={formdata.email}
-                  onChangeText={(val) => handleChange("email", val)}
-                  keyboardType="default"
-                  autoCapitalize="none"
-                />
-              </View>
-
-              {/* Password Field */}
-              <View style={s.inputContainer}>
-                <Ionicons name="lock-closed-outline" size={moderateScale(18)} color="#64748B" style={s.inputIcon} />
-                <TextInput
-                  style={s.textInput}
-                  placeholder="Password"
-                  placeholderTextColor="#94A3B8"
-                  value={formdata.password}
-                  onChangeText={(val) => handleChange("password", val)}
-                  secureTextEntry={!showPassword}
-                  autoCapitalize="none"
-                />
-                <Pressable onPress={() => setShowPassword(!showPassword)} style={s.eyeButton}>
-                  <Ionicons
-                    name={showPassword ? "eye-off-outline" : "eye-outline"}
-                    size={moderateScale(18)}
-                    color="#64748B"
-                  />
-                </Pressable>
-              </View>
-
-              {/* Forgot Password Action Trigger */}
-              <TouchableOpacity style={s.forgotPasswordBtn}>
-                <Text style={s.forgotPasswordText}>
-                  Forgot Password?
+            {/* Login Mode Selector Tabs */}
+            <View style={s.tabContainer}>
+              <TouchableOpacity
+                style={[s.tabButton, loginMode === "password" && s.activeTabButton]}
+                onPress={() => {
+                  setLoginMode("password");
+                  setOtpSent(false);
+                }}
+              >
+                <Text style={[s.tabButtonText, loginMode === "password" && s.activeTabButtonText]}>
+                  Password
                 </Text>
               </TouchableOpacity>
-
-              {/* Dark Blue Main Login Action Button */}
               <TouchableOpacity
-                style={s.loginButton}
-                onPress={handleSubmit}
-                disabled={loading}
-                activeOpacity={0.9}
+                style={[s.tabButton, loginMode === "otp" && s.activeTabButton]}
+                onPress={() => setLoginMode("otp")}
               >
-                {loading ? (
-                  <ActivityIndicator color="#FFFFFF" />
-                ) : (
-                  <Text style={s.loginButtonText}>
-                    Login
-                  </Text>
-                )}
+                <Text style={[s.tabButtonText, loginMode === "otp" && s.activeTabButtonText]}>
+                  OTP Login
+                </Text>
               </TouchableOpacity>
+            </View>
+
+            {/* Inputs & Form Wrapper */}
+            <View style={s.inputsWrapper}>
+              {loginMode === "password" ? (
+                <>
+                  {/* Email or Phone Number Field */}
+                  <View style={s.inputContainer}>
+                    <Ionicons name="person-outline" size={moderateScale(18)} color="#64748B" style={s.inputIcon} />
+                    <TextInput
+                      style={s.textInput}
+                      placeholder="Email Address or Phone Number"
+                      placeholderTextColor="#94A3B8"
+                      value={formdata.email}
+                      onChangeText={(val) => handleChange("email", val)}
+                      keyboardType="default"
+                      autoCapitalize="none"
+                    />
+                  </View>
+
+                  {/* Password Field */}
+                  <View style={s.inputContainer}>
+                    <Ionicons name="lock-closed-outline" size={moderateScale(18)} color="#64748B" style={s.inputIcon} />
+                    <TextInput
+                      style={s.textInput}
+                      placeholder="Password"
+                      placeholderTextColor="#94A3B8"
+                      value={formdata.password}
+                      onChangeText={(val) => handleChange("password", val)}
+                      secureTextEntry={!showPassword}
+                      autoCapitalize="none"
+                    />
+                    <Pressable onPress={() => setShowPassword(!showPassword)} style={s.eyeButton}>
+                      <Ionicons
+                        name={showPassword ? "eye-off-outline" : "eye-outline"}
+                        size={moderateScale(18)}
+                        color="#64748B"
+                      />
+                    </Pressable>
+                  </View>
+
+                  {/* Forgot Password Action Trigger */}
+                  <TouchableOpacity style={s.forgotPasswordBtn}>
+                    <Text style={s.forgotPasswordText}>
+                      Forgot Password?
+                    </Text>
+                  </TouchableOpacity>
+
+                  {/* Dark Blue Main Login Action Button */}
+                  <TouchableOpacity
+                    style={s.loginButton}
+                    onPress={handleSubmit}
+                    disabled={loading}
+                    activeOpacity={0.9}
+                  >
+                    {loading ? (
+                      <ActivityIndicator color="#FFFFFF" />
+                    ) : (
+                      <Text style={s.loginButtonText}>
+                        Login
+                      </Text>
+                    )}
+                  </TouchableOpacity>
+                </>
+              ) : (
+                <>
+                  {/* Mobile Number Field */}
+                  <View style={s.inputContainer}>
+                    <Ionicons name="call-outline" size={moderateScale(18)} color="#64748B" style={s.inputIcon} />
+                    <Text style={s.countryCode}>+91</Text>
+                    <TextInput
+                      style={s.textInput}
+                      placeholder="10-Digit Mobile Number"
+                      placeholderTextColor="#94A3B8"
+                      value={phoneNumber}
+                      onChangeText={setPhoneNumber}
+                      keyboardType="phone-pad"
+                      maxLength={10}
+                      editable={!otpSent}
+                    />
+                  </View>
+
+                  {/* OTP Field (Visible only after OTP is sent) */}
+                  {otpSent && (
+                    <View style={s.inputContainer}>
+                      <Ionicons name="shield-checkmark-outline" size={moderateScale(18)} color="#64748B" style={s.inputIcon} />
+                      <TextInput
+                        style={s.textInput}
+                        placeholder="Enter 6-Digit OTP"
+                        placeholderTextColor="#94A3B8"
+                        value={otp}
+                        onChangeText={setOtp}
+                        keyboardType="number-pad"
+                        maxLength={6}
+                      />
+                    </View>
+                  )}
+
+                  {!otpSent ? (
+                    <TouchableOpacity
+                      style={s.loginButton}
+                      onPress={handleSendOtp}
+                      disabled={loading}
+                    >
+                      {loading ? (
+                        <ActivityIndicator color="#FFFFFF" />
+                      ) : (
+                        <Text style={s.loginButtonText}>Send OTP</Text>
+                      )}
+                    </TouchableOpacity>
+                  ) : (
+                    <>
+                      <TouchableOpacity
+                        style={s.loginButton}
+                        onPress={handleVerifyOtp}
+                        disabled={loading}
+                      >
+                        {loading ? (
+                          <ActivityIndicator color="#FFFFFF" />
+                        ) : (
+                          <Text style={s.loginButtonText}>Verify & Login</Text>
+                        )}
+                      </TouchableOpacity>
+
+                      <TouchableOpacity
+                        style={s.resendButton}
+                        onPress={() => {
+                          setOtpSent(false);
+                          setOtp("");
+                        }}
+                      >
+                        <Text style={s.resendText}>Change Number</Text>
+                      </TouchableOpacity>
+                    </>
+                  )}
+                </>
+              )}
             </View>
 
             {/* Bottom Form Redirection */}
@@ -445,6 +683,51 @@ const s = StyleSheet.create({
   redirectHighlight: {
     color: "#1E3A8A",
     fontWeight: "700",
+  },
+  tabContainer: {
+    flexDirection: 'row',
+    marginBottom: verticalScale(20),
+    backgroundColor: '#F1F5F9',
+    borderRadius: moderateScale(12),
+    padding: scale(4),
+  },
+  tabButton: {
+    flex: 1,
+    paddingVertical: verticalScale(10),
+    alignItems: 'center',
+    borderRadius: moderateScale(8),
+  },
+  activeTabButton: {
+    backgroundColor: '#FFFFFF',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  tabButtonText: {
+    fontSize: moderateScale(15),
+    fontWeight: '600',
+    color: '#64748B',
+  },
+  activeTabButtonText: {
+    color: '#1E3A8A',
+  },
+  countryCode: {
+    fontSize: moderateScale(15),
+    fontWeight: '700',
+    color: '#1E293B',
+    marginRight: scale(4),
+  },
+  resendButton: {
+    alignItems: 'center',
+    marginTop: verticalScale(14),
+  },
+  resendText: {
+    color: '#1E3A8A',
+    fontWeight: '600',
+    fontSize: moderateScale(14),
+    textDecorationLine: 'underline',
   },
 });
 
