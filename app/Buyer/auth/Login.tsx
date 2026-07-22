@@ -127,12 +127,12 @@ const BuyerLogin = () => {
       }
 
       console.log("🚀 Syncing with Backend DB for phone:", phoneNumber);
-      const response = await fetch("https://seller.inquirybazaar.com/api/auth/login-with-otp", {
+      const response = await fetch("https://buyer.inquirybazaar.com/api/auth/login-with-otp", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ phone: phoneNumber, role: "buyer" }),
+        body: JSON.stringify({ phone: phoneNumber }),
       });
 
       const data = await response.json();
